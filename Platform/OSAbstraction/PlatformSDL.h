@@ -23,6 +23,9 @@
 #include "iPlatform.h"
 #include "ImageSDL.h"
 
+#include "imgui.h"
+#include "imgui_impl_sdl.h"
+
 
 class PlatformSDL : public iPlatform
 {
@@ -48,6 +51,8 @@ public:
 	void AwaitEvent();
 	void ClearEvents();
 	iImageSource& ImageSource()	 { return static_cast<iImageSource&>(image); }
+	void InitGUISystem()	 { ImGui_ImplSDL2_InitForVulkan(pWindow); }
+	void GUISystemNewFrame() { ImGui_ImplSDL2_NewFrame(pWindow); }
 private:
 	void initializeSDL();
 	void createVulkanCompatibleWindow();
