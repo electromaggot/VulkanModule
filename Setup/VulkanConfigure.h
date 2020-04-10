@@ -49,7 +49,7 @@ const VkColorSpaceKHR COLOR_SPACE_PRECEDENCE[] = {
 };
 const int N_COLOR_SPACE_PRECEDENCES = N_ELEMENTS_IN_ARRAY(COLOR_SPACE_PRECEDENCE);
 
-const VkPresentModeKHR PRESENT_MODE_PRECEDENCE[] = {
+const VkPresentModeKHR PRESENT_MODE_PRECEDENCE[] = {	// (for further info, DevNote at bottom)
 
 	VK_PRESENT_MODE_MAILBOX_KHR,
 	VK_PRESENT_MODE_IMMEDIATE_KHR,	// this precedes and is supposedly preferable to
@@ -143,3 +143,12 @@ inline void sanityCheckVulkanConfiguration() {
 
 
 #endif // VulkanConfigure_h
+
+
+/* DEV NOTE - PRESENT MODES
+Some of the documentation on VkPresentModeKHR, if you can find it, is not completely clear.
+Apparently for "unlimited frame rate" choose VK_PRESENT_MODE_MAILBOX_KHR first, but perhaps
+ is still provided by what should be the secondary choice of VK_PRESENT_MODE_IMMEDIATE_KHR.
+Alternately, if you want "NON-unlimited frame rate" (or the above two options are otherwise
+ unsupported) the last option of VK_PRESENT_MODE_FIFO_KHR may be chosen.
+*/

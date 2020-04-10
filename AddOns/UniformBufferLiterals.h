@@ -1,14 +1,19 @@
 //
-// UniformBufferObjects.h
+// UniformBufferLiterals.h
 //	Vulkan Add-ons
 //
-// Define any commonly-used UBOs.
+// Define specific, commonly-used UBO concretions.
+//
+// These are "overlaid" into a new UniformBuffer object, its ShaderStage set, and
+//	emplaced into an array of DescribEd objects, from which Descriptors constructs.
+// The app writes into UBO fields as defined below, then those values pass to the
+//	shader via its "layout(binding = " index, which needs to match on both sides.
 //
 // Created 6/14/19 by Tadd Jensen
 //	© 0000 (uncopyrighted; use at will)
 //
-#ifndef UniformBufferObjects_h
-#define UniformBufferObjects_h
+#ifndef UniformBufferLiterals_h
+#define UniformBufferLiterals_h
 
 #include "VertexType.h"
 
@@ -61,7 +66,7 @@ struct UBO {
 };
 
 
-#endif // UniformBufferObjects_h
+#endif	// UniformBufferLiterals_h
 
 
 /* DEV NOTE

@@ -37,7 +37,7 @@ void SyncObjects::createSyncObjects()
 	VkFenceCreateInfo fenceInfo = {
 		.sType	= VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
 		.pNext	= nullptr,
-		.flags	= VK_FENCE_CREATE_SIGNALED_BIT	// Start Fence in signalled state.
+		.flags	= VK_FENCE_CREATE_SIGNALED_BIT	// Start Fence in signaled state.
 	};
 
 	for (int iFrame = 0; iFrame < MaxFramesInFlight; ++iFrame)

@@ -47,6 +47,7 @@ public:
 
 		// getters
 	vector<VkImageView>& getImageViews()	{ return imageViews; }
+	int					 getNumImages()		{ return (int) imageViews.size(); }
 	VkExtent2D&			 getExtent()		{ return extent; }
 
 	VkSwapchainKHR&		 getVkSwapchain()	{ return swapchain; }
