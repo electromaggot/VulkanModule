@@ -61,6 +61,9 @@ public:
 
 	virtual iImageSource& ImageSource() = 0;
 
+	virtual void InitGUISystem()	 { };
+	virtual void GUISystemNewFrame() { };
+
 		// getters
 public:
 	StrPtr*		getSupportedVulkanExtensions()	{ return supportedVulkanExtensions; }
