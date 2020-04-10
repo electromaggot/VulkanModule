@@ -13,7 +13,7 @@
 #include "Descriptors.h"
 
 
-Descriptors::Descriptors(vector<Described>& describeds, Swapchain& swapchain, GraphicsDevice& device)
+Descriptors::Descriptors(vector<DescribEd>& describeds, Swapchain& swapchain, GraphicsDevice& device)
 	:	BufferBase(device),
 		describers(describeds),
 		numBuffers(static_cast<uint32_t>(swapchain.getImageViews().size()))
@@ -148,7 +148,7 @@ void Descriptors::createDescriptorSets()
 }
 
 
-void Descriptors::Recreate(vector<Described> descriptions, Swapchain& swapchain)
+void Descriptors::Recreate(vector<DescribEd> descriptions, Swapchain& swapchain)
 {
 	destroy();
 

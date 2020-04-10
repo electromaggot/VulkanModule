@@ -93,11 +93,11 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexType* pVertex,
 		.flags	= 0,
 		.rasterizationSamples	= VK_SAMPLE_COUNT_1_BIT,
 		.sampleShadingEnable	= VK_FALSE,
-		/*.minSampleShading		= 1.0f,
-		.pSampleMask			= nullptr,
-		.alphaToCoverageEnable	= VK_FALSE,
-		.alphaToOneEnable		= VK_FALSE*/
-	};
+		/*.minSampleShading		= 1.0f,					// FYI: all these commented-out fields, above
+		.pSampleMask			= nullptr,				//	and below, are "possible but not required"
+		.alphaToCoverageEnable	= VK_FALSE,				//	for the specific needs of this demo program.
+		.alphaToOneEnable		= VK_FALSE*/			//	If needed, reactivate them, or even add
+	};													//	passed-in parameter(s) to set them to.
 
 	VkPipelineColorBlendAttachmentState colorBlendAttachment = {
 		.blendEnable		 = VK_FALSE,
@@ -129,7 +129,7 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexType* pVertex,
 		.pNext	= nullptr,
 		.flags	= 0,
 		.setLayoutCount	= pDescriptors ? (uint32_t) 1 : 0,
-		.pSetLayouts	= pDescriptors ? pDescriptors->getLayout() : nullptr,
+		.pSetLayouts	= pDescriptors ? pDescriptors->getpLayout() : nullptr,
 		/*.pushConstantRangeCount = 0,		// can pass values into shader
 		.pPushConstantRanges	= nullptr*/
 	};
