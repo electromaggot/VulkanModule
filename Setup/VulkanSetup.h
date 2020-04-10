@@ -25,14 +25,14 @@
 #include "Framebuffers.h"
 #include "SyncObjects.h"
 
-#include "GraphicsPipeline.h"
+//#include "GraphicsPipeline.h"
 #include "CommandObjects.h"
 
-#include "VertexBasedObject.h"
-#include "UniformBufferObjects.h"
-#include "UniformBuffer.h"
-#include "TextureImage.h"
-#include "Descriptors.h"
+//#include "VertexBasedObject.h"
+//#include "UniformBufferLiterals.h"	//TJ: Re-assess necessity of all these
+//#include "UniformBuffer.h"
+//#include "TextureImage.h"
+//#include "Descriptors.h"
 
 
 class VulkanSetup
@@ -55,7 +55,7 @@ public:
 	SyncObjects			syncObjects;
 	CommandPool			commandPool;
 
-	ShaderModules*		pShaderModules;
+	/*ShaderModules*		pShaderModules;
 	UniformBuffer*		pUniformBuffer;
 	vector<TextureImage*> pTextureImages;
 	Descriptors*		pDescriptors;
@@ -63,15 +63,15 @@ public:
 	CommandObjects*		pCommandObjects;
 
 	VertexBasedObject*	pVertexObject;		// (retain for Recreate)
-	VkShaderStageFlags	shaderStageForUBO;	// ((kludgey) also retain for Recreate)
+	VkShaderStageFlags	shaderStageForUBO;*/// ((kludgey) also retain for Recreate)
 
-	void PostConstruction_SetUpForRendering(Shaders& shaders, VertexBasedObject& vertexObject,
-											vector<Described> describedAddOns);
-	vector<Described> AddOn(UBO* pUBO, TextureSpec textureSpecs[], iPlatform& platform);	// IMPORTANT:
+	//void PostConstruction_SetUpForRendering(Shaders& shaders, VertexBasedObject& vertexObject,
+	//										vector<DescribEd> describedAddOns);
+	//vector<DescribEd> AddOn(UBO* pUBO, TextureSpec textureSpecs[], iPlatform& platform);	// IMPORTANT:
 													// ^^^^^^^^^^ This "array" is really just a pointer, and is expected to either be null (nullptr) or point
 	void RecreateRenderingRudiments();				//			  to an array of TextureSpec structures TERMINATED by one that is null or having: .fileName == nullptr
 private:
-	vector<Described> reDescribe();
+	//vector<DescribEd> reDescribe();
 };
 
 #endif	// VulkanSetup_h
