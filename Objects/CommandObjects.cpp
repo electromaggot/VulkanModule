@@ -9,31 +9,42 @@
 //
 #include "CommandObjects.h"
 #include "VulkanSingleton.h"
-#include "PrimitiveBuffer.h"
+#include "iRenderable.h"
 
 
-CommandObjects::CommandObjects(GraphicsPipeline& pipeline, Framebuffers& framebuffers,
-							   RenderPass& renderPass, Swapchain& swapchain, GraphicsDevice& graphics,
-							   VertexBasedObject& vertexObject, Descriptors* pDescriptors)
-	:	commandPool(graphics),
-		addedOn(vertexObject, commandPool.vkInstance, graphics),
+CommandObjects::CommandObjects(Framebuffers& framebuffers, RenderPass& renderPass,
+							   Swapchain& swapchain, GraphicsDevice& graphics)
+	:	commandPool(CommandPool::Singleton(graphics)),
 		commandBuffers(nullptr),
 		device(graphics)
 {
+	beginInfo = {
+		.sType	= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+		.pNext	= nullptr,
+		.flags	= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
+		.pInheritanceInfo = nullptr
+	};
+
 	createCommandBuffers(framebuffers.getVkFramebuffers(), swapchain.getExtent(),
-						 renderPass.getVkRenderPass(), pipeline,
-						 vertexObject, pDescriptors);
+						 renderPass.getVkRenderPass());
 }
 
 CommandObjects::~CommandObjects()
 {
-	delete commandBuffers;	// (also no need to vkFreeCommandBuffers, as vkDestroyCommandPool will)
+	delete commandBuffers;	/// (also no need to vkFreeCommandBuffers, as vkDestroyCommandPool will)
 }
 
+
+#pragma mark - CommandPool
+
+//TJ_TODO: Revisit this.  VulkanSetup.commandPool instantiates it, then that instance referenced here via
+//			CommandObjects.commandPool.  Seems like "one simple instance" should be simplified & shored-up.
 
 CommandPool::CommandPool(GraphicsDevice& graphicsDevice)
 	:	device(graphicsDevice)
 {
+	CommandPool::pSelf = this;
+
 	VkCommandPoolCreateInfo poolInfo = {
 		.sType	= VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 		.pNext	= nullptr,
@@ -49,26 +60,22 @@ CommandPool::CommandPool(GraphicsDevice& graphicsDevice)
 CommandPool::~CommandPool()
 {
 	vkDestroyCommandPool(device.getLogical(), vkInstance, nullALLOC);
+	pSelf = nullptr;
 }
-
-
-AddOns::AddOns(VertexBasedObject& vertexObject, VkCommandPool& commandPool, GraphicsDevice& graphics)
+CommandPool* CommandPool::pSelf = nullptr;
+CommandPool& CommandPool::Singleton(GraphicsDevice& graphics)
 {
-	if (vertexObject.vertices) {
-		pVertexBuffer = new PrimitiveBuffer(vertexObject, commandPool, graphics);
-		if (vertexObject.indices)
-			pIndexBuffer = new PrimitiveBuffer((IndexBufferIndexType*) vertexObject.indices,
-											   vertexObject.indexCount, commandPool, graphics);
+	if (pSelf) {
+		if (graphics.getLogical() == pSelf->device.getLogical())
+			return *pSelf;
+		delete pSelf;
 	}
-}						//TJ_TODO: AddOns may eventually need its own file in the AddOns directory.
-AddOns::~AddOns()				//	Also with a Recreate routine independent from these (and separate
-{								//	Create/Destroy methods not really needed or useful).
-	delete pVertexBuffer;
-	delete pIndexBuffer;
+	pSelf = new CommandPool(graphics);
+	return *pSelf;
 }
 
 
-// CommandObjects IMPLEMENTATION
+#pragma mark - CommandObjects IMPLEMENTATION
 
 void CommandObjects::allocateCommandBuffers()
 {
@@ -88,21 +95,25 @@ void CommandObjects::allocateCommandBuffers()
 		Fatal("Allocate Command Buffers FAILURE" + ErrStr(call));
 }
 
+//TJ_TODO: With the Allocate, this is really a single-shot...
+//			For ACTIVE CommandBuffers, the Allocate should happen once and Buffer re-used.
+// Allocate the CommandBuffers and record a first set.  This can be a "single shot" for graphics
+//	objects that record once and never have to re-record, or recordCommands() can be called again
+//	or repeatedly and the already-allocated Buffers re-used.
+//
 void CommandObjects::createCommandBuffers(vector<VkFramebuffer>& framebuffers, VkExtent2D& swapchainExtent,
-										  VkRenderPass& renderPass, GraphicsPipeline& graphicsPipeline,
-										  VertexBasedObject& vertexObject, Descriptors* pDescriptors)
+										  VkRenderPass& renderPass)
 {
 	nCommandBuffers = (uint32_t) framebuffers.size();
 
 	allocateCommandBuffers();
 
-	VkCommandBufferBeginInfo beginInfo = {
-		.sType	= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-		.pNext	= nullptr,
-		.flags	= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
-		.pInheritanceInfo = nullptr
-	};
+	recordCommands(framebuffers, swapchainExtent, renderPass);
+}
 
+void CommandObjects::recordCommands(vector<VkFramebuffer>& framebuffers, VkExtent2D& swapchainExtent,
+									VkRenderPass& renderPass)
+{
 	VkRenderPassBeginInfo renderPassInfo = {
 		.sType	= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
 		.pNext	= nullptr,
@@ -112,8 +123,8 @@ void CommandObjects::createCommandBuffers(vector<VkFramebuffer>& framebuffers, V
 		.pClearValues	 = &VulkanSingleton::instance().ClearColor
 	};
 
-	for (int iBuffer = 0; iBuffer < nCommandBuffers; ++iBuffer)
-	{
+	for (int iBuffer = 0; iBuffer < nCommandBuffers; ++iBuffer)		//TJ_TODO: Still seems a little weird to repeat for every
+	{																//	frame buffer.  Can't one same CommandBuffer be shared?
 		VkCommandBuffer& commandBuffer = commandBuffers[iBuffer];
 
 		call = vkBeginCommandBuffer(commandBuffer, &beginInfo);
@@ -124,29 +135,8 @@ void CommandObjects::createCommandBuffers(vector<VkFramebuffer>& framebuffers, V
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline.getVkPipeline());
-
-			if (pDescriptors) // if (addedOn.pUniformBuffer)
-				vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-										graphicsPipeline.getPipelineLayout(), 0, 1,
-										&pDescriptors->getDescriptorSets()[iBuffer], 0, nullptr);
-
-			if (addedOn.pVertexBuffer) {
-				VkBuffer vertexBuffers[] = { addedOn.pVertexBuffer->getVkBuffer() };
-				VkDeviceSize offsets[]	 = { 0 };
-
-				vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-			}
-			if (addedOn.pIndexBuffer) {
-				vkCmdBindIndexBuffer(commandBuffer, addedOn.pIndexBuffer->getVkBuffer(),
-									 0, IndexBufferIndexTypeEnum);
-
-				vkCmdDrawIndexed(commandBuffer, vertexObject.indexCount, vertexObject.instanceCount,
-												vertexObject.firstIndex, vertexObject.vertexOffset,
-												vertexObject.firstInstance);
-			} else
-				vkCmdDraw(commandBuffer, vertexObject.vertexCount, vertexObject.instanceCount,
-										 vertexObject.firstVertex, vertexObject.firstInstance);
+//		for (auto& renderable : renderables)
+//			renderable.RenderAndDraw(commandBuffer);
 
 		vkCmdEndRenderPass(commandBuffer);
 
@@ -161,31 +151,17 @@ void CommandObjects::createCommandBuffers(vector<VkFramebuffer>& framebuffers, V
 //	or a VertexBaseObject with .vertices = nullptr to eliminate the Vertex Buffer altogether
 //	(for instance if vertices are handled in-shader).
 //
-void CommandObjects::Recreate(GraphicsPipeline& pipeline, Framebuffers& framebuffers,
-							  RenderPass& renderPass, Swapchain& swapchain,
-							  VertexBasedObject& vertexObject, bool reloadMesh,
-							  Descriptors* pDescriptors)
+void CommandObjects::Recreate(Framebuffers& framebuffers, RenderPass& renderPass, Swapchain& swapchain, bool reloadMesh)
 {
 	vkFreeCommandBuffers(device.getLogical(), commandPool.vkInstance, nCommandBuffers, commandBuffers);
 
 	delete commandBuffers;					// (note that commandPool can stay as-is)
 
-	if (reloadMesh) {		// otherwise keep the same VertexBuffer we already have loaded
-		delete addedOn.pVertexBuffer;
-		if (vertexObject.vertices)
-			addedOn.pVertexBuffer = new PrimitiveBuffer(vertexObject, commandPool.vkInstance, device);
-		else
-			addedOn.pVertexBuffer = nullptr;
-		delete addedOn.pIndexBuffer;
-		if (vertexObject.indices)
-			addedOn.pIndexBuffer = new PrimitiveBuffer((IndexBufferIndexType*) vertexObject.indices,
-																			   vertexObject.indexCount,
-													   commandPool.vkInstance, device);
-		else
-			addedOn.pIndexBuffer = nullptr;
+	if (reloadMesh) {		// otherwise keep the same AddOns (e.g. VertexBuffer) we already have loaded
+//		for (auto& renderable : renderables)
+//			renderable.Recreate(commandBuffer);
 	}
 
 	createCommandBuffers(framebuffers.getVkFramebuffers(), swapchain.getExtent(),
-						 renderPass.getVkRenderPass(), pipeline,
-						 vertexObject, pDescriptors);
+						 renderPass.getVkRenderPass());
 }
