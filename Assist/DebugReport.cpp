@@ -2,7 +2,7 @@
 // DebugReceiver.cpp
 //	subordinate to both ValidationLayers and PlatformExtension
 //
-// See matched header file for definitive main comment.
+// See header file comment for overview.
 //
 // 2/27/19 Tadd Jensen
 //	© 0000 (uncopyrighted; use at will)
@@ -18,12 +18,17 @@ DebugReport::DebugReport(VulkanInstance& vulkan)
 		setupMessenger();
 		setupReport();
 	}
+	else
+		instance = VK_NULL_HANDLE;		// Flag failure...
 }
 
 DebugReport::~DebugReport()
 {
-	destroyDebugUtilsMessengerEXT();
-	destroyDebugReportCallbackEXT();
+	if (instance != VK_NULL_HANDLE)		// ...so these don't crash:
+	{
+		destroyDebugUtilsMessengerEXT();
+		destroyDebugReportCallbackEXT();
+	}
 }
 
 
