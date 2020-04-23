@@ -2,12 +2,14 @@
 // AddOns.cpp
 //	VulkanModule AddOns
 //
-// See header for overview.
+// See header file comment for overview.
 //
 // Created 3/26/20 by Tadd
 //	© 2020 Megaphone Studios
 //
 #include "AddOns.h"
+
+#include "CommandObjects.h"
 
 #include "iRenderable.h"
 #include "PrimitiveBuffer.h"
@@ -23,35 +25,45 @@ AddOns::AddOns(Renderable& renderable, VulkanSetup& setup, iPlatform& abstractPl
 
 AddOns::~AddOns()
 {
-	delete pVertexBuffer;
-	delete pIndexBuffer;
+	destroyVertexAndOrIndexBuffers();
 }
 
+
+#pragma mark - VERTEX / INDEX BUFFERS
 
 void AddOns::createVertexAndOrIndexBuffers(VertexBasedObject& vertexObject)
 {
 	if (vertexObject.vertices) {
-		pVertexBuffer = new PrimitiveBuffer(vertexObject, vulkan.commandPool.getVkInstance(), vulkan.device);
+		VkCommandPool commandPool = vulkan.command.vkPool();
+		pVertexBuffer = new PrimitiveBuffer(vertexObject, commandPool, vulkan.device);
 		if (vertexObject.indices)
 			pIndexBuffer = new PrimitiveBuffer((IndexBufferIndexType*) vertexObject.indices,
 																	   vertexObject.indexCount,
-											   vulkan.commandPool.getVkInstance(), vulkan.device);
+											   commandPool, vulkan.device);
 	}
 }
 
-
-void AddOns::Recreate(VertexBasedObject& vertexObject/*, CommandPool& commandPool, GraphicsDevice& device / *Descriptors* pDescriptors*/)
+void AddOns::destroyVertexAndOrIndexBuffers()
 {
-	if (vertexObject.vertices) {	// (if new vertices exist to overwrite the old ones)
-		delete pVertexBuffer;
-		pVertexBuffer = nullptr;
+	delete pVertexBuffer;
+	pVertexBuffer = nullptr;
 
-		delete pIndexBuffer;		// (delete these regardless of if new indices exist to overwrite old ones)
-		pIndexBuffer = nullptr;
-	}
-	createVertexAndOrIndexBuffers(vertexObject);
+	delete pIndexBuffer;
+	pIndexBuffer = nullptr;
 }
 
+
+void AddOns::Recreate(VertexBasedObject& vertexObject)
+{
+	if (vertexObject.vertices) {			// (if new vertices exist to overwrite the old ones)
+		destroyVertexAndOrIndexBuffers();			// <--(this also deletes index buffers regardless of
+													//		if new indices exist to overwrite old ones)
+		createVertexAndOrIndexBuffers(vertexObject);
+	}
+}
+
+
+#pragma mark - UBO / TEXTURE DESCRIPTORS
 
 // Assemble a collection of Descriptors to be "added on."  Ordering is critical:
 //	make sure each INDEX matches its "layout(binding = <INDEX>)" in your Shader...
@@ -61,15 +73,16 @@ void AddOns::createDescribedItems(UBO* pUBO, TextureSpec textureSpecs[],
 {
 	// Uniform Buffer Objects first (explicitly: the MVP UBO)
 	if (pUBO) {
-		pUniformBuffer = new UniformBuffer(pUBO->byteSize, vulkan.swapchain, vulkan.device);
-		shaderStageForUBO = pUBO->getShaderStageFlags();
+		ubo = *pUBO;
+		pUniformBuffer = new UniformBuffer(ubo.byteSize, vulkan.swapchain, vulkan.device);
 		described.emplace_back( pUniformBuffer->getDescriptorBufferInfo(),			// layout(binding = 0)
-								shaderStageForUBO);
+								ubo.getShaderStageFlags());
 	}
 
 	// Textures next (may be more than one)... order is important here too == binding index
 	for (TextureSpec* pTextureSpec = textureSpecs; pTextureSpec && pTextureSpec->fileName; ++pTextureSpec) {
-		TextureImage* pTexture = new TextureImage(*pTextureSpec, vulkan.commandPool.getVkInstance(), vulkan.device, platform);
+		texspecs.push_back(*pTextureSpec);
+		TextureImage* pTexture = new TextureImage(texspecs.back(), vulkan.command.vkPool(), vulkan.device, platform);
 		if (pTexture) {
 			pTextureImages.emplace_back(pTexture);
 			described.emplace_back( pTexture->getDescriptorImageInfo(),				// layout(binding = 1) ... 2) ... 3)...
@@ -80,42 +93,32 @@ void AddOns::createDescribedItems(UBO* pUBO, TextureSpec textureSpecs[],
 }
 
 
-//TJ_TODO: This looks like it should be moved back into VulkanSetup, so that it itself is
-//	calling things like " swapchain.Recreate() " ... that doesn't really seem like our job
-//	here, just because we happen to (perhaps inappropriately) have a pointer to VulkanSetup.
-//															...but what *can* we Recreate?...
-void AddOns::RecreateRenderingRudiments()
+void AddOns::RecreateDescribables()
 {
-	//const bool reloadMesh = false;
-
-	/*vkDeviceWaitIdle(vulkan.device.getLogical());
-	vulkan.swapchain.Recreate();
-	vulkan.framebuffers.Recreate(vulkan.swapchain, vulkan.renderPass);*/
-
-	//VertexType* pVertexType = pVertexObject ? const_cast<VertexType*>(&pVertexObject->vertexType) : nullptr;
-
 	if (pUniformBuffer)
 		pUniformBuffer->Recreate(-1, vulkan.swapchain);
 
-	/*vector<Described> describedAddOns = reDescribe();
-	if (pDescriptors)
-		pDescriptors->Recreate(describedAddOns, vulkan.swapchain);
+	// Recreation (reload or regeneration) of TextureImages wasn't given much consideration, so if it is
+	//	really necessary, simply destroy and reinstantiate them... especially since the specs are saved.
 
-	pPipeline->Recreate(*pShaderModules, vulkan.renderPass, vulkan.swapchain, pVertexType, pDescriptors);
-	pCommandObjects->Recreate(*pPipeline, vulkan.framebuffers, vulkan.renderPass, vulkan.swapchain,
-							  reloadMesh);*/
+	for (auto& pTextureImage : pTextureImages)
+		delete pTextureImage;
+	pTextureImages.clear();
+	for (auto& texspec : texspecs) {
+		TextureImage* pTexture = new TextureImage(texspec, vulkan.command.vkPool(), vulkan.device, platform);
+		pTextureImages.emplace_back(pTexture);
+	}
 }
 
-// Note that TextureImages are specifically not reloaded or regenerated.
-//	This may be necessary later, should the images change or animate, although
-//	loading entirely new images (and discarding old ones) is separate matter.
+// A more sophistocated means of reloading/regenerating TextureImages may be necessary later, should those
+//	images change or animate, or otherwise require loading entirely new images (and discarding old ones).
 //
 vector<DescribEd> AddOns::reDescribe()
 {
 	vector<DescribEd> redescribedAddOns;
 	if (pUniformBuffer)
 		redescribedAddOns.emplace_back(pUniformBuffer->getDescriptorBufferInfo(),
-									   shaderStageForUBO);
+									   ubo.getShaderStageFlags());
 	for (auto& pTextureImage : pTextureImages)
 		redescribedAddOns.emplace_back(pTextureImage->getDescriptorImageInfo(),
 									   VK_SHADER_STAGE_FRAGMENT_BIT);
