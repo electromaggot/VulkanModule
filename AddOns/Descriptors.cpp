@@ -2,7 +2,7 @@
 // Descriptors.cpp
 //	Vulkan Add-ons
 //
-// See header description.
+// See header file comment for overview.
 //
 // Note that herein:
 //	numBuffers = numSwapchainImages;

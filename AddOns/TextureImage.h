@@ -3,7 +3,7 @@
 //	Vulkan Add-ons
 //
 // Encapsulate Texture Image Mapping, which includes a Sampler and ImageView,
-//	as well as supporting code to Copy image data, Transition its Format/Layout, etc.
+//	as well as supporting code to: Copy image data, Transition its Format/Layout, etc.
 //	This relies on the separate Descriptors (pool, sets, layout) class too.
 // Also define a data structure to specify the texture's file name and how it
 //	is intended to be sampled, wrapped, or if it should be flipped upside-down.

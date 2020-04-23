@@ -80,6 +80,7 @@ public:
 
 	~PlatformExtension()
 	{
+		Log(NOTE, "----V-U-L-K-A-N---P-R-O-G-R-A-M---E-N-D----");	// (and platform destroys last too!)
 		delete allExtensions;
 	}
 

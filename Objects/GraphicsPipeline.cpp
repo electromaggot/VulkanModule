@@ -18,8 +18,10 @@ GraphicsPipeline::GraphicsPipeline(ShaderModules& shaders, RenderPass& renderPas
 	create(shaders, pVertex, swapchain.getExtent(), renderPass.getVkRenderPass(), pDescriptors);
 }
 
-GraphicsPipeline::~GraphicsPipeline()  { destroy(); }
-
+GraphicsPipeline::~GraphicsPipeline()
+{
+	destroy();
+}
 void GraphicsPipeline::destroy()
 {
 	vkDestroyPipeline(device, graphicsPipeline, nullALLOC);

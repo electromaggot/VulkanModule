@@ -48,16 +48,16 @@ struct UBO_rtm {
 
 struct UBO {
 	int					byteSize;
-	void*				pUBO;
+	void*				pBytes;
 	DestinationStage	destinationStage;
 
 	UBO(UBO_MVP& mvp, DestinationStage dstage = DESTINATION_VERTEX_STAGE)
-		:	byteSize(sizeof(UBO_MVP)), pUBO(&mvp), destinationStage(dstage)	  { }
+		:	byteSize(sizeof(UBO_MVP)), pBytes(&mvp), destinationStage(dstage)	{ }
 
 	UBO(UBO_rtm& rtm, DestinationStage dstage = DESTINATION_FRAGMENT_STAGE)
-		:	byteSize(sizeof(UBO_rtm)), pUBO(&rtm), destinationStage(dstage)	  { }
+		:	byteSize(sizeof(UBO_rtm)), pBytes(&rtm), destinationStage(dstage)	{ }
 
-	UBO() : byteSize(0), pUBO(nullptr), destinationStage(DESTINATION_UNKNOWN) { }
+	UBO() : byteSize(0), pBytes(nullptr), destinationStage(DESTINATION_UNKNOWN)	{ }
 
 	VkShaderStageFlags	getShaderStageFlags() {
 		assert(destinationStage != DESTINATION_UNKNOWN);
