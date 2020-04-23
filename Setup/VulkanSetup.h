@@ -12,8 +12,6 @@
 #ifndef VulkanSetup_h
 #define VulkanSetup_h
 
-#define INSTANTIATE
-
 #include "iPlatform.h"
 #include "VulkanInstance.h"
 #include "ValidationLayers.h"
@@ -25,14 +23,7 @@
 #include "Framebuffers.h"
 #include "SyncObjects.h"
 
-//#include "GraphicsPipeline.h"
-#include "CommandObjects.h"
-
-//#include "VertexBasedObject.h"
-//#include "UniformBufferLiterals.h"	//TJ: Re-assess necessity of all these
-//#include "UniformBuffer.h"
-//#include "TextureImage.h"
-//#include "Descriptors.h"
+class CommandControl;
 
 
 class VulkanSetup
@@ -53,25 +44,10 @@ public:
 	Swapchain			swapchain;
 	Framebuffers		framebuffers;
 	SyncObjects			syncObjects;
-	CommandPool			commandPool;
+	CommandControl&		command;
 
-	/*ShaderModules*		pShaderModules;
-	UniformBuffer*		pUniformBuffer;
-	vector<TextureImage*> pTextureImages;
-	Descriptors*		pDescriptors;
-	GraphicsPipeline*	pPipeline;
-	CommandObjects*		pCommandObjects;
 
-	VertexBasedObject*	pVertexObject;		// (retain for Recreate)
-	VkShaderStageFlags	shaderStageForUBO;*/// ((kludgey) also retain for Recreate)
-
-	//void PostConstruction_SetUpForRendering(Shaders& shaders, VertexBasedObject& vertexObject,
-	//										vector<DescribEd> describedAddOns);
-	//vector<DescribEd> AddOn(UBO* pUBO, TextureSpec textureSpecs[], iPlatform& platform);	// IMPORTANT:
-													// ^^^^^^^^^^ This "array" is really just a pointer, and is expected to either be null (nullptr) or point
-	void RecreateRenderingRudiments();				//			  to an array of TextureSpec structures TERMINATED by one that is null or having: .fileName == nullptr
-private:
-	//vector<DescribEd> reDescribe();
+	void RecreateRenderingRudiments();
 };
 
 #endif	// VulkanSetup_h
