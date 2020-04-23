@@ -58,7 +58,7 @@ const FormatEquivalent	EquivalencyTable[] = {		// There's a DEV NOTE 1 (at botto
 	{ SDL_PIXELFORMAT_RGB24,		VK_FORMAT_R8G8B8_UNORM			},	// Note, on Apple/AMD produces: VK_ERROR_FORMAT_NOT_SUPPORTED: VkFormat VK_FORMAT_R8G8B8_UNORM is not supported on this platform.
 	{ SDL_PIXELFORMAT_BGR24,		VK_FORMAT_B8G8R8_UNORM			},	//	(See DEV NOTE 2 about these.  SDL's are 24-bit 3-byte.)
 	{ SDL_PIXELFORMAT_BGR888,		VK_FORMAT_A8B8G8R8_UNORM_PACK32	},	// SDL specifically defines both	// (Here SDL puts "don't care" channel as high byte
-	{ SDL_PIXELFORMAT_RGB888,		VK_FORMAT_R8G8B8A8_UNORM		},	//	these as 24-bit but 4-byte.		//	and here as low byte.)
+	{ SDL_PIXELFORMAT_RGB888,		VK_FORMAT_B8G8R8A8_UNORM		},	//	these as 24-bit but 4-byte.		//	and here as low byte.)
 	// 16-bit
 	{ SDL_PIXELFORMAT_RGBA4444,		VK_FORMAT_R4G4B4A4_UNORM_PACK16	},
 	{ SDL_PIXELFORMAT_BGRA4444,		VK_FORMAT_B4G4R4A4_UNORM_PACK16	},
