@@ -2,9 +2,9 @@
 // CommandObjects.h
 //	Vulkan Setup
 //
-// Encapsulate Command Pool/Buffer/queues.
-//		(TJ_LATER_NOTE: actually not the "queue" as that's actually device-side *receiver* of a command buffer)
-//																		and more tied to the FrameBuffer (?)
+// Encapsulate Command Pool and Command Buffers.
+//	(but not the "command queue" as that's device-side *receiver* of a command buffer and more tied to the Framebuffer)
+//
 // This class also coordinates two types of CommandBuffers: "fixed" ones
 //	recorded at initialization-time, not re-recorded, but Submitted repeatedly;
 //	and "active" CommandBuffers that re-record their commands upon every new frame.
@@ -23,66 +23,146 @@
 #include "GraphicsPipeline.h"
 #include "Descriptors.h"
 
+#include "iRenderable.h"
+
+
+#pragma mark - COMMAND POOL
 
 class CommandPool
 {
-	friend class CommandObjects;
+	friend class CommandControl;
 public:
 	CommandPool(GraphicsDevice& graphicsDevice);
 	~CommandPool();
-
-	static CommandPool& Singleton(GraphicsDevice& graphics);
-	VkCommandPool&		getVkInstance()	{ return vkInstance; }
 private:
-	static CommandPool*	pSelf;
-	VkCommandPool		vkInstance;
-	GraphicsDevice&		device;
+	VkCommandPool	 vkCommandPool;
+	GraphicsDevice&	 device;
 };
 
 
-enum RecordCommands {	/// i.e. Request this CommandBuffer to be recorded:
-	AT_INIT_TIME_ONLY,	///  - once at initialization-time and not re-recorded before frames.
-	UPON_EACH_FRAME		///  - repeatedly on every frame, and Reset before the next one.
-};
+#pragma mark - COMMAND BUFFERS
 
-class CommandBuffers
-{
-
-};
-
-
-class CommandObjects
+class CommandBufferSet
 {
 public:
-	CommandObjects(Framebuffers& framebuffers, RenderPass& renderPass,
-				   Swapchain& swapchain, GraphicsDevice& graphics);
-	~CommandObjects();
+	CommandBufferSet();
+	~CommandBufferSet();
 
-		// MEMBERS
+	vector<VkCommandBuffer>	 vkCommandBuffers;		// size == numBufferSets
+
+	bool					 isChanged_ReRecord;	//TJ_TODO: needs to re-record all frames
 private:
-	CommandPool		 commandPool;
-
-	VkCommandBuffer* commandBuffers;
-	uint32_t		 nCommandBuffers;
-
-	GraphicsDevice&	 device;
-
-	VkCommandBufferBeginInfo	beginInfo;
+	VkCommandBufferBeginInfo beginInfo;
 
 		// METHODS
-private:
-	void createCommandPool();
-	void allocateCommandBuffers();
-	void createCommandBuffers(vector<VkFramebuffer>& framebuffers, VkExtent2D& swapChainExtent,
-							  VkRenderPass& renderPass);
-	void recordCommands(vector<VkFramebuffer>& framebuffers, VkExtent2D& swapChainExtent,
-						VkRenderPass& renderPass);
 public:
-	void Recreate(Framebuffers& framebuffers, RenderPass& renderPass,
-				  Swapchain& swapchain, bool reloadMesh = false);
+	void allocateVkCommandBuffer();
+	void freeVkCommandBuffers();
+	void recordCommands(vector<iRenderable*> pRenderables, vector<VkFramebuffer>& framebuffers,
+						VkExtent2D& swapChainExtent, VkRenderPass& renderPass);
 		// getters
-	const VkCommandBuffer*	CommandBuffers()	{	return commandBuffers;	}
-	uint32_t				NumCommandBuffers() {	return nCommandBuffers;	}
+	uint32_t	numBufferSets()	 {	return (uint32_t) vkCommandBuffers.size();	}
 };
 
+typedef CommandBufferSet*	CommandBufferSets;	// array of the above per each frame
+
+
+#pragma mark - COMMAND CONTROL
+
+// Initially, receive/store the number of Framebuffers - that's how many CommandBuffers
+//	are needed for any given Renderable.  As each Renderable is defined, it needs a set
+//	of CommandBuffers, but those sets may be shared with other Renderables, according to
+//	each one's behavior, like CommandRecording mode, or if ordering is more important...
+// If overall app uses painter's algorithm (no depth buffer), render order is preserved,
+//	even if it means redundant (non-contiguous, otherwise-equivalent) CommandBuffers.
+//	Otherwise, order-of-rendering doesn't matter, so buffers can be combined and filled
+//	with similar Renderables' commands regardless of when those Renderables were added.
+// TJ_TODO: Later Confirm: Is absolutely independent of UBO like MVP?
+//
+//							SIMPLIFIED DIAGRAM
+//	VkCommandBuffer == [ ]						(more in Dev Note at .cpp EOF)
+//							iCommandBufferSet
+//						 0		 1		 2	 ...   n  = numBufferSets
+//		iFrame		0	[ ]	 ,	[ ]	 ,	[ ]		  [ ]
+//					1	[ ]	 ,	[ ]	 ,	[ ]	 ...  [ ]
+//					2	[ ]	 ,	[ ]	 ,	[ ]		  [ ]
+//		NumFrames =	3
+//
+
+class CommandControl
+{
+	static CommandControl*	pSingleton;
+
+		// XSTRUCT
+public:
+	CommandControl(Framebuffers& framebuffers, GraphicsDevice& device);
+	~CommandControl();
+
+		// MEMBERS
+	bool		renderInOrderAdded;		// i.e. draw Renderables in same order as they were added
+
+	Renderables	renderables;						// size == numBufferSets
+
+	// Side note: Conceptually, "Renderables" may seem like they should be separate from the Vulkan
+	//	Module, however the Renderable and its Command Buffer go hand-in-hand (that is, the specific
+	//	draw commands it writes into the buffer); the same goes for its Shaders, their Pipeline, etc.
+
+private:
+	CommandPool	commandPool;
+
+	uint32_t	numFrames;
+
+	CommandBufferSets	buffersByFrame;				// size == numFrames (Framebuffers.size())
+
+		// METHODS
+public:
+	void PostInitPrepBuffers(VulkanSetup& vulkan);
+	void RecordRenderablesUponEachFrame(VulkanSetup& vulkan);
+
+	vector<VkCommandBuffer>	BuffersForFrame(int iFrame) {
+		assert (numFrames > 0);
+		return buffersByFrame[iFrame].vkCommandBuffers;
+	}
+
+	void RecreateRenderables(VulkanSetup& vulkan);
+
+		// getters
+	uint32_t				NumFrames()	{ return numFrames; }
+
+	static GraphicsDevice&	device()	{ return pSingleton->commandPool.device; }
+	static VkCommandPool&	vkPool()	{ return pSingleton->commandPool.vkCommandPool; }
+};
+
+
 #endif // CommandObjects_h
+
+
+
+/* DEV NOTE
+
+given ARRAYS SIZED:
+    commandBufferRecordables[numBufferSets]
+    commandBuffersByFrame[numFrames].vkCommandBuffers[numBufferSets]
+
+EXAMPLE INITIALIZATION, graphical representation			numBufferSets = 3
+----------------------										NumFrames = 2
+
+       bufferRecordables[┐]  =	 {	{AT_INIT_TIME_ONLY,		{ON_CHANGE_FLAGGED,		{UPON_EACH_FRAME,
+						 │			 renderables[0..1]},	 renderables[2]},		 renderables[3..4]}	};
+       buffersByFrame[┐] └─> iBufferSet ──> [0]			|		   [1]			|		  [2]			╷
+		 ┌─ iFrame <──┘		 ↑	 ╷						|						|						|
+		 ↓					 │	 ╵						|						|						╵
+		[0].vkCommandBuffers[┘] = {	VkCommandBufferA,	   VkCommandBufferB,	   VkCommandBufferC		};
+								 ╷	 {Renderable0 cmds	|	{Renderable2 cmds}	|	{Renderable3 cmds	╷
+								 ╵	  Renderable1 cmds}	|						|	 RenderGUI cmds}	╵
+		[1].vkCommandBuffers[] = {	VkCommandBufferD,	  VkCommandBufferE,		   VkCommandBufferF		};
+								 ╷	 {Renderable0 cmds	|	{Renderable2 cmds}	|	{Renderable3 cmds	╷
+								 |	  Renderable1 cmds}	|					 	|	 RenderGUI cmds}	|
+
+											 ↑						↑						  ↑
+			These won't ever get re-recorded ┘						│		These Renderables ┘ re-record their
+																	│			render commands every frame.
+						This one re-records only if its isChanged_ReRecord
+						flag gets set, which will probably not coincide with other
+						renderables also using this mode, thus require separate additional sets.
+*/

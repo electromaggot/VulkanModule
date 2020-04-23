@@ -2,49 +2,20 @@
 // CommandObjects.cpp
 //	Vulkan Setup
 //
-// See matched header file for definitive main comment.
+// See header file comment for overview.
 //
 // 1/31/19 Tadd Jensen
 //	© 0000 (uncopyrighted; use at will)
 //
 #include "CommandObjects.h"
 #include "VulkanSingleton.h"
-#include "iRenderable.h"
-
-
-CommandObjects::CommandObjects(Framebuffers& framebuffers, RenderPass& renderPass,
-							   Swapchain& swapchain, GraphicsDevice& graphics)
-	:	commandPool(CommandPool::Singleton(graphics)),
-		commandBuffers(nullptr),
-		device(graphics)
-{
-	beginInfo = {
-		.sType	= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-		.pNext	= nullptr,
-		.flags	= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
-		.pInheritanceInfo = nullptr
-	};
-
-	createCommandBuffers(framebuffers.getVkFramebuffers(), swapchain.getExtent(),
-						 renderPass.getVkRenderPass());
-}
-
-CommandObjects::~CommandObjects()
-{
-	delete commandBuffers;	/// (also no need to vkFreeCommandBuffers, as vkDestroyCommandPool will)
-}
 
 
 #pragma mark - CommandPool
 
-//TJ_TODO: Revisit this.  VulkanSetup.commandPool instantiates it, then that instance referenced here via
-//			CommandObjects.commandPool.  Seems like "one simple instance" should be simplified & shored-up.
-
 CommandPool::CommandPool(GraphicsDevice& graphicsDevice)
 	:	device(graphicsDevice)
 {
-	CommandPool::pSelf = this;
-
 	VkCommandPoolCreateInfo poolInfo = {
 		.sType	= VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 		.pNext	= nullptr,
@@ -52,67 +23,58 @@ CommandPool::CommandPool(GraphicsDevice& graphicsDevice)
 		.queueFamilyIndex  = device.Queues.GraphicsIndex()
 	};
 
-	call = vkCreateCommandPool(device.getLogical(), &poolInfo, nullALLOC, &vkInstance);
+	call = vkCreateCommandPool(device.getLogical(), &poolInfo, nullALLOC, &vkCommandPool);
 
 	if (call != VK_SUCCESS)
 		Fatal("Create Command Pool FAILURE" + ErrStr(call));
 }
 CommandPool::~CommandPool()
 {
-	vkDestroyCommandPool(device.getLogical(), vkInstance, nullALLOC);
-	pSelf = nullptr;
-}
-CommandPool* CommandPool::pSelf = nullptr;
-CommandPool& CommandPool::Singleton(GraphicsDevice& graphics)
-{
-	if (pSelf) {
-		if (graphics.getLogical() == pSelf->device.getLogical())
-			return *pSelf;
-		delete pSelf;
-	}
-	pSelf = new CommandPool(graphics);
-	return *pSelf;
+	vkDestroyCommandPool(device.getLogical(), vkCommandPool, nullALLOC);
 }
 
 
-#pragma mark - CommandObjects IMPLEMENTATION
+#pragma mark - CommandBuffer
 
-void CommandObjects::allocateCommandBuffers()
+CommandBufferSet::CommandBufferSet()
 {
-	commandBuffers = new VkCommandBuffer[nCommandBuffers];
+	beginInfo = {
+		.sType	= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+		.pNext	= nullptr,
+		.flags	= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
+		.pInheritanceInfo = nullptr
+	};
+}
+CommandBufferSet::~CommandBufferSet()
+{
+	freeVkCommandBuffers();
+}
+
+void CommandBufferSet::allocateVkCommandBuffer()
+{
+	vkCommandBuffers.emplace_back();
 
 	VkCommandBufferAllocateInfo allocInfo = {
 		.sType	= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
 		.pNext	= nullptr,
-		.commandPool		= commandPool.vkInstance,
+		.commandPool		= CommandControl::vkPool(),
 		.level				= VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-		.commandBufferCount = nCommandBuffers
+		.commandBufferCount = 1
 	};
 
-	call = vkAllocateCommandBuffers(device.getLogical(), &allocInfo, commandBuffers);
+	call = vkAllocateCommandBuffers(CommandControl::device().getLogical(), &allocInfo, &vkCommandBuffers.back());
 
 	if (call != VK_SUCCESS)
 		Fatal("Allocate Command Buffers FAILURE" + ErrStr(call));
 }
-
-//TJ_TODO: With the Allocate, this is really a single-shot...
-//			For ACTIVE CommandBuffers, the Allocate should happen once and Buffer re-used.
-// Allocate the CommandBuffers and record a first set.  This can be a "single shot" for graphics
-//	objects that record once and never have to re-record, or recordCommands() can be called again
-//	or repeatedly and the already-allocated Buffers re-used.
-//
-void CommandObjects::createCommandBuffers(vector<VkFramebuffer>& framebuffers, VkExtent2D& swapchainExtent,
-										  VkRenderPass& renderPass)
+void CommandBufferSet::freeVkCommandBuffers()
 {
-	nCommandBuffers = (uint32_t) framebuffers.size();
-
-	allocateCommandBuffers();
-
-	recordCommands(framebuffers, swapchainExtent, renderPass);
+	vkFreeCommandBuffers(CommandControl::device().getLogical(), CommandControl::vkPool(),
+						 (uint32_t) vkCommandBuffers.size(), vkCommandBuffers.data());
 }
 
-void CommandObjects::recordCommands(vector<VkFramebuffer>& framebuffers, VkExtent2D& swapchainExtent,
-									VkRenderPass& renderPass)
+void CommandBufferSet::recordCommands(vector<iRenderable*> pBufferRenderables, vector<VkFramebuffer>& framebuffers,
+									  VkExtent2D& swapchainExtent, VkRenderPass& renderPass)
 {
 	VkRenderPassBeginInfo renderPassInfo = {
 		.sType	= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -123,9 +85,11 @@ void CommandObjects::recordCommands(vector<VkFramebuffer>& framebuffers, VkExten
 		.pClearValues	 = &VulkanSingleton::instance().ClearColor
 	};
 
-	for (int iBuffer = 0; iBuffer < nCommandBuffers; ++iBuffer)		//TJ_TODO: Still seems a little weird to repeat for every
-	{																//	frame buffer.  Can't one same CommandBuffer be shared?
-		VkCommandBuffer& commandBuffer = commandBuffers[iBuffer];
+	size_t numBufferSets = vkCommandBuffers.size();
+
+	for (int iBuffer = 0; iBuffer < numBufferSets; ++iBuffer)	//TJ_TODO: Repeat for every frame buffer.  Can't one same CommandBuffer be shared?
+	{
+		VkCommandBuffer& commandBuffer = vkCommandBuffers[iBuffer];
 
 		call = vkBeginCommandBuffer(commandBuffer, &beginInfo);
 		if (call != VK_SUCCESS)
@@ -135,8 +99,8 @@ void CommandObjects::recordCommands(vector<VkFramebuffer>& framebuffers, VkExten
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-//		for (auto& renderable : renderables)
-//			renderable.RenderAndDraw(commandBuffer);
+		for (auto pRenderable : pBufferRenderables)
+			pRenderable->IssueBindAndDrawCommands(commandBuffer, iBuffer);	// implemented by iRenderable subclass
 
 		vkCmdEndRenderPass(commandBuffer);
 
@@ -146,22 +110,77 @@ void CommandObjects::recordCommands(vector<VkFramebuffer>& framebuffers, VkExten
 	}
 }
 
+
+#pragma mark - CommandControl
+
+CommandControl::CommandControl(Framebuffers& framebuffers, GraphicsDevice& graphics)
+	:	commandPool(CommandPool(graphics))
+{
+	pSingleton	= this;
+	numFrames	= (uint32_t) framebuffers.getVkFramebuffers().size();
+	buffersByFrame = new CommandBufferSet[numFrames];
+}
+
+CommandControl*	CommandControl::pSingleton = nullptr;
+
+CommandControl::~CommandControl()
+{
+	delete[] buffersByFrame;
+	// (also no need to vkFreeCommandBuffers, as vkDestroyCommandPool will)
+}
+
+
+// Allocate VkCommandBuffers and Record those for AT_INIT_TIME_ONLY Renderable set.
+//
+void CommandControl::PostInitPrepBuffers(VulkanSetup& vulkan)
+{
+	size_t numBufferSets = renderables.recordables.size();
+
+	for (int iBufferSet = 0; iBufferSet < numBufferSets; ++iBufferSet) {
+		CommandRecordable& recordable = renderables.recordables[iBufferSet];
+		for (int iFrame = 0; iFrame < numFrames; ++iFrame)
+		{
+			buffersByFrame[iFrame].allocateVkCommandBuffer();
+
+			if (recordable.recordMode == AT_INIT_TIME_ONLY)
+				buffersByFrame[iFrame].recordCommands(recordable.pRenderables, vulkan.framebuffers.getVkFramebuffers(),
+													  vulkan.swapchain.getExtent(), vulkan.renderPass.getVkRenderPass());
+		}
+	}
+	assert(numBufferSets == buffersByFrame[0].numBufferSets());
+}
+
+// (Re)Record those Renderables that specified UPON_EACH_FRAME.
+//
+void CommandControl::RecordRenderablesUponEachFrame(VulkanSetup& vulkan)
+{
+	size_t numBufferSets = renderables.recordables.size();
+
+	for (int iBufferSet = 0; iBufferSet < numBufferSets; ++iBufferSet) {
+		CommandRecordable& recordable = renderables.recordables[iBufferSet];
+		if (recordable.recordMode == UPON_EACH_FRAME)
+			for (int iFrame = 0; iFrame < numFrames; ++iFrame)
+				buffersByFrame[iFrame].recordCommands(recordable.pRenderables, vulkan.framebuffers.getVkFramebuffers(),
+													  vulkan.swapchain.getExtent(), vulkan.renderPass.getVkRenderPass());
+	}
+}
+
+
 // If pVertexObject null, the Vertex/Index Buffers will not be reloaded, but the same ones
 //	reused when CommandBuffers recreate.  Otherwise, pass a pointer to one to reload with,
 //	or a VertexBaseObject with .vertices = nullptr to eliminate the Vertex Buffer altogether
 //	(for instance if vertices are handled in-shader).
+
+// Recreate each renderable; tear down and rebuild VkCommandBuffer Sets.
+//	Note that commandPool can stay as-is.
 //
-void CommandObjects::Recreate(Framebuffers& framebuffers, RenderPass& renderPass, Swapchain& swapchain, bool reloadMesh)
+void CommandControl::RecreateRenderables(VulkanSetup& vulkan)
 {
-	vkFreeCommandBuffers(device.getLogical(), commandPool.vkInstance, nCommandBuffers, commandBuffers);
+	delete[] buffersByFrame;
+	numFrames = (uint32_t) vulkan.framebuffers.getVkFramebuffers().size();
+	buffersByFrame = new CommandBufferSet[numFrames];
 
-	delete commandBuffers;					// (note that commandPool can stay as-is)
+	renderables.Recreate(vulkan);
 
-	if (reloadMesh) {		// otherwise keep the same AddOns (e.g. VertexBuffer) we already have loaded
-//		for (auto& renderable : renderables)
-//			renderable.Recreate(commandBuffer);
-	}
-
-	createCommandBuffers(framebuffers.getVkFramebuffers(), swapchain.getExtent(),
-						 renderPass.getVkRenderPass());
+	PostInitPrepBuffers(vulkan);
 }
