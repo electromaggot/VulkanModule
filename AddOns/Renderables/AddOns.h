@@ -21,6 +21,7 @@
 
 #include "VulkanSetup.h"
 
+#include "Descriptors.h"
 #include "VertexBasedObject.h"
 #include "UniformBufferLiterals.h"
 #include "UniformBuffer.h"
@@ -31,16 +32,17 @@ struct Renderable;		// skirt circular reference including iRenderable.h
 
 struct AddOns
 {
-	friend class CommandObjects;
+	friend class iRenderable;
+	friend class FixedRenderable;
+	friend class Renderables;
+
 
 	AddOns(Renderable& renderable, VulkanSetup& setup, iPlatform& platform);
 	~AddOns();
 
-
+		// MEMBERS
+protected:
 	vector<DescribEd>	described;
-
-	VulkanSetup&		vulkan;
-	iPlatform&			platform;
 
 	PrimitiveBuffer*	pVertexBuffer	= nullptr;
 	PrimitiveBuffer*	pIndexBuffer	= nullptr;
@@ -48,18 +50,23 @@ struct AddOns
 	UniformBuffer*		  pUniformBuffer;
 	vector<TextureImage*> pTextureImages;
 
-	VkShaderStageFlags	shaderStageForUBO;	/// (retain for Recreate)
+	UBO					ubo;			// Store local copies of these,
+	vector<TextureSpec>	texspecs;		//	otherwise they go away.
 
+	VulkanSetup&		vulkan;			// These are retained mainly
+	iPlatform&			platform;		//	for Recreate.
+
+		// METHODS
 
 	void createVertexAndOrIndexBuffers(VertexBasedObject& vertexObject);
+	void destroyVertexAndOrIndexBuffers();
 
 	void createDescribedItems(UBO* pUBO, TextureSpec textureSpecs[], iPlatform& platform);	// IMPORTANT:
 												  // ^^^^^^^^^^^^^^ This "array" is really just a pointer, and is expected to either be null (nullptr) or point
 												  //				to an array of TextureSpec structures TERMINATED by one that is null or having: .fileName == nullptr
 
-	void Recreate(VertexBasedObject& vertexObject/*, CommandPool& commandPool, GraphicsDevice& graphics*/);
-
-	void RecreateRenderingRudiments();
+	void Recreate(VertexBasedObject& vertexObject);
+	void RecreateDescribables();
 private:
 	vector<DescribEd> reDescribe();
 };
