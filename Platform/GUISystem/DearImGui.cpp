@@ -7,8 +7,13 @@
 //
 #include "DearImGui.h"
 
-//#include "imgui.h"
-//#include "imgui_impl_vulkan.h"
+#include "CommandObjects.h"
+
+#include "imgui.h"
+#include "imgui_impl_vulkan.h"
+#include "imgui_impl_sdl.h"
+
+extern void ImGuiDemo();
 
 
 static void check_vk_result(VkResult err)
@@ -21,55 +26,12 @@ static void check_vk_result(VkResult err)
 
 static VkAllocationCallbacks*   g_Allocator = NULL;
 
-VkCommandBuffer tempAllocateCommandBuffer(VkCommandPool commandPool, VkDevice device) {
-	VkCommandBuffer commandBuffer;
-	VkCommandBufferAllocateInfo allocInfo = {
-		.sType	= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-		.pNext	= nullptr,
-		.commandPool		= commandPool,
-		.level				= VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-		.commandBufferCount = 1
-	};
-	VkResult err = vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
-	check_vk_result(err);
-	return commandBuffer;
-}
-
-VkDescriptorPool tempCreateDescriptorPool(VkDevice device)
-{
-	VkDescriptorPool descriptorPool;
-	VkDescriptorPoolSize pool_sizes[] =
-	{
-		{ VK_DESCRIPTOR_TYPE_SAMPLER,				 1000 },
-		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
-		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,			 1000 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,			 1000 },
-		{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,	 1000 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,	 1000 },
-		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,		 1000 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,		 1000 },
-		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
-		{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,		 1000 }
-	};
-	VkDescriptorPoolCreateInfo pool_info = {
-		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-		.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
-		.maxSets = 1000 * IM_ARRAYSIZE(pool_sizes),
-		.poolSizeCount = (uint32_t)IM_ARRAYSIZE(pool_sizes),
-		.pPoolSizes = pool_sizes
-	};
-	VkResult err = vkCreateDescriptorPool(device, &pool_info, g_Allocator, &descriptorPool);
-	check_vk_result(err);
-	return descriptorPool;
-}
-
 
 DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
-	//(VkDevice device, VkCommandPool commandPool, VkCommandBuffer commandBuffer, VkQueue queue, VkRenderPass renderPass)
-	: device(vulkan.device.getLogical())
-/*TEMPORARY?*/ , framebuffers(&vulkan.framebuffers.getVkFramebuffers()[0])
+	:	device(vulkan.device.getLogical()),
+		platform(platform)
 {
+	ImGui_ImplVulkanH_Window guiWindow;
 	guiWindow.Width			= platform.pixelsWide;
 	guiWindow.Height		= platform.pixelsHigh;
 	guiWindow.Swapchain		= vulkan.swapchain.getVkSwapchain();
@@ -77,7 +39,7 @@ DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
 	guiWindow.SurfaceFormat = vulkan.device.getProfile().selectedSurfaceFormat;
 	guiWindow.RenderPass	= vulkan.renderPass.getVkRenderPass();
 	guiWindow.PresentMode	= VK_PRESENT_MODE_MAX_ENUM_KHR;
-	guiWindow.ClearEnable	= true;
+	guiWindow.ClearEnable	= false;	// <-- This keeps GUI from clearing screen before it draws!
 	guiWindow.ClearValue	= VkClearValue();
 	guiWindow.FrameIndex	= 0;
 	guiWindow.ImageCount	= vulkan.swapchain.getNumImages();
@@ -106,36 +68,65 @@ DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
 		.QueueFamily	= vulkan.device.Queues.GraphicsIndex(),
 		.Queue			= vulkan.device.Queues.Graphics(),
 		.PipelineCache	= VK_NULL_HANDLE,
-		.DescriptorPool	= tempCreateDescriptorPool(device),
+		.DescriptorPool	= createDescriptorPool(device),
 		.Allocator		= NULL,
 		.MinImageCount	= 2,	//g_MinImageCount,
 		.ImageCount		= guiWindow.ImageCount,
 		.CheckVkResultFn = check_vk_result,
 	};
     ImGui_ImplVulkan_Init(&init_info, vulkan.renderPass.getVkRenderPass());
-//TJ: although we set up Vulkan ourselves, ImGui assigns its internal Vulkan-related operational variables here.
-//TJ:  including things like its own shader modules and pipeline, which we must let it have independently
-//TJ:	because it operates with its own render parameters like 2D projection
+
+	/// Although we set up Vulkan ourselves, Dear ImGui assigns its internal Vulkan-related operational variables here.
+	///  ...including things like its own shader modules and pipeline, which we must let it have independently
+	///  because it operates with its own render parameters, like 2D projection.
 
 	// Get our own CommandBuffer from the existing Pool, for existing Queue:
-	commandPool	  = vulkan.commandPool.getVkInstance();
-	commandBuffer = tempAllocateCommandBuffer(commandPool, device);
-	graphicsQueue = vulkan.device.Queues.Graphics();
+	VkCommandPool commandPool	= vulkan.command.vkPool();
+	VkQueue		  graphicsQueue	= vulkan.device.Queues.Graphics();
+
+	VkCommandBuffer commandBuffer = allocateCommandBuffer(commandPool, device);
 
 	uploadFonts(commandPool, commandBuffer, graphicsQueue);
 }
 
-DearImGui::~DearImGui() {			// (CommandBuffer should get destroyed when commandPool does.)
-
-    // Cleanup
-    err = vkDeviceWaitIdle(device);
+DearImGui::~DearImGui()					// (CommandBuffer should get destroyed when commandPool does.)
+{
+    err = vkDeviceWaitIdle(device);		// Cleanup
     check_vk_result(err);
 
-    ImGui_ImplVulkan_Shutdown();	// Free/destroy internals (like font/descriptor/pipeline
-    ImGui_ImplSDL2_Shutdown();		//	or SDL clipboard/mouseCursors) that ImGui allocated.
+    ImGui_ImplVulkan_Shutdown();		// Free/destroy internals (like font/descriptor/pipeline
+    ImGui_ImplSDL2_Shutdown();			//	or SDL clipboard/mouseCursors) that ImGui allocated.
 
     ImGui::DestroyContext();
 }
+
+
+void DearImGui::Update(float deltaSeconds)
+{		// (Don't really need deltaSeconds, as Dear ImGui seems to track its own time.)
+	preRender(ImGuiDemo, platform);
+}
+
+// Start the Dear ImGui frame ...and Rendering.
+//
+void DearImGui::preRender(void (*pfnLayOutGui)(), iPlatform& platform)
+{
+	ImGui_ImplVulkan_NewFrame();
+	platform.GUISystemNewFrame();	// (e.g. for SDL, should in turn call ImGui_ImplSDL2_NewFrame(window);)
+
+	ImGui::NewFrame();
+
+	pfnLayOutGui();
+
+	ImGui::Render();
+}
+
+// Record Imgui Draw Data and draw funcs into command buffer.
+//
+void DearImGui::IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex)
+{
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+}
+
 
 // Upload fonts using any command queue... but watch out, it'll kill one that's already set-up.
 //
@@ -185,157 +176,45 @@ void DearImGui::uploadFonts(VkCommandPool commandPool, VkCommandBuffer commandBu
 	ImGui_ImplVulkan_DestroyFontUploadObjects();
 }
 
-
-void DearImGui::Update() {
-
+VkCommandBuffer DearImGui::allocateCommandBuffer(VkCommandPool commandPool, VkDevice device)
+{
+	VkCommandBuffer commandBuffer;
+	VkCommandBufferAllocateInfo allocInfo = {
+		.sType	= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+		.pNext	= nullptr,
+		.commandPool		= commandPool,
+		.level				= VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+		.commandBufferCount = 1
+	};
+	VkResult err = vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+	check_vk_result(err);
+	return commandBuffer;
 }
 
-void LoopStuff()
+VkDescriptorPool DearImGui::createDescriptorPool(VkDevice device)
 {
-    // Main loop
-//    bool done = false;
-//    while (!done)
-//    {
-        // Poll and handle events (inputs, window resize, etc.)
-        // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-        // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
-        // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
-        // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-
-
-/*TJ PROBABLY DO WANT THIS IN MY MAIN LOOP FOR WINDOW RESIZES  and to pass them to IMGUI
-        SDL_Event event;
-        while (SDL_PollEvent(&event))
-        {
-//TJ: AND OF COURSE I NEED THIS IN MY MAIN LOOP:
-            ImGui_ImplSDL2_ProcessEvent(&event);
-            if (event.type == SDL_QUIT)
-                done = true;
-            if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED && event.window.windowID == SDL_GetWindowID(window))
-            {
-                g_SwapChainResizeWidth = (int)event.window.data1;
-                g_SwapChainResizeHeight = (int)event.window.data2;
-                g_SwapChainRebuild = true;
-            }
-        }
-
-        if (g_SwapChainRebuild)
-        {
-            g_SwapChainRebuild = false;
-            ImGui_ImplVulkan_SetMinImageCount(g_MinImageCount);
-            ImGui_ImplVulkanH_CreateWindow(g_Instance, g_PhysicalDevice, g_Device, &g_MainWindowData, g_QueueFamily, g_Allocator, g_SwapChainResizeWidth, g_SwapChainResizeHeight, g_MinImageCount);
-            g_MainWindowData.FrameIndex = 0;
-        }
-	}*/
-}
-
-void DearImGui::PreRender(void (*pfnLayOutGui)(), iPlatform& platform)
-{
-	extern ImVec4 clear_color;
-
-	// Start the Dear ImGui frame
-	ImGui_ImplVulkan_NewFrame();
-	platform.GUISystemNewFrame();	// (e.g. for SDL, should in turn call ImGui_ImplSDL2_NewFrame(window);)
-
-	ImGui::NewFrame();
-
-	pfnLayOutGui();
-
-	// Rendering
-	ImGui::Render();
-
-	// ...although remaining render operations completed by caller, like actually
-	// submitting the CommandBuffer pooled above to the ... UH WAIT NO
-
-/*TJ: Let's assume my Render/Present can already incorporate all of this:*/
-	memcpy(&guiWindow.ClearValue.color.float32[0], &clear_color, 4 * sizeof(float));
-	FrameRender();
-//	FramePresent();
-/**/
-}
-
-void DearImGui::FrameRender()
-{
-    VkResult err;
-
-	/*TJ_ALREADY HAVE ALL THIS
-    VkSemaphore image_acquired_semaphore  = guiWindow.FrameSemaphores[guiWindow.SemaphoreIndex].ImageAcquiredSemaphore;
-    VkSemaphore render_complete_semaphore = guiWindow.FrameSemaphores[guiWindow.SemaphoreIndex].RenderCompleteSemaphore;
-    err = vkAcquireNextImageKHR(device, guiWindow.Swapchain, UINT64_MAX, image_acquired_semaphore, VK_NULL_HANDLE, &guiWindow.FrameIndex);
-    check_vk_result(err);
-
-    ImGui_ImplVulkanH_Frame* fd = &guiWindow.Frames[guiWindow.FrameIndex];
-    {
-        err = vkWaitForFences(device, 1, &fd->Fence, VK_TRUE, UINT64_MAX);    // wait indefinitely instead of periodically checking
-        check_vk_result(err);
-
-        err = vkResetFences(device, 1, &fd->Fence);
-        check_vk_result(err);
-    }*/
-
-
-    {
-        //err = vkResetCommandPool(device, fd->CommandPool, 0); // <--- TJ: DON'T WANT THIS
-        //check_vk_result(err);
-
-        VkCommandBufferBeginInfo info = {
-        	.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        	.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
-		};
-        err = vkBeginCommandBuffer(commandBuffer, &info);
-        check_vk_result(err);
-    }
-    {
-        VkRenderPassBeginInfo info = {
-        	.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-        	.renderPass = guiWindow.RenderPass,
-        	.framebuffer = framebuffers[0], // crashable if wrong index
-        	.renderArea.extent.width = (uint32_t) guiWindow.Width,
-        	.renderArea.extent.height = (uint32_t) guiWindow.Height,
-        	.clearValueCount = 1,
-        	.pClearValues = &guiWindow.ClearValue
-		};
-        vkCmdBeginRenderPass(commandBuffer, &info, VK_SUBPASS_CONTENTS_INLINE);
-    }
-
-    // Record Imgui Draw Data and draw funcs into command buffer
-    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
-
-    // Submit command buffer
-    vkCmdEndRenderPass(commandBuffer);
-
-	/*TJ_ALREADY HAVE ALL THIS
-    {
-        VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        VkSubmitInfo info = {
-        	.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        	.waitSemaphoreCount = 1,
-        	.pWaitSemaphores = &image_acquired_semaphore,
-        	.pWaitDstStageMask = &wait_stage,
-        	.commandBufferCount = 1,
-        	.pCommandBuffers = &fd->CommandBuffer,
-        	.signalSemaphoreCount = 1,
-        	.pSignalSemaphores = &render_complete_semaphore
-		};*/
-        err = vkEndCommandBuffer(commandBuffer); // <--- TJ: SEEM OUT OF PLACE!
-        /*check_vk_result(err);
-        err = vkQueueSubmit(graphicsQueue, 1, &info, fd->Fence);
-        check_vk_result(err);
-    }*/
-}
-
-//TJ: doesn't do anything mine already does
-void DearImGui::FramePresent()
-{
-    VkSemaphore render_complete_semaphore = guiWindow.FrameSemaphores[guiWindow.SemaphoreIndex].RenderCompleteSemaphore;
-    VkPresentInfoKHR info = {};
-    info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    info.waitSemaphoreCount = 1;
-    info.pWaitSemaphores = &render_complete_semaphore;
-    info.swapchainCount = 1;
-    info.pSwapchains = &guiWindow.Swapchain;
-    info.pImageIndices = &guiWindow.FrameIndex;
-    VkResult err = vkQueuePresentKHR(graphicsQueue, &info);
-    check_vk_result(err);
-    guiWindow.SemaphoreIndex = (guiWindow.SemaphoreIndex + 1) % guiWindow.ImageCount; // Now we can use the next set of semaphores
+	VkDescriptorPool descriptorPool;
+	VkDescriptorPoolSize pool_sizes[] = {
+		{ VK_DESCRIPTOR_TYPE_SAMPLER,				 1000 },
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,			 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,			 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,	 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,	 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,		 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,		 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+		{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,		 1000 }
+	};
+	VkDescriptorPoolCreateInfo pool_info = {
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+		.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+		.maxSets = 1000 * IM_ARRAYSIZE(pool_sizes),
+		.poolSizeCount = (uint32_t)IM_ARRAYSIZE(pool_sizes),
+		.pPoolSizes = pool_sizes
+	};
+	VkResult err = vkCreateDescriptorPool(device, &pool_info, g_Allocator, &descriptorPool);
+	check_vk_result(err);
+	return descriptorPool;
 }
