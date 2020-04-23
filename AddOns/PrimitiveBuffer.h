@@ -45,7 +45,7 @@ private:
 
 		// getter
 public:
-	VkBuffer&	getVkBuffer()	{ return buffer; }
+	VkBuffer&	getVk()	{ return buffer; }
 };
 
 #endif // PrimitiveBuffer_h

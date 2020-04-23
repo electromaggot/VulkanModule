@@ -8,9 +8,9 @@
 //	© 0000 (uncopyrighted; use at will)
 //
 #include "VulkanInstance.h"
-#include "VulkanSingleton.h"
 
-#include "AppConstants.h"	// (one of only two tie-ins from our Vulkan module back to the App)
+#define INSTANTIATE
+#include "VulkanSingleton.h"
 
 #include "vulkan/vulkan.hpp"		// for error to_string(VkResult)
 
