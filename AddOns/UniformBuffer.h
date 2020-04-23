@@ -17,6 +17,8 @@
 
 class UniformBuffer : BufferBase
 {
+	friend class Renderables;
+
 public:
 	UniformBuffer(int bytesizeUniformBufferObject, Swapchain& swapchain,
 												   GraphicsDevice& device);
