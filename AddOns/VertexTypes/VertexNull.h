@@ -12,6 +12,8 @@
 
 #include "VertexType.h"
 
+#include "VertexBasedObject.h"
+
 
 struct VertexTypeNull : VertexType
 {
@@ -24,13 +26,16 @@ public:
 	const VkVertexInputAttributeDescription* pAttributeDescriptions() {
 		return nullptr;
 	}
-	const VkVertexInputBindingDescription* pBindingDescriptions() {
+	const VkVertexInputBindingDescription*  pBindingDescriptions() {
 		return nullptr;
 	}
 
 };
 
-extern VertexTypeNull	VertexNull;
+extern VertexTypeNull		VertexNull;
+
+
+extern VertexBasedObject	ShaderSets3Vertices;
 
 
 #endif // VertexNull_h
