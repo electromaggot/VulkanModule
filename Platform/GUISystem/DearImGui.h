@@ -8,44 +8,41 @@
 #ifndef DearImGui_h
 #define DearImGui_h
 
-#include "iGuiSystem.h"
-
 #include "iPlatform.h"
-#include "VulkanPlatform.h"
-#include "VulkanSetup.h"
 
-#include "imgui.h"
-#include "imgui_impl_vulkan.h"
-#include "imgui_impl_sdl.h"
+#include "iRenderable.h"
 
 
-class DearImGui : public iGuiSystem {
+class DearImGui : public iRenderableBase {
 public:
 	DearImGui(VulkanSetup& vulkan, iPlatform& platform);
 	~DearImGui();
 
+		// METHODS
+
+	iRenderableBase* newConcretion(CommandRecording* pRecordingMode) const
+	{
+		*pRecordingMode = UPON_EACH_FRAME;
+
+		return new DearImGui(*this);
+	}
+
+	void IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex = 0);
+
+	void Update(float deltaSeconds);
+
+private:
+	void preRender(void (*pfnLayOutGui)(), iPlatform& platform);
 	void uploadFonts(VkCommandPool commandPool, VkCommandBuffer commandBuffer, VkQueue queue);
 
-private:
-	VkResult err;
+	VkCommandBuffer  allocateCommandBuffer(VkCommandPool commandPool, VkDevice device);
+	VkDescriptorPool createDescriptorPool(VkDevice device);
 
-	VkDevice& device;
+		// MEMBERS
 
-	VkFramebuffer* framebuffers; //TEMPORARY!
-
-	ImGui_ImplVulkanH_Window guiWindow;	//TEMPORARY?
-
-	VkCommandPool	commandPool;	// Handle for shared/overall CommandPool
-	VkQueue			graphicsQueue;	//	and one for existing Queue.
-	VkCommandBuffer	commandBuffer;	// New custom CommandBuffer for GUI.
-
-public:
-	void Update();
-	void PreRender(void (*pfnLayOutGui)(), iPlatform& platform);
-
-private:
-	void FrameRender();
-	void FramePresent(); //WANT THIS TO NOT BE USED, in favor of my unified one
+	VkResult	err;
+	iPlatform&	platform;
+	VkDevice&	device;		// (saved for destruction)
 };
 
-#endif // DearImGui_h
+#endif	// DearImGui_h
