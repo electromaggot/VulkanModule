@@ -21,6 +21,7 @@
 #include "RenderPass.h"
 #include "Framebuffers.h"
 #include "GraphicsPipeline.h"
+#include "EventObjects.h"
 #include "Descriptors.h"
 
 #include "iRenderable.h"
@@ -53,6 +54,7 @@ public:
 	bool					 isChanged_ReRecord;	//TJ_TODO: needs to re-record all frames
 private:
 	VkCommandBufferBeginInfo beginInfo;
+	Event&					 event;
 
 		// METHODS
 public:
@@ -115,6 +117,8 @@ private:
 	CommandBufferSets	buffersByFrame;				// size == numFrames (Framebuffers.size())
 
 		// METHODS
+	void recordCommands(int iFrame, vector<iRenderable*> pRenderables, VulkanSetup& vulkan);
+
 public:
 	void PostInitPrepBuffers(VulkanSetup& vulkan);
 	void RecordRenderablesUponEachFrame(VulkanSetup& vulkan);
