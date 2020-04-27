@@ -15,8 +15,8 @@
 //	has not changed, so need not be re-recorded.  In that case, multiple Submits are
 //	preferable to needlessly recording redundant commands.
 //
-// Created 3/26/20 by Tadd
-//	© 2020 Megaphone Studios
+// 3/26/20 Tadd Jensen
+//	© 0000 (uncopyrighted; use at will)
 //
 #ifndef iRenderable_h
 #define iRenderable_h
