@@ -37,6 +37,7 @@ CommandPool::~CommandPool()
 #pragma mark - CommandBuffer
 
 CommandBufferSet::CommandBufferSet()
+	:	event(* new Event(CommandControl::device()))
 {
 	beginInfo = {
 		.sType	= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -48,6 +49,7 @@ CommandBufferSet::CommandBufferSet()
 CommandBufferSet::~CommandBufferSet()
 {
 	freeVkCommandBuffers();
+	delete &event;
 }
 
 void CommandBufferSet::allocateVkCommandBuffer()
@@ -87,7 +89,7 @@ void CommandBufferSet::recordCommands(vector<iRenderable*> pBufferRenderables, v
 
 	size_t numBufferSets = vkCommandBuffers.size();
 
-	for (int iBuffer = 0; iBuffer < numBufferSets; ++iBuffer)	//TJ_TODO: Repeat for every frame buffer.  Can't one same CommandBuffer be shared?
+	for (int iBuffer = 0; iBuffer < numBufferSets; ++iBuffer)	//TJ_TODO: Re: repeat for every frame buffer, can't one same CommandBuffer be shared?
 	{
 		VkCommandBuffer& commandBuffer = vkCommandBuffers[iBuffer];
 
@@ -97,12 +99,18 @@ void CommandBufferSet::recordCommands(vector<iRenderable*> pBufferRenderables, v
 
 		renderPassInfo.framebuffer	= framebuffers[iBuffer];
 
+//		if (iBuffer > 0)	// await prior buffer executions's completion
+//			event.CmdWaitRecordTo(commandBuffer);
+
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		for (auto pRenderable : pBufferRenderables)
 			pRenderable->IssueBindAndDrawCommands(commandBuffer, iBuffer);	// implemented by iRenderable subclass
 
 		vkCmdEndRenderPass(commandBuffer);
+
+//		if (iBuffer < numBufferSets - 1)	// trigger next buffer's execution to begin
+//			event.CmdSetRecordTo(commandBuffer);
 
 		call = vkEndCommandBuffer(commandBuffer);
 		if (call != VK_SUCCESS)
@@ -130,7 +138,7 @@ CommandControl::~CommandControl()
 }
 
 
-// Allocate VkCommandBuffers and Record those for AT_INIT_TIME_ONLY Renderable set.
+// Allocate all VkCommandBuffers and Record those for AT_INIT_TIME_ONLY Renderable set.
 //
 void CommandControl::PostInitPrepBuffers(VulkanSetup& vulkan)
 {
