@@ -8,8 +8,8 @@
 // Therefore, the CommandBuffer is recorded just after construction time... Not per each
 //	frame, which would happen in the Update() method, here being thus empty.
 //
-// Created 3/26/20 by Tadd
-//	© 2020 Megaphone Studios
+// 3/26/20 Tadd Jensen
+//	© 0000 (uncopyrighted; use at will)
 //
 #ifndef FixedRenderable_h
 #define FixedRenderable_h

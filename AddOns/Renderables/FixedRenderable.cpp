@@ -4,8 +4,8 @@
 //
 // See header file comment for overview.
 //
-// Created 3/26/20 by Tadd
-//	© 2020 Megaphone Studios
+// 3/26/20 Tadd Jensen
+//	© 0000 (uncopyrighted; use at will)
 //
 #include "FixedRenderable.h"
 #include "PrimitiveBuffer.h"

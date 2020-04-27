@@ -13,8 +13,8 @@
 // * - Note that VertexBasedObject itself is non-optional (and is not managed here), but
 //		this "vertex specifier" may indeed specify that no Vertex (or Index) Buffer is needed.
 //
-// Created 3/26/20 by Tadd
-//	© 2020 Megaphone Studios
+// 3/24/20 Tadd Jensen
+//	© 0000 (uncopyrighted; use at will)
 //
 #ifndef AddOns_h
 #define AddOns_h
@@ -34,6 +34,7 @@ struct AddOns
 {
 	friend class iRenderable;
 	friend class FixedRenderable;
+	friend class DynamicRenderable;
 	friend class Renderables;
 
 
