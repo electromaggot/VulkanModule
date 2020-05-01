@@ -24,7 +24,7 @@ public:
 
 	iRenderable* newConcretion(CommandRecording* pRecordingMode) const
 	{
-		*pRecordingMode = UPON_EACH_FRAME;//AT_INIT_TIME_ONLY;		//TJ_TODO	//TJ_YIKES_KLUDGE!
+		*pRecordingMode = AT_INIT_TIME_ONLY;
 
 		return new FixedRenderable(*this);
 	}
