@@ -32,10 +32,10 @@ struct Renderable;		// skirt circular reference including iRenderable.h
 
 struct AddOns
 {
-	friend class iRenderable;
-	friend class FixedRenderable;
-	friend class DynamicRenderable;
-	friend class Renderables;
+	friend struct iRenderable;
+	friend struct FixedRenderable;
+	friend struct DynamicRenderable;
+	friend class  Renderables;
 
 
 	AddOns(Renderable& renderable, VulkanSetup& setup, iPlatform& platform);

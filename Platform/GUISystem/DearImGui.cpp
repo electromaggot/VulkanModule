@@ -28,8 +28,8 @@ static VkAllocationCallbacks*   g_Allocator = NULL;
 
 
 DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
-	:	device(vulkan.device.getLogical()),
-		platform(platform)
+	:	platform(platform),
+		device(vulkan.device.getLogical())
 {
 	ImGui_ImplVulkanH_Window guiWindow;
 	guiWindow.Width			= platform.pixelsWide;
@@ -69,9 +69,10 @@ DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
 		.Queue			= vulkan.device.Queues.Graphics(),
 		.PipelineCache	= VK_NULL_HANDLE,
 		.DescriptorPool	= createDescriptorPool(device),
-		.Allocator		= NULL,
 		.MinImageCount	= 2,	//g_MinImageCount,
 		.ImageCount		= guiWindow.ImageCount,
+		.MSAASamples	= VK_SAMPLE_COUNT_1_BIT,
+		.Allocator		= NULL,
 		.CheckVkResultFn = check_vk_result,
 	};
     ImGui_ImplVulkan_Init(&init_info, vulkan.renderPass.getVkRenderPass());
