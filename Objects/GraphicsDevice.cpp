@@ -112,8 +112,10 @@ VkPhysicalDevice GraphicsDevice::selectGPU(VkInstance& instance, VkSurfaceKHR& s
 	int iSelected = -1;
 	StrPtr how = "Automatically";
 
-	if (nPhysicalDevices == 1)
+	if (nPhysicalDevices == 1) {
 		iSelected = 0;
+		reason = "one GPU viable";
+	}
 	else {
 		if (choice == AUTOMATIC) {
 

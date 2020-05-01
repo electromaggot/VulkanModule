@@ -61,28 +61,29 @@ const int N_PRECEDENCES = N_PIXEL_FORMAT_PRECEDENCES + N_COLOR_SPACE_PRECEDENCES
 
 // INSTANCE EXTENSIONS/LAYERS AND DEVICE EXTENSIONS
 
-#define	DEBUG_REPORT_EXTENSION		VK_EXT_DEBUG_REPORT_EXTENSION_NAME
+#define	DEBUG_REPORT_EXTENSION		VK_EXT_DEBUG_REPORT_EXTENSION_NAME		// "VK_EXT_debug_report"
+#define DEBUG_UTILS_EXTENSION		VK_EXT_DEBUG_UTILS_EXTENSION_NAME		// "VK_EXT_debug_utils"
 
 #define STANDARD_VALIDATION_LAYER	"VK_LAYER_LUNARG_standard_validation"
+#define KHRONOS_VALIDATION_LAYER	"VK_LAYER_KHRONOS_validation"
 
 #define SWAPCHAIN_EXTENSION			VK_KHR_SWAPCHAIN_EXTENSION_NAME
 
 
 const StrPtr INSTANCE_EXTENSION_NAMES[] = {
 //			 ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
-	DEBUG_REPORT_EXTENSION			// Add debug display extension; needed to relay debug messages.
+	DEBUG_REPORT_EXTENSION,			// Add debug display extensions; needed to relay debug messages.
+	DEBUG_UTILS_EXTENSION
 	//TJ_REMOVE_LATER for testing:
 	//,VK_EXT_DEPTH_RANGE_UNRESTRICTED_EXTENSION_NAME	//test: also won't be defined
 	//,VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME	//test: but will be
 	//,VK_AMD_SHADER_CORE_PROPERTIES_EXTENSION_NAME
 	//,VK_NVX_raytracing	// note also requires VK_PIPELINE_BIND_POINT_RAYTRACING_NVX
-
-	//TJ_NOTE - also available:
-	//"VK_EXT_debug_utils"
 };
 const int N_INSTANCE_EXTENSION_NAMES = N_ELEMENTS_IN_ARRAY(INSTANCE_EXTENSION_NAMES);
 
 const bool REQUIRE_INSTANCE_EXTENSION[] = {
+	false,
 	false
 };
 
@@ -90,11 +91,12 @@ const bool REQUIRE_INSTANCE_EXTENSION[] = {
 const StrPtr INSTANCE_LAYER_NAMES[] = {
 //			 ¯¯¯¯¯¯¯¯¯¯¯¯¯¯
 	STANDARD_VALIDATION_LAYER,
-	"VK_LAYER_LUNARG_assistant_layer",
+	KHRONOS_VALIDATION_LAYER
+	//"VK_LAYER_LUNARG_assistant_layer",
 	//"VK_LAYER_NV_optimus"				// Note: example of device layer, here NVIDIA-specific
 
 	//TJ_NOTE - also available:
-	//	VK_LAYER_LUNARG_screenshot, VK_LAYER_LUNARG_api_dump, VK_LAYER_LUNARG_device_simulation
+	//	VK_LAYER_LUNARG_api_dump, VK_LAYER_LUNARG_screenshot, VK_LAYER_LUNARG_device_simulation
 };
 const int N_INSTANCE_LAYER_NAMES = N_ELEMENTS_IN_ARRAY(INSTANCE_LAYER_NAMES);
 

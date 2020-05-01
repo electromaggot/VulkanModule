@@ -16,7 +16,7 @@ DebugReport::DebugReport(VulkanInstance& vulkan)
 	if (vulkan.supportsDebugReport())
 	{
 		setupMessenger();
-		setupReport();
+		//setupReport();	// (deprecated) yields what look to be mostly redundant messages to the above
 	}
 	else
 		instance = VK_NULL_HANDLE;		// Flag failure...
@@ -27,7 +27,7 @@ DebugReport::~DebugReport()
 	if (instance != VK_NULL_HANDLE)		// ...so these don't crash:
 	{
 		destroyDebugUtilsMessengerEXT();
-		destroyDebugReportCallbackEXT();
+		//destroyDebugReportCallbackEXT();
 	}
 }
 
@@ -38,10 +38,9 @@ void DebugReport::setupMessenger()
 {
 	VkDebugUtilsMessengerCreateInfoEXT createInfo = {
 		.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-		.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
-					   //| VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT
-						 | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
-						 | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+		.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT
+					   //| VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
+						 | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT,
 		.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
 					 | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
 					 | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
@@ -67,15 +66,15 @@ void DebugReport::destroyDebugUtilsMessengerEXT()
 
 
 VKAPI_ATTR VkBool32 VKAPI_CALL DebugReport::debugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-													VkDebugUtilsMessageTypeFlagsEXT messageType,
-													const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-													void* pUserData)
+																   VkDebugUtilsMessageTypeFlagsEXT messageType,
+																   const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+																   void* pUserData)
 {
-	Log(NOTE, "validation layer: %s", pCallbackData->pMessage);
+	const int BLOCK_CHARACTER = 219;	// attempt to "set off" the line of debug output
+							// (^^^ from extended ASCII character set)
+	Log(RAW, "%c:%s", BLOCK_CHARACTER, pCallbackData->pMessage);
 	return VK_FALSE;	// abort the command that produced this message?
 }
-
-//TJ_TODO: REMOVE THE ABOVE, THEY'RE NOT BEING USED/CALLED, WHILE THE BELOW ARE.
 
 
 // Debug Report Callback ---------------------------------------------------------------------------
@@ -107,14 +106,9 @@ void DebugReport::destroyDebugReportCallbackEXT()
 		func(instance, reportCallback, nullALLOC);
 }
 
-VKAPI_ATTR VkBool32 VKAPI_CALL DebugReport::debugReportCallback(VkDebugReportFlagsEXT flags,
-													VkDebugReportObjectTypeEXT objType,
-													uint64_t obj,
-													size_t location,
-													int32_t code,
-													const char* layerPrefix,
-													const char* msg,
-													void* userData)
+VKAPI_ATTR VkBool32 VKAPI_CALL DebugReport::debugReportCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType,
+																uint64_t obj, size_t location, int32_t code,
+																const char* layerPrefix, const char* msg, void* userData)
 {
 	Log(RAW, "%s:%s", layerPrefix, msg);
 	return VK_FALSE;
