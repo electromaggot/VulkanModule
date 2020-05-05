@@ -60,7 +60,7 @@ private:
 public:
 	void allocateVkCommandBuffer();
 	void freeVkCommandBuffers();
-	void recordCommands(vector<iRenderable*> pRenderables, vector<VkFramebuffer>& framebuffers,
+	void recordCommands(vector<iRenderable*> pRenderables, VkFramebuffer& framebuffer,
 						VkExtent2D& swapChainExtent, VkRenderPass& renderPass);
 		// getters
 	uint32_t	numBufferSets()	 {	return (uint32_t) vkCommandBuffers.size();	}

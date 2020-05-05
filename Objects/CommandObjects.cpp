@@ -19,7 +19,7 @@ CommandPool::CommandPool(GraphicsDevice& graphicsDevice)
 	VkCommandPoolCreateInfo poolInfo = {
 		.sType	= VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 		.pNext	= nullptr,
-		.flags	= 0,
+		.flags	= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
 		.queueFamilyIndex  = device.Queues.GraphicsIndex()
 	};
 
@@ -42,7 +42,7 @@ CommandBufferSet::CommandBufferSet()
 	beginInfo = {
 		.sType	= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
 		.pNext	= nullptr,
-		.flags	= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
+		.flags	= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT, // flagged by Validation Performace Warning/BestPractices-vkBeginCommandBuffer-simultaneous-use
 		.pInheritanceInfo = nullptr
 	};
 }
@@ -75,13 +75,14 @@ void CommandBufferSet::freeVkCommandBuffers()
 						 (uint32_t) vkCommandBuffers.size(), vkCommandBuffers.data());
 }
 
-void CommandBufferSet::recordCommands(vector<iRenderable*> pBufferRenderables, vector<VkFramebuffer>& framebuffers,
+void CommandBufferSet::recordCommands(vector<iRenderable*> pBufferRenderables, VkFramebuffer& framebuffer,
 									  VkExtent2D& swapchainExtent, VkRenderPass& renderPass)
 {
 	VkRenderPassBeginInfo renderPassInfo = {
 		.sType	= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
 		.pNext	= nullptr,
 		.renderPass		 = renderPass,
+		.framebuffer	 = framebuffer,
 		.renderArea		 = { { 0, 0 }, swapchainExtent },
 		.clearValueCount = 1,
 		.pClearValues	 = &VulkanSingleton::instance().ClearColor
@@ -96,8 +97,6 @@ void CommandBufferSet::recordCommands(vector<iRenderable*> pBufferRenderables, v
 		call = vkBeginCommandBuffer(commandBuffer, &beginInfo);
 		if (call != VK_SUCCESS)
 			Fatal("Fail to even Begin recording Command Buffer," + ErrStr(call));
-
-		renderPassInfo.framebuffer	= framebuffers[iBuffer];
 
 //		if (iBuffer > 0)	// await prior buffer executions's completion
 //			event.CmdWaitRecordTo(commandBuffer);
@@ -151,7 +150,7 @@ void CommandControl::PostInitPrepBuffers(VulkanSetup& vulkan)
 			buffersByFrame[iFrame].allocateVkCommandBuffer();
 
 			if (recordable.recordMode == AT_INIT_TIME_ONLY)
-				buffersByFrame[iFrame].recordCommands(recordable.pRenderables, vulkan.framebuffers.getVkFramebuffers(),
+				buffersByFrame[iFrame].recordCommands(recordable.pRenderables, vulkan.framebuffers[iFrame],
 													  vulkan.swapchain.getExtent(), vulkan.renderPass.getVkRenderPass());
 		}
 	}
@@ -168,7 +167,7 @@ void CommandControl::RecordRenderablesUponEachFrame(VulkanSetup& vulkan)
 		CommandRecordable& recordable = renderables.recordables[iBufferSet];
 		if (recordable.recordMode == UPON_EACH_FRAME)
 			for (int iFrame = 0; iFrame < numFrames; ++iFrame)
-				buffersByFrame[iFrame].recordCommands(recordable.pRenderables, vulkan.framebuffers.getVkFramebuffers(),
+				buffersByFrame[iFrame].recordCommands(recordable.pRenderables, vulkan.framebuffers[iFrame],
 													  vulkan.swapchain.getExtent(), vulkan.renderPass.getVkRenderPass());
 	}
 }
