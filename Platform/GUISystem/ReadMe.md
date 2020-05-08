@@ -7,10 +7,10 @@ is included here in, and depends on, this Platform directory.
 
 Specifying which GUI system you wish to use, or none at all, depends entirely on your project settings.
 That is, which GUI-specific files you include... or those you don't, if you have no need for a GUI.</br>
-We have settled on Dear ImGui, which is well-regarded and low-BS, but it's possible through this
-directory to support other GUI systems.  (Unfortunately, to limit piling-on extraneous code, I
-stopped short of defining an extra interface layer to make the GUI system "agnostic" - you'd have to
-add that.  So for simplicity, some dependencies remain, like calling `ImGui_ImplSDL2_InitForVulkan()`.)
+We have settled on [Dear ImGui](https://github.com/ocornut/imgui), which is well-regarded and low-BS, but
+it's possible through this directory to support other GUI systems.  (Unfortunately, to limit piling-on
+extraneous code, I stopped short of defining an extra interface layer to make the GUI system "agnostic" -
+you'd have to add that.  So for simplicity, some dependencies remain, like calling `ImGui_ImplSDL2_InitForVulkan()`.)
 
 ### For Dear ImGui 
 
