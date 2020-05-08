@@ -27,8 +27,8 @@ reference those in your project.  Your code won't be calling these anyway, and t
 optimizes them out, but your project will build.
 
 On Apple platforms, Xcode searches a `.cpp` file's same directory for `.h` files it `#include`s -
-which is why the "stubs" need to be in their own subdirectory.  This keeps a file like `DearImGui.cpp`
-- if you are using that GUI - from referencing the stubbed `imgui_impl_sdl.h` instead of the correct
+which is why the "stubs" need to be in their own subdirectory.  This keeps a file like `DearImGui.cpp` -
+if you are using that GUI - from referencing the stubbed `imgui_impl_sdl.h` instead of the correct
 one in the "imgui" project's directory.  Be sure to add a specific reference to that directory
 to Xcode's `Header Search Paths` for your own project.
 
