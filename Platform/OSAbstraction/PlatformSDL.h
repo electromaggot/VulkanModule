@@ -17,6 +17,7 @@
 
 // Avoid SDL's many warnings: Empty paragraph passed to '\param' command
 #pragma clang diagnostic ignored "-Wdocumentation"
+#include <string.h>		// <--(otherwise 'memcpy' may warn "use of undeclared identifier" in SDL_stdinc.h)
 #include <SDL.h>
 #include <SDL_vulkan.h>
 
