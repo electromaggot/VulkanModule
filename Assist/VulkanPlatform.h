@@ -94,4 +94,25 @@ struct StringArray
 };
 
 
+// Finally, specific to Windows/Visual Studio: IntelliSense may complain about some of this
+//	project's code that interacts with Vulkan and may be uniquely supported by Clang.  Namely:
+//	- Deliberate use of VLAs (variable length arrays) for easy short-lived stack-based array
+//	  allocations.    Per IntelliSense:  [E0028]  "expression must have a constant value"
+//	- Designated Initializers for clearer (and prettier) data structure pre-initializations,
+//	  which Vulkan requires a lot of.    IntelliSense:  [E2878]  "unexpected designator"
+// And it's not just those "errors" (not warnings) appearing in IntelliSense's "Error List"
+//	but the "red squiggles" appearing in the code and red dot in the scroll bar...
+//	while Clang supports those features and such code builds & runs just fine.
+// The following preprocessor directives silence those...
+//				(and thanks to EDG for publishing this:  http://www.edg.com/docs/edg_cpp.pdf)
+//
+#ifdef __INTELLISENSE__			// <-- either this clause...
+//#pragma clang diagnostic ignored "-Wunknown-pragmas"	// ...or this line, your choice.
+  #pragma diag_suppress 28
+  #pragma diag_suppress 2878
+								// and while we're at it, a false-negative not in our
+  #pragma diag_suppress	1847	//	code, but in GLM: "attributes are not allowed here"
+#endif
+
+
 #endif // VulkanPlatform_h
