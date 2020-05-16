@@ -11,22 +11,28 @@
 
 
 DeviceQueues::DeviceQueues()
-	:	indexGraphicsFamily(INDEX_UNDEFINED),
-		indexPresentFamily(INDEX_UNDEFINED),
+	:	familyIndex(INDEX_UNDEFINED),
 		suitability(UNKNOWN)
-{ }
+{
+	//for (int iIndex = 0; iIndex < nIndices; ++iIndex)  familyIndices[iIndex] = INDEX_UNDEFINED;
+}
 
-// For the given physical device and display surface pair, query all Queue Families
-//	for the specific ones that support Graphics commands and Present operation.
-// Return an assessment of how "suitable" the queue/family is for our most typical
-//	purpose, which is rendering graphics and presenting them to a display device.
+// For the given physical device (and display surface pair) query its Queue Families
+//	for the specific one that best supports Graphics commands and Present operation.
+// Return assessment of how "suitable" the device, with selected "best fit" queue/family,
+//	for our most typical purpose: rendering an image & presenting it to a display device.
 //
-QueueFitness DeviceQueues::DetermineFamilyIndices(VkPhysicalDevice& physicalDevice, VkSurfaceKHR& surface)
+QueueFitness DeviceQueues::DetermineFamilyIndex(VkPhysicalDevice& physicalDevice, VkSurfaceKHR& surface)
 {
 	suitability = NOT_SUPPORTED;
 
+	bool deviceSupportsGraphics	= false;
+	bool deviceSupportsPresent	= false;
+
 	uint32_t nFamilies = 0;
+
 	vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &nFamilies, nullptr);
+
 	if (nFamilies == 0)
 		Log(ERROR, "Physical Device supports NO Queue Families.");
 	else {
@@ -39,44 +45,44 @@ QueueFitness DeviceQueues::DetermineFamilyIndices(VkPhysicalDevice& physicalDevi
 
 			if (family.queueCount > 0)
 			{
-				bool supportsGraphics = (family.queueFlags & VK_QUEUE_GRAPHICS_BIT);
+				bool familySupportsGraphics = (family.queueFlags & VK_QUEUE_GRAPHICS_BIT);
+				if (familySupportsGraphics)
+					deviceSupportsGraphics = true;
 
-				VkBool32 supportsPresent = false;
-				vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, iFamily, surface, &supportsPresent);
+				VkBool32 familySupportsPresent = false;
+				vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, iFamily, surface, &familySupportsPresent);
+				if (familySupportsPresent)
+					deviceSupportsPresent = true;
 
-				if (supportsGraphics && supportsPresent) {	// Ideally one queue family supporting both
-					indexGraphicsFamily = iFamily;			//	Graphics and Present is preferred,
-					indexPresentFamily = iFamily;
-					suitability = IDEAL_EXCLUSIVE;
-					break;									//	so if found, quit early successfully.
+				if (familySupportsGraphics && familySupportsPresent) {	// Ideally one queue family supporting both
+					familyIndex = iFamily;								//	Graphics and Present is preferred,
+					suitability = SUPPORTS_BOTH;
+					return suitability;									//	so if found, quit early successfully.
 				}
-				if (supportsGraphics && indexGraphicsFamily == INDEX_UNDEFINED) { // Otherwise, accept non-overlapping
-					indexGraphicsFamily = iFamily;								  //  families (favoring first-found)...
-					suitability |= SUPPORTS_GRAPHICS;
-				}
-				if (supportsPresent && indexPresentFamily == INDEX_UNDEFINED) {
-					indexPresentFamily = iFamily;
-					suitability |= SUPPORTS_PRESENT;
-				}																  //  ...and keep looking.
 			}
 		}
+		// Note that purposely, if only one "familySupports..." is found, this will *not* return a
+		//	suitability of PARTIAL_SUPPORT, because partial support isn't actually desirable at all.
 	}
+	logSupportAnomaly(deviceSupportsGraphics, deviceSupportsPresent);
 	return suitability;
 }
 
-void DeviceQueues::logSupportAnomaly()
+// It's helpful to know if a device provides one but not the other, i.e. either Graphics-but-not-Present
+//	or Present-but-not-Graphics, especially if somehow the device otherwise does not SUPPORTS_BOTH.
+//
+void DeviceQueues::logSupportAnomaly(bool deviceSupportsGraphics, bool deviceSupportsPresent)
 {
 	if (suitability == UNKNOWN)
-		Log(ERROR, "Call to AnalyzeFamilyIndices() never made.");
+		Log(ERROR, "Call to DetermineFamilyIndex() never made.");
 	else if (suitability < SUPPORTS_BOTH)
 	{
 		char allNames[] = "Graphics, Present";
 		char* setNames = allNames;
-		if (indexGraphicsFamily != INDEX_UNDEFINED) setNames = &allNames[10];
-		if (indexPresentFamily != INDEX_UNDEFINED) allNames[8] = '\0';
+		if (deviceSupportsGraphics)	setNames = &allNames[10];
+		if (deviceSupportsPresent)	allNames[8] = '\0';
 		Log(ERROR, "Command Queue/Family not supported: %s", setNames);
 	}
-
 	if (QueueCreateInfos[0].sType != VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO)
 		Log(ERROR, "QueueCreateInfos[] look uninitialized, call InitializeQueueCreateInfos() first.");
 }
@@ -94,11 +100,12 @@ void DeviceQueues::InitializeQueueCreateInfos()
 			.pQueuePriorities = &queuePriority
 		};
 	}
-	//TJ_TODO: must better handle indentical queues
 }
 
 void DeviceQueues::GatherQueueHandlesFor(VkDevice& logicalDevice)
 {
-	vkGetDeviceQueue(logicalDevice, indexGraphicsFamily, 0, &queueGraphics);
-	vkGetDeviceQueue(logicalDevice, indexPresentFamily,  0, &queuePresent);
+	vkGetDeviceQueue(logicalDevice, familyIndex, 0, &currentQueue);
+
+	//for (int iIndexQueue = 0; iIndexQueue < nIndices; ++iIndexQueue)
+	//	vkGetDeviceQueue(logicalDevice, familyIndices[iIndexQueue], 0, &queues[iIndexQueue]);
 }

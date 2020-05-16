@@ -150,7 +150,7 @@ RawScore DeviceRanking::quantifyDeviceType(VkPhysicalDevice& device, DeviceProfi
 
 RawScore DeviceRanking::gaugeQueueFamilySupport(VkPhysicalDevice& device, DeviceProfile& assay) {
 	DeviceQueues& queues = self->deviceQueues;
-	queues.DetermineFamilyIndices(device, self->windowSurface);
+	queues.DetermineFamilyIndex(device, self->windowSurface);
 	assay.description += "graphics/present: " + string(queues.suitabilityString());
 	return queues.RankDeviceSuitability();
 }

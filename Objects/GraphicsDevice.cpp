@@ -28,7 +28,7 @@ GraphicsDevice::GraphicsDevice(WindowSurface& surface, VulkanInstance& instance,
 	physicalDevice = selectGPU(instance.getVkInstance(), vkSurface);
 
 	// Now-selected physicalDevice may not have correct Indices set, so make sure:
-	queueFamilies.DetermineFamilyIndices(physicalDevice, vkSurface);
+	queueFamilies.DetermineFamilyIndex(physicalDevice, vkSurface);
 
 	createLogicalDevice(validation);
 }

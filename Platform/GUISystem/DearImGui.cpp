@@ -65,8 +65,8 @@ DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
 		.Instance		= vulkan.vulkan.getVkInstance(),
 		.PhysicalDevice	= vulkan.device.getGPU(),
 		.Device			= device,
-		.QueueFamily	= vulkan.device.Queues.GraphicsIndex(),
-		.Queue			= vulkan.device.Queues.Graphics(),
+		.QueueFamily	= vulkan.device.Queues.getFamilyIndex(),
+		.Queue			= vulkan.device.Queues.getCurrent(),
 		.PipelineCache	= VK_NULL_HANDLE,
 		.DescriptorPool	= createDescriptorPool(device),
 		.MinImageCount	= 2,	//g_MinImageCount,
@@ -83,7 +83,7 @@ DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
 
 	// Get our own CommandBuffer from the existing Pool, for existing Queue:
 	VkCommandPool commandPool	= vulkan.command.vkPool();
-	VkQueue		  graphicsQueue	= vulkan.device.Queues.Graphics();
+	VkQueue		  graphicsQueue	= vulkan.device.Queues.getCurrent();
 
 	VkCommandBuffer commandBuffer = allocateCommandBuffer(commandPool, device);
 

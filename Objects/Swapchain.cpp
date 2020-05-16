@@ -47,6 +47,8 @@ void Swapchain::create(VkSurfaceKHR& surface)
 	uint32_t nImages = determineImageCount(capabilities);
 	extent = determineSwapExtent(capabilities);
 
+	DeviceQueues::IndexArrayRef queueFamilyIndices = device.Queues.getIndices();
+
 	VkSwapchainCreateInfoKHR createInfo = {
 		.sType	= VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
 		.pNext	= nullptr,
@@ -60,6 +62,10 @@ void Swapchain::create(VkSurfaceKHR& surface)
 		.imageArrayLayers = AppConstants.SupportStereo3D ? (uint32_t) 2 : 1,
 		.imageUsage		 = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 
+		.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,			// (best performance, same family)
+		.queueFamilyIndexCount	= N_ELEMENTS_IN_ARRAY(queueFamilyIndices),
+		.pQueueFamilyIndices	= queueFamilyIndices,
+
 		.preTransform	 = capabilities.currentTransform,		// (i.e. no transform)
 		.compositeAlpha	 = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,	// (ignore alpha, no blending)
 		.presentMode	 = presentMode,
@@ -67,18 +73,6 @@ void Swapchain::create(VkSurfaceKHR& surface)
 
 		.oldSwapchain	 = VK_NULL_HANDLE
 	};
-	if (device.Queues.IsExclusiveGraphicsAndPresent())
-	{
-		createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;	// (best performance, same family)
-		createInfo.queueFamilyIndexCount = 0;
-		createInfo.pQueueFamilyIndices	 = nullptr;		// (these probably ignored, but just in case)
-	}
-	else {
-		createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;					// (avoid ownership transfer, while sharing
-		DeviceQueues::IndexArrayRef queueFamilyIndices = device.Queues.Indices();	//	image across these separate families)
-		createInfo.queueFamilyIndexCount = N_ELEMENTS_IN_ARRAY(queueFamilyIndices);
-		createInfo.pQueueFamilyIndices	 = queueFamilyIndices;
-	}
 
 	call = vkCreateSwapchainKHR(device.getLogical(), &createInfo, nullALLOC, &swapchain);
 

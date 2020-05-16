@@ -20,7 +20,7 @@ protected:
 	CommandBufferBase(VkCommandPool& pool, GraphicsDevice& device)
 		:	BufferBase(device),
 			commandPool(pool),
-			graphicsQueue(device.Queues.Graphics())
+			graphicsQueue(device.Queues.getCurrent())
 	{ }
 
 		// MEMBERS
