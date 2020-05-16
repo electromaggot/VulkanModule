@@ -122,6 +122,7 @@ private:
 public:
 	void PostInitPrepBuffers(VulkanSetup& vulkan);
 	void RecordRenderablesUponEachFrame(VulkanSetup& vulkan);
+	void RecordRenderablesForNextFrame(VulkanSetup& vulkan, int iNextFrame);
 
 	vector<VkCommandBuffer>	BuffersForFrame(int iFrame) {
 		assert (numFrames > 0);

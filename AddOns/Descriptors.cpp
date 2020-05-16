@@ -19,6 +19,10 @@ Descriptors::Descriptors(vector<DescribEd>& describeds, Swapchain& swapchain, Gr
 		numBuffers(static_cast<uint32_t>(swapchain.getImageViews().size()))
 {
 	createDescriptorSetLayout();
+
+	if (describeds.size() == 0)
+		return;		// (no sense creating an empty pool)
+
 	create();
 }
 

@@ -20,7 +20,7 @@ CommandPool::CommandPool(GraphicsDevice& graphicsDevice)
 		.sType	= VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 		.pNext	= nullptr,
 		.flags	= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-		.queueFamilyIndex  = device.Queues.GraphicsIndex()
+		.queueFamilyIndex  = device.Queues.getFamilyIndex()
 	};
 
 	call = vkCreateCommandPool(device.getLogical(), &poolInfo, nullALLOC, &vkCommandPool);
@@ -159,15 +159,14 @@ void CommandControl::PostInitPrepBuffers(VulkanSetup& vulkan)
 
 // (Re)Record those Renderables that specified UPON_EACH_FRAME.
 //
-void CommandControl::RecordRenderablesUponEachFrame(VulkanSetup& vulkan)
+void CommandControl::RecordRenderablesForNextFrame(VulkanSetup& vulkan, int iNextFrame)
 {
 	size_t numBufferSets = renderables.recordables.size();
 
 	for (int iBufferSet = 0; iBufferSet < numBufferSets; ++iBufferSet) {
 		CommandRecordable& recordable = renderables.recordables[iBufferSet];
 		if (recordable.recordMode == UPON_EACH_FRAME)
-			for (int iFrame = 0; iFrame < numFrames; ++iFrame)
-				buffersByFrame[iFrame].recordCommands(recordable.pRenderables, vulkan.framebuffers[iFrame],
+			buffersByFrame[iNextFrame].recordCommands(recordable.pRenderables, vulkan.framebuffers[iNextFrame],
 													  vulkan.swapchain.getExtent(), vulkan.renderPass.getVkRenderPass());
 	}
 }
