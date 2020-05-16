@@ -62,9 +62,9 @@ public:
 	bool IsImageFormatSupported(VkFormat format, VkImageTiling tiling = (VkImageTiling) -1);
 
 		// getters
-	VkPhysicalDevice& getGPU()	{ return physicalDevice; }
-	VkDevice& getLogical()		{ return logicalDevice;  }
-	DeviceProfile& getProfile()	{ return selected;		 }
+	VkPhysicalDevice&	getGPU()		{ return physicalDevice;	  }
+	VkDevice&			getLogical()	{ return logicalDevice;		  }
+	DeviceProfile&		getProfile()	{ return selected;			  }
 };
 
 #endif // DeviceAbstract_h

@@ -3,18 +3,20 @@
 //	Vulkan Setup Module
 //
 // Encapsulate the Queue Families and Queues supported
-//	by a Device for Graphics-related operations.
+//	by a Device for "display-to-screen" capability.
 // Intended to be parented/owned/instanced by GraphicsDevice.
 //
-// The "suitability" analysis reflects how well a given device supports
-//	both Graphics and "Present" operations in its queues (queue family)
-//	particularly for the main purpose here: rendering and presenting
-//	graphics on a display device.  Thus, ranked highest-to-lowest:
-//	 1. prefer graphics and present concurrently on same queue (improved performance?)
-//	 2. secondarily favor both graphics and present albeit via separate families
-//	 3. graphics-only device, perhaps dedicated to off-screen rendering/off-server display
-//	 4. present-only support doesn't make a lot of sense, but is still better than nothing
-//	 5. if neither graphics nor present support, this device may not be suitable at all
+// The "suitability" analysis reflects how well a given device supports both Graphics and
+//	"Present" operations in its queues (i.e. sets of identical queues, or each queue family),
+//	particularly for one purpose here: rendering and presenting graphics on a display device.
+//
+//  Put simply, we're only interested in queues supporting both Graphics and Present; those
+//	return a score of 2.  Others return 0.  Obviously it's up to caller to appropriately
+//	scale these values to fit into a scoring scheme amongst other criteria.
+//
+// Note also for simplicity, only one queue is represented here.  If, for the given family,
+//	multiple queues are needed (at arbitrary priorities), that can be added in the future
+//	and is left somewhat flexible here.
 //
 // 2/2/19 Tadd Jensen
 //	© 0000 (uncopyrighted; use at will)
@@ -28,21 +30,15 @@
 #define INDEX_UNDEFINED		-1
 
 enum QueueFitness {
-	UNKNOWN			  = -1,
-	NOT_SUPPORTED	  = 0b0000,
-	SUPPORTS_PRESENT  = 0b0001,
-	SUPPORTS_GRAPHICS = 0b0010,
-	SUPPORTS_BOTH	  = 0b0011,
-	IDEAL_EXCLUSIVE	  = 0b0100
+	UNKNOWN			= -1,
+	NOT_SUPPORTED	=  0,
+	PARTIAL_SUPPORT	=  1,
+	SUPPORTS_BOTH	=  2
 };
-inline QueueFitness operator |= (QueueFitness left, QueueFitness right) {
-	return static_cast<QueueFitness>(static_cast<int>(left) | static_cast<int>(right));
-}
-static const char* stringFitness[] = {	"unsupported",
-										"no graphics",
-										"no present",
-										"separate",
-										"exclusive"  };
+static const char* stringFitness[] = {	"neither",
+										"partial",
+										"both"		};
+
 
 class DeviceQueues {
 public:
@@ -50,17 +46,15 @@ public:
 
 		// MEMBERS
 private:
-	static const int nIndices = 2;			// Value must match, of course...
+	static const int nIndices = 1;				// again, only one queue family is selected (in this implementation)
 	union {
-		struct {
-			int32_t indexGraphicsFamily;	// 1
-			int32_t indexPresentFamily;		// 2  ...quantity of these.
-		};
-		uint32_t familyIndices[nIndices];
+		uint32_t	familyIndex;				// selected (preferred) queue family             of the device
+		uint32_t	familyIndices[nIndices];	//									 or families
 	};
-
-	VkQueue		 queueGraphics;
-	VkQueue		 queuePresent;
+	union {
+		VkQueue		currentQueue;				// same goes for the	queue itself
+		VkQueue		queues[nIndices];			//					 / queues themselves
+	};
 
 	QueueFitness suitability;
 
@@ -69,38 +63,29 @@ public:
 
 		// METHODS
 public:
-	QueueFitness DetermineFamilyIndices(VkPhysicalDevice& physicalDevice, VkSurfaceKHR& surface);
+	QueueFitness DetermineFamilyIndex(VkPhysicalDevice& physicalDevice, VkSurfaceKHR& surface);
 	void GatherQueueHandlesFor(VkDevice& logicalDevice);
 	void InitializeQueueCreateInfos();
 
-	bool IsExclusiveGraphicsAndPresent() {
-		bool isExclusive = (suitability == IDEAL_EXCLUSIVE);
-		if ((isExclusive && indexGraphicsFamily != indexPresentFamily)
-		 || (indexGraphicsFamily == INDEX_UNDEFINED && indexPresentFamily == INDEX_UNDEFINED))
-			Log(WARN, "DeviceQueue EXCLUSIVITY queried but erroneous or UNDEFINED.");
-		return isExclusive;
-	}
 private:
-	void logSupportAnomaly();
+	void logSupportAnomaly(bool deviceSupportsGraphics, bool deviceSupportsPresent);
 
 		// getters
 public:
-	VkQueue& Graphics()				{ return queueGraphics;	}
-	VkQueue& Present()				{ return queuePresent;	}
+	VkQueue&	getCurrent()	{ return currentQueue;	}
 
 	typedef uint32_t (&IndexArrayRef)[nIndices];
 
-	IndexArrayRef Indices()		{ return familyIndices; }
+	IndexArrayRef getIndices()	{ return familyIndices; }
 
-	uint32_t GraphicsIndex() {
-		if (indexGraphicsFamily <= INDEX_UNDEFINED)
-			Log(WARN, "Graphics Family Index accessed but UNDEFINED.");
-		return indexGraphicsFamily;
-	}
-	uint32_t PresentIndex() {
-		if (indexPresentFamily <= INDEX_UNDEFINED)
-			Log(WARN, "Present Family Index accessed but UNDEFINED.");
-		return indexPresentFamily;
+	uint32_t getFamilyIndex() {
+		if (nIndices == 1)
+			return familyIndex;
+		for (int iIndex = 0; iIndex < nIndices; ++iIndex)
+			if (familyIndices[iIndex] > INDEX_UNDEFINED)
+				return familyIndices[iIndex];	// return first valid found
+		Log(WARN, "Graphics Family Index accessed but UNDEFINED.");
+		return INDEX_UNDEFINED;
 	}
 
 	// It happens that QueueFitness's enumeration values provide an appropriate
