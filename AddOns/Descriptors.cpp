@@ -16,13 +16,12 @@
 Descriptors::Descriptors(vector<DescribEd>& describeds, Swapchain& swapchain, GraphicsDevice& device)
 	:	BufferBase(device),
 		describers(describeds),
-		numBuffers(static_cast<uint32_t>(swapchain.getImageViews().size()))
+		numBuffers(static_cast<uint32_t>(swapchain.getImageViews().size())),
+		descriptorPool(VK_NULL_HANDLE)
 {
 	createDescriptorSetLayout();
-
 	if (describeds.size() == 0)
 		return;		// (no sense creating an empty pool)
-
 	create();
 }
 
@@ -40,7 +39,8 @@ void Descriptors::create()
 
 void Descriptors::destroy()
 {
-	vkDestroyDescriptorPool(device, descriptorPool, nullptr);	// (note: destroys descriptorSets too)
+	if (descriptorPool != VK_NULL_HANDLE)
+		vkDestroyDescriptorPool(device, descriptorPool, nullptr);	// (note: destroys descriptorSets too)
 }
 
 
