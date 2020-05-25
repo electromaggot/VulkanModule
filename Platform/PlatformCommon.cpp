@@ -11,30 +11,7 @@
 //	© 0000 (uncopyrighted; use at will)
 //
 #include "VulkanPlatform.h"		// includes StrPtr etc.		//TJ_TODO: may be sloppy referring back into Vulkan
-#include <stdarg.h>
 
-#include <iostream>
-using std::cout; using std::endl;
-#include <vector>
-
-
-// Assumes..: enum Tier { ERROR, WARN, NOTE };
-const char* Prefix[] = { "ERROR! ", "Warning: ", "Note: ", "" };
-
-void Log(Tier tier, string message) {
-	cout << Prefix[tier] << message << endl;
-}
-void Log(Tier tier, StrPtr format, ...)
-{
-	char buffer[1024];
-	va_list vargs;
-	va_start(vargs, format);
-	vsnprintf(buffer, sizeof buffer, format, vargs);
-	va_end(vargs);
-	cout << Prefix[tier] << buffer << endl;
-}
-
-//--------------------------------------------------------
 
 // Originally, apparently, the Vulkan SDK's "vulkan.hpp" file provided
 //	a to_string override for VkResult.  However, it seemed to stop working.
