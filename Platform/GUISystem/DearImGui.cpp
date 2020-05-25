@@ -13,7 +13,7 @@
 #include "imgui_impl_vulkan.h"
 #include "imgui_impl_sdl.h"
 
-extern void ImGuiDemo();
+extern void MainGUI();
 
 
 static void check_vk_result(VkResult err)
@@ -104,7 +104,7 @@ DearImGui::~DearImGui()					// (CommandBuffer should get destroyed when commandP
 
 void DearImGui::Update(float deltaSeconds)
 {		// (Don't really need deltaSeconds, as Dear ImGui seems to track its own time.)
-	preRender(ImGuiDemo, platform);
+	preRender(MainGUI, platform);
 }
 
 // Start the Dear ImGui frame ...and Rendering.
