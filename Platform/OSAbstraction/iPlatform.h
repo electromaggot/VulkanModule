@@ -32,18 +32,18 @@ protected:
 
 	PlatformExtension extendedPlatform;
 
-	StrPtr		namePlatform;
-
-	bool		isWindowResized   = false;
-	bool		isWindowMinimized = false;
+	StrPtr	namePlatform;
 
 public:
-	int			pixelsWide = 0;		// Publicly-vulnerable but low-overhead convenience values,
-	int			pixelsHigh = 0;		//	especially if read every frame, avoid continuous heavy calls
-									//	to GetWindowSize() if those values only change upon resize.
-	int			mouseX = 0;
-	int			mouseY = 0;			// and make these easy access for continual pull too.
-									//	("making these public" risk assessment: if someone writes to change these, it'll be fleeting)
+	bool	isWindowResized   = false;
+	bool	isWindowMinimized = false;
+
+	int		pixelsWide = 0;		// Publicly-vulnerable but low-overhead convenience values,
+	int		pixelsHigh = 0;		//	especially if read every frame, avoid continuous heavy calls
+								//	to GetWindowSize() if those values only change upon resize.
+	int		mouseX = 0;
+	int		mouseY = 0;			// and make these easy access for continual pull too.
+								//	("making these public" risk assessment: if someone writes to change these, it'll be fleeting)
 		// METHODS
 public:
 	virtual void CreateVulkanSurface(VkInstance instance, VkSurfaceKHR& surface) = 0;
@@ -61,8 +61,8 @@ public:
 
 	virtual iImageSource& ImageSource() = 0;
 
-	virtual void InitGUISystem()	 { };
-	virtual void GUISystemNewFrame() { };
+	virtual void InitGUISystem()	 { }
+	virtual void GUISystemNewFrame() { }
 
 		// getters
 public:
