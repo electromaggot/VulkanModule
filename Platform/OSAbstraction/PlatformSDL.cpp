@@ -242,32 +242,43 @@ void PlatformSDL::DialogBox(const char* message, const char* title, AlertLevel l
 
 // RUNTIME -----------------------------------------------------------------------------------------
 
+// Polling is the way to go; using SDL_PollEvent gives best responsiveness/performance with
+//	one unified IO/Render thread, but even with a multi-threaded/synchronized arrangement.
+//	(Note that SDL_Wait blocks indefinitely without returning (seizes rendering) while
+//	 SDL_WaitTimeout blocks at a minimum interval of one millisecond, which: is still too
+//	 coarse (possibly causing a task-switch), leads to stuttering in rendering or immediate
+//	 user-input to visual-output response.  Thus neither Wait method is suitable.)
+//
 bool PlatformSDL::PollEvent()
 {
-	bool eventOccurred = SDL_PollEvent(&event);
+	if (SDL_PollEvent(&event))
+	{
+		GUISystemProcessEvent(&event);
 
-	switch (event.type) {
-		case SDL_WINDOWEVENT:
-			switch (event.window.event) {
-				case SDL_WINDOWEVENT_RESIZED:
-				case SDL_WINDOWEVENT_SIZE_CHANGED:
-					recordWindowSize();
-					isWindowResized = true;  // (note this remains set until retrieved, whence one-shot resets it)
-					break;
-				case SDL_WINDOWEVENT_MINIMIZED:
-					isWindowMinimized = true;
-					break;
-				case SDL_WINDOWEVENT_RESTORED:
-					isWindowMinimized = false;
-					break;
-			}
-			break;
-		case SDL_MOUSEMOTION:
-			mouseX = event.motion.x;
-			mouseY = event.motion.y;
-			break;
+		switch (event.type) {
+			case SDL_WINDOWEVENT:
+				switch (event.window.event) {
+					case SDL_WINDOWEVENT_RESIZED:
+					case SDL_WINDOWEVENT_SIZE_CHANGED:
+						recordWindowSize();
+						isWindowResized = true;  // (note this remains set until retrieved, whence one-shot resets it)
+						break;
+					case SDL_WINDOWEVENT_MINIMIZED:
+						isWindowMinimized = true;
+						break;
+					case SDL_WINDOWEVENT_RESTORED:
+						isWindowMinimized = false;
+						break;
+				}
+				break;
+			case SDL_MOUSEMOTION:
+				mouseX = event.motion.x;
+				mouseY = event.motion.y;
+				break;
+		}
+		return true;
 	}
-	return eventOccurred;
+	return false;
 }
 
 bool PlatformSDL::IsEventQUIT()
