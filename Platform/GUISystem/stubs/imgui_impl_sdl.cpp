@@ -12,4 +12,6 @@
 
 void ImGui_ImplSDL2_InitForVulkan(SDL_Window* pWindow)	{ }
 
-void ImGui_ImplSDL2_NewFrame(SDL_Window* pWindow)	{ }
+void ImGui_ImplSDL2_NewFrame(SDL_Window* pWindow)		{ }
+
+void ImGui_ImplSDL2_ProcessEvent(SDL_Event* pEvent)		{ }
