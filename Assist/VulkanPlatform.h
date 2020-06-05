@@ -67,10 +67,10 @@ struct StringArray
 {
 	//uint32_t	count;
 	vector<const char*>	strings;
-	//inline void setCount()	{ count = (sizeof(this) - sizeof(uint32_t)) / sizeof(const char*); };
-	uint32_t count() { return (uint32_t) strings.size(); };
-	const char** pStrings() { return strings.data(); };
-	void append(const char* str) { strings.emplace_back(str); };
+	//inline void setCount()	 { count = (sizeof(this) - sizeof(uint32_t)) / sizeof(const char*); }
+	uint32_t count()			 { return (uint32_t) strings.size(); }
+	const char** pStrings()		 { return strings.data(); }
+	void append(const char* str) { strings.emplace_back(str); }
 };*/
 
 
