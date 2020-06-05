@@ -51,9 +51,12 @@ public:
 	bool IsEventQUIT();
 	void AwaitEvent();
 	void ClearEvents();
+
 	iImageSource& ImageSource()	 { return static_cast<iImageSource&>(image); }
-	void InitGUISystem()	 { ImGui_ImplSDL2_InitForVulkan(pWindow); }
-	void GUISystemNewFrame() { ImGui_ImplSDL2_NewFrame(pWindow); }
+	void InitGUISystem()		 { ImGui_ImplSDL2_InitForVulkan(pWindow); }
+	void GUISystemNewFrame()	 { ImGui_ImplSDL2_NewFrame(pWindow); }
+	void GUISystemProcessEvent(SDL_Event* pEvent)
+								 { ImGui_ImplSDL2_ProcessEvent(pEvent); }
 private:
 	void initializeSDL();
 	void createVulkanCompatibleWindow();
