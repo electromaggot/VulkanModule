@@ -13,7 +13,7 @@
 #include "imgui_impl_vulkan.h"
 #include "imgui_impl_sdl.h"
 
-extern void MainGUI();
+extern void MainGUI(iPlatform&);
 
 
 static void check_vk_result(VkResult err)
@@ -50,7 +50,8 @@ DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGuiIO& io = ImGui::GetIO();
+	(void) io;
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
@@ -109,14 +110,14 @@ void DearImGui::Update(float deltaSeconds)
 
 // Start the Dear ImGui frame ...and Rendering.
 //
-void DearImGui::preRender(void (*pfnLayOutGui)(), iPlatform& platform)
+void DearImGui::preRender(void (*pfnLayOutGui)(iPlatform&), iPlatform& platform)
 {
 	ImGui_ImplVulkan_NewFrame();
 	platform.GUISystemNewFrame();	// (e.g. for SDL, should in turn call ImGui_ImplSDL2_NewFrame(window);)
 
 	ImGui::NewFrame();
 
-	pfnLayOutGui();
+	pfnLayOutGui(platform);
 
 	ImGui::Render();
 }
