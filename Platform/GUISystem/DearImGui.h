@@ -32,7 +32,7 @@ public:
 	void Update(float deltaSeconds);
 
 private:
-	void preRender(void (*pfnLayOutGui)(), iPlatform& platform);
+	void preRender(void (*pfnLayOutGui)(iPlatform&), iPlatform& platform);
 	void uploadFonts(VkCommandPool commandPool, VkCommandBuffer commandBuffer, VkQueue queue);
 
 	VkCommandBuffer  allocateCommandBuffer(VkCommandPool commandPool, VkDevice device);
