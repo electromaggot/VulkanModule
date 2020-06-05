@@ -21,15 +21,6 @@ public:
 
 	VkClearValue ClearColor		 = AppConstants.DefaultClearColor;
 
-private:
-	uint32_t windowWide = static_cast<uint32_t>(AppConstants.DefaultWindowWidth);
-	uint32_t windowHigh = static_cast<uint32_t>(AppConstants.DefaultWindowHeight);
-
-// getters
-public:
-	uint32_t getWindowWidth()	{ return windowWide; }
-	uint32_t getWindowHeight()	{ return windowHigh; }
-
 
 // CONSTRUCTION & INSTANCING
 private:										// Make external construction impossible:

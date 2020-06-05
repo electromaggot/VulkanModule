@@ -140,17 +140,15 @@ VkExtent2D Swapchain::determineSwapExtent(const VkSurfaceCapabilitiesKHR& capabi
 {
 	const uint32_t INVALID = numeric_limits<uint32_t>::max();
 
-	if (capabilities.currentExtent.width != INVALID && capabilities.currentExtent.height != INVALID)
-		return capabilities.currentExtent;
+	// Favor getting Extent ourselves first...
+	VkExtent2D windowExtent = windowSurface.GetWindowExtent();	// Assign from platform, a perhaps-resized size.
 
-	VkExtent2D windowExtent = windowSurface.GetWindowExtent();
-
-	if (windowExtent.width == INVALID || windowExtent.height == INVALID)
-	{	// still not a valid extent, assign one from default values
-		VulkanSingleton& vulkan = VulkanSingleton::instance();
-		windowExtent = { vulkan.getWindowWidth(), vulkan.getWindowHeight() };
+	if (windowExtent.width == INVALID || windowExtent.height == INVALID) {	// If still not a valid extent,
+		if (capabilities.currentExtent.width != INVALID && capabilities.currentExtent.height != INVALID)
+			return capabilities.currentExtent;								//	secondarily try capabilities or
+		windowExtent = { static_cast<uint32_t>(AppConstants.DefaultWindowWidth),	//	last-ditch assign one
+						 static_cast<uint32_t>(AppConstants.DefaultWindowHeight) };	//	from default values.
 	}
-
 	clamp(windowExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
 	clamp(windowExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
 
