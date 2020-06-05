@@ -34,7 +34,7 @@ public:
 	bool PollEvent();
 	bool IsEventQUIT();
 	void AwaitEvent();
-	void ClearEvents() {};
+	void ClearEvents() {}
 private:
 	void initWindow();
 	bool findAvailableVulkanExtensions();
