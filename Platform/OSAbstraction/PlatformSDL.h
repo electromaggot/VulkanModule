@@ -42,6 +42,10 @@ private:
 
 	ImageSDL	image;
 
+	typedef void (*PFNResizeForceRender)(void* pObject);
+	PFNResizeForceRender pfnResizeForceRender = nullptr;
+	void* pRenderingObject = nullptr;
+
 		// METHODS
 public:
 	void CreateVulkanSurface(VkInstance instance, VkSurfaceKHR& surface);
@@ -57,6 +61,10 @@ public:
 	void GUISystemNewFrame()	 { ImGui_ImplSDL2_NewFrame(pWindow); }
 	void GUISystemProcessEvent(SDL_Event* pEvent)
 								 { ImGui_ImplSDL2_ProcessEvent(pEvent); }
+	void RegisterForceRenderCallback(PFNResizeForceRender pfnForceRender, void* pObject) {
+									pfnResizeForceRender = pfnForceRender;
+									pRenderingObject = pObject;
+								 }
 private:
 	void initializeSDL();
 	void createVulkanCompatibleWindow();
@@ -69,6 +77,8 @@ private:
 	void createMultiMonitorWindows();
 	void createVulkanSurface(int iScreen, VkInstance instance, VkSurfaceKHR& surface);
 	void destroyMultiMonitorWindows();
+
+	static int realtimeResizingEventWatcher(void* data, SDL_Event* event);
 };
 
 #endif	// PlatformSDL_h

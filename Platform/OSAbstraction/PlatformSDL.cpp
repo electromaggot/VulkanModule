@@ -71,6 +71,31 @@ void PlatformSDL::createVulkanCompatibleWindow()
 		Fatal("Fail to Create Vulkan-compatible Window with SDL: " + string(SDL_GetError()));
 
 	recordWindowSize();
+
+	SDL_AddEventWatch(realtimeResizingEventWatcher, this);
+}
+
+int PlatformSDL::realtimeResizingEventWatcher(void* data, SDL_Event* event)
+{
+	if (event->type == SDL_WINDOWEVENT && event->window.event == SDL_WINDOWEVENT_RESIZED)
+	{
+		PlatformSDL* pSelf = (PlatformSDL*) data;
+		SDL_Window* pEventWindow = SDL_GetWindowFromID(event->window.windowID);
+		if (pEventWindow == pSelf->pWindow)
+		{
+			SDL_GetWindowSize(pEventWindow, &pSelf->pixelsWide, &pSelf->pixelsHigh);
+
+			pSelf->isWindowResized = true;
+			// Beware if not properly synchronized with rendering, may crash in vkQueueSubmit() with, e.g.:
+			// -[MTLDebugRenderCommandEncoder setScissorRect:]:2702: failed assertion `(rect.x(0) + rect.width(627))(627) must be <= render pass width(623)'
+
+			if (pSelf->pfnResizeForceRender)
+				pSelf->pfnResizeForceRender(pSelf->pRenderingObject);
+
+			Log(NOTE, "Resize %d x %d... force render.", pSelf->pixelsWide, pSelf->pixelsHigh);
+		}
+	}
+	return 0;
 }
 
 // Work In Progress ... MULTI-MONITOR SUPPORT
