@@ -11,6 +11,7 @@
 #define Logging_h
 
 #include "Universal.h"
+#include <stdarg.h>
 
 
 enum Tier { ERROR, WARN, NOTE, RAW };
