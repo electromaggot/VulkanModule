@@ -14,6 +14,9 @@
 #include <stdarg.h>
 
 
+//#define DEBUG_LOW
+
+
 #if defined(__APPLE__) && defined(__MACH__)	// for Mac console application
 	#define ENDL	"\r\n" << flush
 #else
@@ -21,22 +24,31 @@
 #endif
 
 
-// Assumes..: enum Tier { ERROR, WARN, NOTE };
-const char* Prefix[] = { "ERROR! ", "Warning: ", "Note: ", "" };
+// Assumes..: enum Tier { ERROR, WARN, NOTE, RAW, HANG, LOW };
+const char* Prefix[] = { "ERROR! ", "Warning: ", "Note: ", "", "", "" };
 
 
 void Log(Tier tier, string message) {
-	cout << Prefix[tier] << message << ENDL;
+	#ifndef DEBUG_LOW
+	if (tier == LOW) return;
+	#endif
+	cout << Prefix[tier] << message;
+	if (tier != HANG)  cout << ENDL;
 }
 
 void Log(Tier tier, const char* format, ...)
 {
+	#ifndef DEBUG_LOW
+	if (tier == LOW) return;
+	#endif
+
 	char buffer[1024];
 	va_list vargs;
 	va_start(vargs, format);
 	vsnprintf(buffer, sizeof buffer, format, vargs);
 	va_end(vargs);
-	cout << Prefix[tier] << buffer << ENDL;
+	cout << Prefix[tier] << buffer;
+	if (tier != HANG) cout << ENDL;
 }
 
 

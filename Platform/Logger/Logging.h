@@ -14,7 +14,7 @@
 #include <stdarg.h>
 
 
-enum Tier { ERROR, WARN, NOTE, RAW };
+enum Tier { ERROR, WARN, NOTE, RAW, HANG, LOW };
 extern void Log(Tier tier, string message);
 extern void Log(Tier tier, const char* format, ...);
 
