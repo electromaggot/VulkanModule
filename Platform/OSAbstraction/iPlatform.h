@@ -16,6 +16,7 @@
 
 #include "VulkanPlatform.h"
 #include "PlatformExtension.h"
+#include "AppSettings.h"
 #include "iImageSource.h"
 
 
@@ -23,6 +24,9 @@ class iPlatform
 {
 public:
 	enum AlertLevel { FAILURE, WARNING, INFORMATION };
+
+	iPlatform(AppSettings* pSettings = nullptr)  { }
+	iPlatform(AppSettings& settings) : iPlatform(&settings)  { }
 
 		// MEMBERS
 protected:
@@ -41,6 +45,9 @@ public:
 	int		pixelsWide = 0;		// Publicly-vulnerable but low-overhead convenience values,
 	int		pixelsHigh = 0;		//	especially if read every frame, avoid continuous heavy calls
 								//	to GetWindowSize() if those values only change upon resize.
+	int		windowX = 0;
+	int		windowY = 0;
+
 	int		mouseX = 0;
 	int		mouseY = 0;			// and make these easy access for continual pull too.
 								//	("making these public" risk assessment: if someone writes to change these, it'll be fleeting)
