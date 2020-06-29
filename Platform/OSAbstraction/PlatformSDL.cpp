@@ -19,7 +19,8 @@
 #include "AppConstants.h"
 
 
-PlatformSDL::PlatformSDL()
+PlatformSDL::PlatformSDL(AppSettings* settings)
+	:	pSettings(settings)
 {
 	namePlatform = "SDL";
 
@@ -63,18 +64,44 @@ void PlatformSDL::createVulkanCompatibleWindow()
 		bool isMobilePlatform = false;
 	#endif
 
+	int winWide = 0, winHigh = 0, winX = -1, winY = -1;
+	if (pSettings) {
+		winWide = pSettings->startingWindowWidth;
+		winHigh = pSettings->startingWindowHeight;
+		winX = pSettings->startingWindowX;
+		winY = pSettings->startingWindowY;
+	}
+	if (winWide <= 0 || winWide > AppConstants.MaxSaneScreenWidth)		// Do not allow…
+		winWide  = AppConstants.DefaultWindowWidth;
+	if (winHigh <= 0 || winHigh > AppConstants.MaxSaneScreenHeight)		//	…window to…
+		winHigh = AppConstants.DefaultWindowHeight;
+	if (winX < -winWide || winX > AppConstants.MaxSaneScreenWidth)		//	…be entirely…
+		winX = SDL_WINDOWPOS_CENTERED;
+	if (winY < -winHigh || winY > AppConstants.MaxSaneScreenHeight)		//	…off-screen.
+		winY = SDL_WINDOWPOS_CENTERED;
+
 	int windowFlags = SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN | (isMobilePlatform ? SDL_WINDOW_FULLSCREEN : SDL_WINDOW_RESIZABLE);
 
-	pWindow = SDL_CreateWindow(AppConstants.WindowTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-							   AppConstants.DefaultWindowWidth, AppConstants.DefaultWindowHeight, windowFlags);
+	pWindow = SDL_CreateWindow(AppConstants.WindowTitle, winX, winY, winWide, winHigh, windowFlags);
 	if (!pWindow)
 		Fatal("Fail to Create Vulkan-compatible Window with SDL: " + string(SDL_GetError()));
 
-	recordWindowSize();
+	pixelsWide = winWide;
+	pixelsHigh = winHigh;
+	windowX = winX;
+	windowY = winY;
+
+	//recordWindowGeometry();		// re-saves anything that had to be "corrected" above
+	//No, on 2nd thought, won't.  If re-run, will re-assign the same way.  If user tweaks, then it will save.
+	//(plus, the above seems to wipe out the saved credentials, which need to be pulled from Vault if that's to happen)
 
 	SDL_AddEventWatch(realtimeResizingEventWatcher, this);
 }
 
+// Finer-granularity callbacks as Window border is grabbed & dragged, making rendering
+//	calls to update window content as it is resized.
+//	See
+//
 int PlatformSDL::realtimeResizingEventWatcher(void* data, SDL_Event* event)
 {
 	if (event->type == SDL_WINDOWEVENT && event->window.event == SDL_WINDOWEVENT_RESIZED)
@@ -92,7 +119,7 @@ int PlatformSDL::realtimeResizingEventWatcher(void* data, SDL_Event* event)
 			if (pSelf->pfnResizeForceRender)
 				pSelf->pfnResizeForceRender(pSelf->pRenderingObject);
 
-			Log(NOTE, "Resize %d x %d... force render.", pSelf->pixelsWide, pSelf->pixelsHigh);
+			Log(LOW, "Resize %d x %d... force render.", pSelf->pixelsWide, pSelf->pixelsHigh);
 		}
 	}
 	return 0;
@@ -215,15 +242,44 @@ bool PlatformSDL::GetWindowSize(int& pixelWidth, int& pixelHeight)
 	Log(WARN, error);
 	return false;
 }
-void PlatformSDL::recordWindowSize() // (with logging too)
+
+void PlatformSDL::recordWindowGeometry() // (with logging too)
 {
-	int tempPixelsWide = 0,
-		tempPixelsHigh = 0;
+	Log(NOTE, "Save Window Geometry");
+
+	if (pSettings) {
+		pSettings->startingWindowWidth  = pixelsWide;
+		pSettings->startingWindowHeight = pixelsHigh;
+		pSettings->startingWindowX = windowX;
+		pSettings->startingWindowY = windowY;
+		pSettings->Save();
+	}
+/*
+	static int tempPixelsWide = 0,	 // just to make sure not to rewrite file with same values
+			   tempPixelsHigh = 0;
 	GetWindowSize(tempPixelsWide, tempPixelsHigh);
 	if (tempPixelsWide != pixelsWide || tempPixelsHigh != pixelsHigh) {
-		Log(NOTE, "Window Resolution is:  %d x %d", tempPixelsWide, tempPixelsHigh);
+//		Log(NOTE, "Window Resolution is:  %d x %d", tempPixelsWide, tempPixelsHigh);
 		pixelsWide = tempPixelsWide;
 		pixelsHigh = tempPixelsHigh;
+	}
+*/
+	//SDL_GEtWindowPosition
+}
+void PlatformSDL::recordWindowSize(int wide, int high)
+{
+	if (pixelsWide != wide || pixelsHigh != high) {
+		pixelsWide = wide;
+		pixelsHigh = high;
+		recordWindowGeometry();
+	}
+}
+void PlatformSDL::recordWindowPosition(int x, int y)
+{
+	if (windowX != x || windowY != y) {
+		windowX = x;
+		windowY = y;
+		recordWindowGeometry();
 	}
 }
 
@@ -276,18 +332,27 @@ void PlatformSDL::DialogBox(const char* message, const char* title, AlertLevel l
 //
 bool PlatformSDL::PollEvent()
 {
+	static int windowMovedToY, windowMovedToX = INT_MIN;
+
 	if (SDL_PollEvent(&event))
 	{
 		GUISystemProcessEvent(&event);
+		//printf("event %d : %d\n", event.type, event.window.event);
 
 		switch (event.type) {
 			case SDL_WINDOWEVENT:
 				switch (event.window.event) {
-					case SDL_WINDOWEVENT_RESIZED:
-					case SDL_WINDOWEVENT_SIZE_CHANGED:
-						recordWindowSize();
-						isWindowResized = true;  // (note this remains set until retrieved, whence one-shot resets it)
+					case SDL_WINDOWEVENT_SIZE_CHANGED:		// (and ignoring SDL_WINDOWEVENT_RESIZED, see DEV NOTE 1 at bottom)
+						recordWindowSize(event.window.data1, event.window.data2);			// want this to save resized window size to Settings file
+						isWindowResized = true;			// (note this remains set until retrieved, whence one-shot resets it)
+printf("RESIZE %d x %d\n", event.window.data1, event.window.data2);
+						Log(LOW, "      Resized %d x %d", pixelsWide, pixelsHigh);	// show resize is finished
 						break;
+					case SDL_WINDOWEVENT_MOVED:
+						windowMovedToX = event.window.data1;	// (see DEV NOTE 2)
+						windowMovedToY = event.window.data2;
+						Log(LOW, "      Move %d, %d...", windowMovedToX, windowMovedToY);
+						return true;
 					case SDL_WINDOWEVENT_MINIMIZED:
 						isWindowMinimized = true;
 						break;
@@ -300,6 +365,12 @@ bool PlatformSDL::PollEvent()
 				mouseX = event.motion.x;
 				mouseY = event.motion.y;
 				break;
+			default:
+				break;
+		}
+		if (windowMovedToX != INT_MIN) { // Current event was not WINDOW _MOVED, but this indicates that previous event was,
+			recordWindowPosition(windowMovedToX, windowMovedToY);	//	therefore "end of dragging around window," so save its position.
+			windowMovedToX = INT_MIN;
 		}
 		return true;
 	}
@@ -322,3 +393,18 @@ void PlatformSDL::ClearEvents()		// This seems good to do prior to main loop for
 {									//	since it may unnecessarily start with SDL_WINDOWEVENT_RESIZED.
 	while (SDL_PollEvent(&event));
 }
+
+
+/* DEVELOPER NOTE:
+
+SDL_WINDOWEVENT_RESIZED vs. SDL_WINDOWEVENT_SIZE_CHANGED
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ https://wiki.libsdl.org/SDL_WindowEventID says:
+ SDL_WINDOWEVENT_RESIZED : window has been resized to data1xdata2; this event is always preceded by SDL_WINDOWEVENT_SIZE_CHANGED.
+ SDL_WINDOWEVENT_SIZE_CHANGED : window size has changed, either as a result of an API call or through the system or user changing
+								the window size; this event is followed by SDL_WINDOWEVENT_RESIZED if the size was changed by an
+								external event, i.e. the user or the window manager.
+These speak for themselves.																	  Although, does _RESIZED exclusively
+But to reiterate:  Since _RESIZED is *always preceded* by _SIZE_CHANGED, it's not necessary.			 deliver Width x Height ?
+That is, only SDL_WINDOWEVENT_SIZE_CHANGED is really necessary to process, especially for our needs.
+*/

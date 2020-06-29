@@ -22,6 +22,7 @@
 #include <SDL_vulkan.h>
 
 #include "iPlatform.h"
+#include "AppSettings.h"
 #include "ImageSDL.h"
 
 #include "imgui.h"
@@ -31,16 +32,19 @@
 class PlatformSDL : public iPlatform
 {
 public:
-	PlatformSDL();
+	PlatformSDL(AppSettings* pSettings = nullptr);
+	PlatformSDL(AppSettings& settings) : PlatformSDL(&settings)  { }
 	~PlatformSDL();
 
 		// MEMBERS
 private:
-	SDL_Window* pWindow;	// Note: only supports a single window, hence single monitor.
+	SDL_Window*  pWindow;	// Note: only supports a single window, hence single monitor.
 
-	SDL_Event	event;
+	SDL_Event	 event;
 
-	ImageSDL	image;
+	ImageSDL	 image;
+
+	AppSettings* pSettings;
 
 	typedef void (*PFNResizeForceRender)(void* pObject);
 	PFNResizeForceRender pfnResizeForceRender = nullptr;
@@ -69,7 +73,9 @@ private:
 	void initializeSDL();
 	void createVulkanCompatibleWindow();
 	void querySupportedVulkanExtensions();
-	void recordWindowSize();
+	void recordWindowGeometry();
+	void recordWindowSize(int wide, int high);
+	void recordWindowPosition(int x, int y);
 	float getDisplayScaling();
 	float getDisplayDPI(int iDisplay = 0);
 

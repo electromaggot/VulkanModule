@@ -13,7 +13,7 @@
 #include "imgui_impl_vulkan.h"
 #include "imgui_impl_sdl.h"
 
-extern void MainGUI(iPlatform&);
+extern void MainGUI(iPlatform&, AppSettings&);
 
 
 static void check_vk_result(VkResult err)
@@ -27,8 +27,9 @@ static void check_vk_result(VkResult err)
 static VkAllocationCallbacks*   g_Allocator = NULL;
 
 
-DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
+DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform, AppSettings& settings)
 	:	platform(platform),
+		settings(settings),
 		device(vulkan.device.getLogical())
 {
 	ImGui_ImplVulkanH_Window guiWindow;
@@ -105,19 +106,19 @@ DearImGui::~DearImGui()					// (CommandBuffer should get destroyed when commandP
 
 void DearImGui::Update(float deltaSeconds)
 {		// (Don't really need deltaSeconds, as Dear ImGui seems to track its own time.)
-	preRender(MainGUI, platform);
+	preRender(MainGUI, platform, settings);
 }
 
 // Start the Dear ImGui frame ...and Rendering.
 //
-void DearImGui::preRender(void (*pfnLayOutGui)(iPlatform&), iPlatform& platform)
+void DearImGui::preRender(void (*pfnLayOutGui)(iPlatform&, AppSettings&), iPlatform& platform, AppSettings& settings)
 {
 	ImGui_ImplVulkan_NewFrame();
 	platform.GUISystemNewFrame();	// (e.g. for SDL, should in turn call ImGui_ImplSDL2_NewFrame(window);)
 
 	ImGui::NewFrame();
 
-	pfnLayOutGui(platform);
+	pfnLayOutGui(platform, settings);
 
 	ImGui::Render();
 }
