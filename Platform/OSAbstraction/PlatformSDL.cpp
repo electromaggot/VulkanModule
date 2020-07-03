@@ -64,8 +64,8 @@ void PlatformSDL::createVulkanCompatibleWindow()
 		bool isMobilePlatform = false;
 	#endif
 
-	int winWide = 0, winHigh = 0, winX = -1, winY = -1;
-	if (pSettings) {
+	int winWide = 0, winHigh = 0, winX = INT_MIN, winY = INT_MIN;
+	if (pSettings && pSettings->isInitialized) {
 		winWide = pSettings->startingWindowWidth;
 		winHigh = pSettings->startingWindowHeight;
 		winX = pSettings->startingWindowX;
