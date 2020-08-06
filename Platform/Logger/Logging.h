@@ -13,6 +13,8 @@
 #include "Universal.h"
 #include <stdarg.h>
 
+#undef ERROR // since on Windows, wingdi.h #defines ERROR
+
 
 enum Tier { ERROR, WARN, NOTE, RAW, HANG, LOW };
 extern void Log(Tier tier, string message);
