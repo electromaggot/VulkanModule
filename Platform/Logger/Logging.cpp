@@ -11,14 +11,22 @@
 //	© 0000 (uncopyrighted; use at will)
 //
 #include "Logging.h"
-#include <stdarg.h>
+#include "AppConstants.h"
+#include "AppSettings.h"
+#include "FileSystem.h"
+
+static void logToFile(Tier, const char*);
 
 
 //#define DEBUG_LOW
 
 
-#if defined(__APPLE__) && defined(__MACH__)	// for Mac console application
-	#define ENDL	"\r\n" << flush
+#if defined(__APPLE__) && defined(__MACH__)
+	#if TARGET_OS_IPHONE	// for Xcode debug console
+		#define ENDL	"\n" << flush
+	#else					// for Mac console application
+		#define ENDL	"\r\n" << flush
+	#endif
 #else
 	#define ENDL	endl
 #endif
@@ -27,6 +35,9 @@
 // Assumes..: enum Tier { ERROR, WARN, NOTE, RAW, HANG, LOW };
 const char* Prefix[] = { "ERROR! ", "Warning: ", "Note: ", "", "", "" };
 
+string logFileName;
+const char* pLogFileName = nullptr;
+
 
 void Log(Tier tier, string message) {
 	#ifndef DEBUG_LOW
@@ -34,6 +45,9 @@ void Log(Tier tier, string message) {
 	#endif
 	cout << Prefix[tier] << message;
 	if (tier != HANG)  cout << ENDL;
+
+	if (AppConstants.Settings.isDebugLogToFile)
+		logToFile(tier, message.c_str());
 }
 
 void Log(Tier tier, const char* format, ...)
@@ -49,6 +63,26 @@ void Log(Tier tier, const char* format, ...)
 	va_end(vargs);
 	cout << Prefix[tier] << buffer;
 	if (tier != HANG) cout << ENDL;
+
+	if (AppConstants.Settings.isDebugLogToFile)
+		logToFile(tier, buffer);
+}
+
+void logToFile(Tier tier, const char* buffer)
+{
+	if (!pLogFileName) {
+		logFileName = FileSystem::AppLocalStorageDirectory() + AppConstants.DebugLogFileName;
+		pLogFileName = logFileName.c_str();
+	}
+	ofstream	settingsFile;
+	settingsFile.open(logFileName, ofstream::out | ofstream::app);
+	if (settingsFile.is_open())
+	{
+		settingsFile << Prefix[tier] << buffer;
+		if (tier != HANG) settingsFile << endl << flush;
+
+		settingsFile.close();
+	}
 }
 
 
