@@ -21,14 +21,12 @@ using std::ofstream;		//
 
 #ifdef OVERRIDE_SDL
 	#include "LocalFileSystem.h"
-	#include "VulkanPlatform.h"
 #else
-	#include "PlatformSDL.h"
-	#include "AppConstants.h"
+	#include "FileSystemSDL.h"
 #endif
 
 
-class FileSystem : public LocalFileSystem
+class FileSystem : LocalFileSystem
 {
 		// MEMBERS
 private:
@@ -36,16 +34,14 @@ private:
 
 		// METHODS
 public:
-		// app-specific directories
-	static string AppSpecificWorkingDirectory()
+		// app-specific/platform-specific directories, expose implementations publicly
+	static string ExeAccompaniedFullPath(const string& fileName, StrPtr subDirectory)
 	{
-		string resultPath =
-			#ifdef OVERRIDE_SDL
-		LocalFileSystem::AppSpecificWorkingDirectory();
-				SDL_GetPrefPath(AppConstants.CompanyName, AppConstants.ProjectName);
-			#else
-			#endif
-		return resultPath;
+		return LocalFileSystem::exeAccompaniedFullPath(fileName, subDirectory);
+	}
+	static string AppLocalStorageDirectory()
+	{
+		return LocalFileSystem::appLocalStorageDirectory();
 	}
 
 		// asset-specific file operations

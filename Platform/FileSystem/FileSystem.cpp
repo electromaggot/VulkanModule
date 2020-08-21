@@ -14,9 +14,6 @@
 #include <fstream>
 
 
-extern string PlatformSpecificFullPath(const string& fileName, const char* subdirectoryName);
-
-
 const StrPtr SHADER_SUBDIRECTORY  = "compiledShaders/";
 
 const StrPtr TEXTURE_SUBDIRECTORY = "textures/";
@@ -26,12 +23,12 @@ const StrPtr TEXTURE_SUBDIRECTORY = "textures/";
 
 string FileSystem::ShaderFileFullPath(StrPtr fileName)
 {
-	return PlatformSpecificFullPath(fileName, SHADER_SUBDIRECTORY);
+	return ExeAccompaniedFullPath(fileName, SHADER_SUBDIRECTORY);
 }
 
 string FileSystem::TextureFileFullPath(StrPtr fileName)
 {
-	return PlatformSpecificFullPath(fileName, TEXTURE_SUBDIRECTORY);
+	return ExeAccompaniedFullPath(fileName, TEXTURE_SUBDIRECTORY);
 }
 
 
@@ -48,7 +45,7 @@ vector<char> FileSystem::ReadTextureFile(const string& imageFilename)
 
 vector<char> FileSystem::readFile(const string& fileName, const char* subdirectoryName)
 {
-	const string fullPath = PlatformSpecificFullPath(fileName, subdirectoryName);
+	const string fullPath = ExeAccompaniedFullPath(fileName, subdirectoryName);
 	Log(NOTE, "reading file at path: " + fullPath);
 	return readFile(fullPath);
 }
