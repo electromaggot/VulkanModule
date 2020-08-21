@@ -43,6 +43,8 @@ private:
 	VkResult	 err;
 	iPlatform&	 platform;
 	VkDevice&	 device;		// (saved for destruction)
+
+	string		 iniFileName;	// https://github.com/ocornut/imgui/issues/454
 };
 
 #endif	// DearImGui_h

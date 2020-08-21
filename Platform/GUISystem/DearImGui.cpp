@@ -56,8 +56,8 @@ DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
     // Setup Dear ImGui style
-    ImGui::StyleColorsDark();
-    //ImGui::StyleColorsClassic();
+    //ImGui::StyleColorsDark();
+    ImGui::StyleColorsClassic();
 
     // Setup Platform/Renderer bindings
 	platform.InitGUISystem();	// (e.g. for SDL, should in turn call ImGui_ImplSDL2_InitForVulkan(window);)
@@ -89,6 +89,10 @@ DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
 	VkCommandBuffer commandBuffer = allocateCommandBuffer(commandPool, device);
 
 	uploadFonts(commandPool, commandBuffer, graphicsQueue);
+
+	extern string PlatformSpecificWorkingPath();
+	iniFileName = PlatformSpecificWorkingPath() + io.IniFilename;
+	io.IniFilename = iniFileName.c_str();
 }
 
 DearImGui::~DearImGui()					// (CommandBuffer should get destroyed when commandPool does.)
