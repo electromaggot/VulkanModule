@@ -19,8 +19,7 @@
 #include "AppConstants.h"
 
 
-PlatformSDL::PlatformSDL(AppSettings* settings)
-	:	pSettings(settings)
+PlatformSDL::PlatformSDL()
 {
 	namePlatform = "SDL";
 
@@ -64,12 +63,13 @@ void PlatformSDL::createVulkanCompatibleWindow()
 		bool isMobilePlatform = false;
 	#endif
 
+	AppSettings& settings = AppConstants.Settings;
 	int winWide = 0, winHigh = 0, winX = INT_MIN, winY = INT_MIN;
-	if (pSettings && pSettings->isInitialized) {
-		winWide = pSettings->startingWindowWidth;
-		winHigh = pSettings->startingWindowHeight;
-		winX = pSettings->startingWindowX;
-		winY = pSettings->startingWindowY;
+	if (settings.isInitialized) {
+		winWide = settings.startingWindowWidth;
+		winHigh = settings.startingWindowHeight;
+		winX = settings.startingWindowX;
+		winY = settings.startingWindowY;
 	}
 	if (winWide <= 0 || winWide > AppConstants.MaxSaneScreenWidth)		// Do not allow…
 		winWide  = AppConstants.DefaultWindowWidth;
@@ -245,15 +245,14 @@ bool PlatformSDL::GetWindowSize(int& pixelWidth, int& pixelHeight)
 
 void PlatformSDL::recordWindowGeometry() // (with logging too)
 {
-	Log(NOTE, "Save Window Geometry");
+	Log(HANG, "Note: Save Window Geometry: ");
 
-	if (pSettings) {
-		pSettings->startingWindowWidth  = pixelsWide;
-		pSettings->startingWindowHeight = pixelsHigh;
-		pSettings->startingWindowX = windowX;
-		pSettings->startingWindowY = windowY;
-		pSettings->Save();
-	}
+	AppSettings& settings = AppConstants.Settings;
+	settings.startingWindowWidth  = pixelsWide;
+	settings.startingWindowHeight = pixelsHigh;
+	settings.startingWindowX = windowX;
+	settings.startingWindowY = windowY;
+	settings.Save();
 /*
 	static int tempPixelsWide = 0,	 // just to make sure not to rewrite file with same values
 			   tempPixelsHigh = 0;

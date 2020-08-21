@@ -22,7 +22,6 @@
 #include <SDL_vulkan.h>
 
 #include "iPlatform.h"
-#include "AppSettings.h"
 #include "ImageSDL.h"
 
 #include "imgui.h"
@@ -32,8 +31,7 @@
 class PlatformSDL : public iPlatform
 {
 public:
-	PlatformSDL(AppSettings* pSettings = nullptr);
-	PlatformSDL(AppSettings& settings) : PlatformSDL(&settings)  { }
+	PlatformSDL();
 	~PlatformSDL();
 
 		// MEMBERS
@@ -43,8 +41,6 @@ private:
 	SDL_Event	 event;
 
 	ImageSDL	 image;
-
-	AppSettings* pSettings;
 
 	typedef void (*PFNResizeForceRender)(void* pObject);
 	PFNResizeForceRender pfnResizeForceRender = nullptr;
