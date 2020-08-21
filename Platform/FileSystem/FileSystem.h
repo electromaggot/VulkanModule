@@ -11,10 +11,24 @@
 #ifndef FileSystem_h
 #define FileSystem_h
 
-#include "VulkanPlatform.h"
+#include <iostream>			//
+#include <fstream>			// basic file operations
+#include <iomanip>			//	(not for herein, but includer's convenience)
+using std::ofstream;		//
 
 
-class FileSystem
+//#define OVERRIDE_SDL
+
+#ifdef OVERRIDE_SDL
+	#include "LocalFileSystem.h"
+	#include "VulkanPlatform.h"
+#else
+	#include "PlatformSDL.h"
+	#include "AppConstants.h"
+#endif
+
+
+class FileSystem : public LocalFileSystem
 {
 		// MEMBERS
 private:
@@ -22,6 +36,19 @@ private:
 
 		// METHODS
 public:
+		// app-specific directories
+	static string AppSpecificWorkingDirectory()
+	{
+		string resultPath =
+			#ifdef OVERRIDE_SDL
+		LocalFileSystem::AppSpecificWorkingDirectory();
+				SDL_GetPrefPath(AppConstants.CompanyName, AppConstants.ProjectName);
+			#else
+			#endif
+		return resultPath;
+	}
+
+		// asset-specific file operations
 	static string ShaderFileFullPath(StrPtr fileName);
 	static string TextureFileFullPath(StrPtr fileName);
 
