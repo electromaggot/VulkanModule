@@ -15,7 +15,7 @@
 
 class DearImGui : public iRenderableBase {
 public:
-	DearImGui(VulkanSetup& vulkan, iPlatform& platform, AppSettings& settings);
+	DearImGui(VulkanSetup& vulkan, iPlatform& platform);
 	~DearImGui();
 
 		// METHODS
@@ -32,7 +32,7 @@ public:
 	void Update(float deltaSeconds);
 
 private:
-	void preRender(void (*pfnLayOutGui)(iPlatform&, AppSettings&), iPlatform& platform, AppSettings& settings);
+	void preRender(void (*pfnLayOutGui)(iPlatform&), iPlatform& platform);
 	void uploadFonts(VkCommandPool commandPool, VkCommandBuffer commandBuffer, VkQueue queue);
 
 	VkCommandBuffer  allocateCommandBuffer(VkCommandPool commandPool, VkDevice device);
@@ -42,7 +42,6 @@ private:
 
 	VkResult	 err;
 	iPlatform&	 platform;
-	AppSettings& settings;
 	VkDevice&	 device;		// (saved for destruction)
 };
 
