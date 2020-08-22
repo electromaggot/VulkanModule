@@ -12,7 +12,6 @@
 //
 #include "Logging.h"
 #include "AppConstants.h"
-#include "AppSettings.h"
 #include "FileSystem.h"
 
 static void logToFile(Tier, const char*);
