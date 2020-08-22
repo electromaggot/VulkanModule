@@ -15,6 +15,7 @@
 #include <fstream>			// basic file operations
 #include <iomanip>			//	(not for herein, but includer's convenience)
 using std::ofstream;		//
+using std::ifstream;		//
 
 
 //#define OVERRIDE_SDL

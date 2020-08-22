@@ -6,7 +6,7 @@
 //	© 0000 (uncopyrighted; use at will)
 //
 #include "DearImGui.h"
-
+#include "FileSystem.h"
 #include "CommandObjects.h"
 
 #include "imgui.h"
@@ -90,8 +90,7 @@ DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
 
 	uploadFonts(commandPool, commandBuffer, graphicsQueue);
 
-	extern string PlatformSpecificWorkingPath();
-	iniFileName = PlatformSpecificWorkingPath() + io.IniFilename;
+	iniFileName = FileSystem::AppLocalStorageDirectory() + io.IniFilename;
 	io.IniFilename = iniFileName.c_str();
 }
 
