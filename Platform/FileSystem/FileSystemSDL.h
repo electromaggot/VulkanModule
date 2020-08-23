@@ -14,8 +14,8 @@
 #include "AppConstants.h"		// for company/project names
 
 
-static	char* SDLCALL	dirnameExecutableBase	= nullptr;
-static	char* SDLCALL	dirnameAppLocalStorage	= nullptr;
+static	char*	dirnameExecutableBase	= nullptr;
+static	char*	dirnameAppLocalStorage	= nullptr;
 
 
 class LocalFileSystem
