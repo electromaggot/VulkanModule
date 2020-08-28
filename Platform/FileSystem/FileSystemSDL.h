@@ -43,10 +43,9 @@ protected:	// (discourage standalone (non-derived) instantiation)
 	//
 	static string appLocalStorageDirectory()
 	{
-		if (! dirnameAppLocalStorage) {
+		if (! dirnameAppLocalStorage)
 			dirnameAppLocalStorage = SDL_GetPrefPath(AppConstants.CompanyName, AppConstants.ProjectName);
-			Log(RAW, "STORAGE %s", dirnameAppLocalStorage);
-		}
+
 		return dirnameAppLocalStorage;
 	}
 };

@@ -16,6 +16,9 @@
 #undef ERROR // since on Windows, wingdi.h #defines ERROR
 
 
+extern void LogStartup();
+
+
 enum Tier { ERROR, WARN, NOTE, RAW, HANG, LOW };
 extern void Log(Tier tier, string message);
 extern void Log(Tier tier, const char* format, ...);
