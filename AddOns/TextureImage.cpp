@@ -21,7 +21,7 @@ TextureImage::TextureImage(TextureSpec& texSpec, VkCommandPool& pool, GraphicsDe
 {
 	create(texSpec, device, platform);
 	createImageView();
-	if (sampler == VK_NULL_HANDLE)
+	if (injectedSampler == VK_NULL_HANDLE)
 		createSampler(texSpec);
 	else {
 		sampler = injectedSampler;
