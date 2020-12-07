@@ -2,6 +2,8 @@
 // DearImGui.cpp
 //	General App Chassis, Platform Layer, GUI System, Vulkan-centric
 //
+// See header for overview.
+//
 // Created 3/22/20 by Tadd Jensen
 //	© 0000 (uncopyrighted; use at will)
 //
@@ -13,7 +15,7 @@
 #include "imgui_impl_vulkan.h"
 #include "imgui_impl_sdl.h"
 
-extern void MainGUI(iPlatform&);
+extern void MainGUI(DearImGui&);
 
 
 static void check_vk_result(VkResult err)
@@ -24,7 +26,7 @@ static void check_vk_result(VkResult err)
         abort();
 }
 
-static VkAllocationCallbacks*   g_Allocator = NULL;
+static VkAllocationCallbacks*   g_Allocator = nullptr;
 
 
 DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
@@ -107,20 +109,20 @@ DearImGui::~DearImGui()					// (CommandBuffer should get destroyed when commandP
 
 
 void DearImGui::Update(float deltaSeconds)
-{		// (Don't really need deltaSeconds, as Dear ImGui seems to track its own time.)
+{		// (Don't really need deltaSeconds, as Dear ImGui tracks its own time.)
 	preRender(MainGUI, platform);
 }
 
 // Start the Dear ImGui frame ...and Rendering.
 //
-void DearImGui::preRender(void (*pfnLayOutGui)(iPlatform&), iPlatform& platform)
+void DearImGui::preRender(void (*pfnLayOutGui)(DearImGui&), iPlatform& platform)
 {
 	ImGui_ImplVulkan_NewFrame();
 	platform.GUISystemNewFrame();	// (e.g. for SDL, should in turn call ImGui_ImplSDL2_NewFrame(window);)
 
 	ImGui::NewFrame();
 
-	pfnLayOutGui(platform);
+	pfnLayOutGui(*this);
 
 	ImGui::Render();
 }
@@ -198,26 +200,28 @@ VkCommandBuffer DearImGui::allocateCommandBuffer(VkCommandPool commandPool, VkDe
 
 VkDescriptorPool DearImGui::createDescriptorPool(VkDevice device)
 {
+	const int SIZE = 1000;	// arbitrary default pool size
+
 	VkDescriptorPool descriptorPool;
 	VkDescriptorPoolSize pool_sizes[] = {
-		{ VK_DESCRIPTOR_TYPE_SAMPLER,				 1000 },
-		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
-		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,			 1000 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,			 1000 },
-		{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,	 1000 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,	 1000 },
-		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,		 1000 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,		 1000 },
-		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
-		{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,		 1000 }
+		{ VK_DESCRIPTOR_TYPE_SAMPLER,				 SIZE },
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SIZE },
+		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,			 SIZE },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,			 SIZE },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,	 SIZE },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,	 SIZE },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,		 SIZE },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,		 SIZE },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, SIZE },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, SIZE },
+		{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,		 SIZE }
 	};
 	VkDescriptorPoolCreateInfo pool_info = {
-		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-		.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
-		.maxSets = 1000 * IM_ARRAYSIZE(pool_sizes),
-		.poolSizeCount = (uint32_t)IM_ARRAYSIZE(pool_sizes),
-		.pPoolSizes = pool_sizes
+		.sType	 = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+		.flags	 = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+		.maxSets = SIZE * IM_ARRAYSIZE(pool_sizes),
+		.poolSizeCount	= (uint32_t) IM_ARRAYSIZE(pool_sizes),
+		.pPoolSizes		= pool_sizes
 	};
 	VkResult err = vkCreateDescriptorPool(device, &pool_info, g_Allocator, &descriptorPool);
 	check_vk_result(err);
