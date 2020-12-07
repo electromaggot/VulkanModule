@@ -14,18 +14,25 @@
 #include "RenderSettings.h"
 
 
-TextureImage::TextureImage(TextureSpec& texSpec, VkCommandPool& pool, GraphicsDevice& device, iPlatform& platform)
+TextureImage::TextureImage(TextureSpec& texSpec, VkCommandPool& pool, GraphicsDevice& device,
+						   iPlatform& platform, VkSampler injectedSampler)
 	:	CommandBufferBase(pool, device),
 		mipmaps(pool, device)
 {
 	create(texSpec, device, platform);
 	createImageView();
-	createSampler(texSpec);
+	if (sampler == VK_NULL_HANDLE)
+		createSampler(texSpec);
+	else {
+		sampler = injectedSampler;
+		wasSamplerInjected = true;
+	}
 }
 
 TextureImage::~TextureImage()
 {
-	vkDestroySampler(device, sampler, nullptr);
+	if (! wasSamplerInjected)
+		vkDestroySampler(device, sampler, nullptr);
 	vkDestroyImageView(device, imageView, nullptr);
 
 	vkDestroyImage(device, image, nullptr);
@@ -39,20 +46,20 @@ void TextureImage::create(TextureSpec& texSpec, GraphicsDevice& graphicsDevice, 
 
 	string fileFullPath = FileSystem::TextureFileFullPath(texSpec.fileName);
 
-	ImageInfo loadedImage = platform.ImageSource().Load(fileFullPath.c_str());
+	imageInfo = platform.ImageSource().Load(fileFullPath.c_str());
 
-	if (!graphicsDevice.IsImageFormatSupported(loadedImage.format, tiling)) {
+	if (!graphicsDevice.IsImageFormatSupported(imageInfo.format, tiling)) {
 		VkFormat BEST_FORMAT = VK_FORMAT_A8B8G8R8_UNORM_PACK32;
-		Log(WARN, "Vulkan says selected device does not support: %s", VkFormatString(loadedImage.format));
+		Log(WARN, "Vulkan says selected device does not support: %s", VkFormatString(imageInfo.format));
 		Log(WARN, "    Converting to: %s", VkFormatString(BEST_FORMAT));
-		loadedImage = platform.ImageSource().ConvertTo(BEST_FORMAT);
+		imageInfo = platform.ImageSource().ConvertTo(BEST_FORMAT);
 	}
 
-	size_t	 imageSize	= loadedImage.numBytes;
-	void*	 pPixels	= loadedImage.pPixels;
-	uint32_t width		= loadedImage.wide;
-	uint32_t height		= loadedImage.high;
-	format				= loadedImage.format;
+	size_t	 imageSize	= imageInfo.numBytes;
+	void*	 pPixels	= imageInfo.pPixels;
+	uint32_t width		= imageInfo.wide;
+	uint32_t height		= imageInfo.high;
+	format				= imageInfo.format;
 
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
