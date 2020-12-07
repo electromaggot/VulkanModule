@@ -2,6 +2,9 @@
 // DearImGui.h
 //	General App Chassis, Platform Layer, GUI System, Vulkan-centric
 //
+// Object representing Dear ImGui setup, persistence, and rendering, inspired
+//	by code originally found in: imgui/examples/example_sdl_vulkan/main.cpp
+//
 // Created 3/22/20 by Tadd Jensen
 //	© 0000 (uncopyrighted; use at will)
 //
@@ -9,7 +12,6 @@
 #define DearImGui_h
 
 #include "iPlatform.h"
-
 #include "iRenderable.h"
 
 
@@ -32,7 +34,7 @@ public:
 	void Update(float deltaSeconds);
 
 private:
-	void preRender(void (*pfnLayOutGui)(iPlatform&), iPlatform& platform);
+	void preRender(void (*pfnLayOutGui)(DearImGui&), iPlatform& platform);
 	void uploadFonts(VkCommandPool commandPool, VkCommandBuffer commandBuffer, VkQueue queue);
 
 	VkCommandBuffer  allocateCommandBuffer(VkCommandPool commandPool, VkDevice device);
@@ -40,11 +42,13 @@ private:
 
 		// MEMBERS
 
-	VkResult	 err;
-	iPlatform&	 platform;
-	VkDevice&	 device;		// (saved for destruction)
+	VkResult	err;
+	VkDevice&	device;			// (saved for destruction)
 
-	string		 iniFileName;	// https://github.com/ocornut/imgui/issues/454
+	string		iniFileName;	// https://github.com/ocornut/imgui/issues/454
+
+public:		// made available to MainGui(this):
+	iPlatform&	platform;
 };
 
 #endif	// DearImGui_h
