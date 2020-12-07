@@ -15,9 +15,9 @@ here [https://github.com/ocornut/imgui/issues/1848](https://github.com/ocornut/i
 
 These files change that and provide this functionality.  Note that one bug seems to persist however, on Macs using MoltenVK, although the
 image loads and appears correctly at full-size, when scaled-down using ImGui, it "fades to red" the smaller it gets.  This is perhaps due
-to the particular VkSampler that ImGui uses internally.  We will investigate this further later.
+to the particular `VkSampler` that ImGui uses internally.  We will investigate this further later.
 
-> Vulkan: switching between images for rendering #914
+> Vulkan: switching between images for rendering #914  
 > https://github.com/ocornut/imgui/pull/914
 
 The changes folded into these most-recent files originated from (and full credit goes to) Marcell Kiss or [https://github.com/martty](https://github.com/martty)
