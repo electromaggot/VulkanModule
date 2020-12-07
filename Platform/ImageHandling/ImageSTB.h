@@ -40,7 +40,7 @@ protected:
 													//	^	==	 |
 		VkFormat format = VK_FORMAT_R8G8B8A8_UNORM; // <---------+
 
-		ImageInfo info = { pPixels, imageSize, format, texWidth, texHeight };
+		ImageInfo info = { pPixels, imageSize, format, texWidth, texHeight, fileName };
 
 		return info;
 	}
