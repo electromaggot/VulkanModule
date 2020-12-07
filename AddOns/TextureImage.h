@@ -2,11 +2,15 @@
 // TextureImage.h
 //	Vulkan Add-ons
 //
-// Encapsulate Texture Image Mapping, which includes a Sampler and ImageView,
-//	as well as supporting code to: Copy image data, Transition its Format/Layout, etc.
+// Encapsulate Texture Image Mapping, which for convenience bundles-in a Sampler and ImageView,
+//	as well as supporting methods to: Copy image data, Transition its Format/Layout, etc.
 //	This relies on the separate Descriptors (pool, sets, layout) class too.
 // Also define a data structure to specify the texture's file name and how it
 //	is intended to be sampled, wrapped, or if it should be flipped upside-down.
+//
+// For the Sampler, which dictates the appearance of this image, there are two options:
+//	- Let this class create one automatically based on the TextureSpec parameters, or,
+//	- Pass-in a pre-existing Sampler (thus ignoring those related TextureSpec values).
 //
 // Created 6/29/19 by Tadd Jensen
 //	© 0000 (uncopyrighted; use at will)
@@ -42,7 +46,8 @@ struct TextureSpec
 class TextureImage : CommandBufferBase
 {
 public:
-	TextureImage(TextureSpec& texSpec, VkCommandPool& pool, GraphicsDevice& graphicsDevice, iPlatform& platform);
+	TextureImage(TextureSpec& texSpec, VkCommandPool& pool, GraphicsDevice& graphicsDevice,
+				 iPlatform& platform, VkSampler sampler = VK_NULL_HANDLE);
 	~TextureImage();
 
 		// MEMBERS
@@ -56,9 +61,14 @@ private:
 
 	Mipmaps			mipmaps;
 
+	ImageInfo		imageInfo;
+
+	bool			wasSamplerInjected = false;
+
 		// METHODS
 private:
-	void create(TextureSpec& texSpec, GraphicsDevice& greaphicsDevice, iPlatform& platform, bool wantTexelAccess = false);
+	void create(TextureSpec& texSpec, GraphicsDevice& graphicsDevice,
+				iPlatform& platform, bool wantTexelAccess = false);
 	void destroy();
 	void createImageView();
 	void createSampler(TextureSpec& texSpec);
@@ -79,6 +89,8 @@ public:
 			.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 		};
 	}
+	VkImage&		getImage()		{ return image;		}
+	ImageInfo&		getInfo()		{ return imageInfo;	}
 };
 
 #endif // TextureImage_h
