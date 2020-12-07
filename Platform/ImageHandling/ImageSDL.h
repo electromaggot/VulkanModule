@@ -47,7 +47,9 @@ protected:
 		if (!pImage || pImage->pixels == NULL)
 			Fatal("SDL failed to IMG Load texture image: " + string(filePath));
 
-		return validatedImageInfo();
+		ImageInfo info = validatedImageInfo();
+		info.name = filePath;
+		return info;
 	}
 
 	ImageInfo validatedImageInfo(const char* strOp = "")
