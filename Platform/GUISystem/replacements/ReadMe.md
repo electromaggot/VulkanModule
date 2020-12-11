@@ -15,7 +15,7 @@ here [https://github.com/ocornut/imgui/issues/1848](https://github.com/ocornut/i
 
 These files, when subsituted into your "imgui" tree, change that operation by providing this functionality.  You may notice one anomaly, however: the image loads and appears correctly at full-size,
 but when scaled-down using ImGui, it "fades to red" the smaller it gets.  This seems to be due to ImGui using mipmapping, but your "user texture"
-is not, so your image blends into a non-existent lower-resolution version of itself.  Fix this by setting `TextureSpec.filterMode = MIPMAP`, as seen below, for this module's code to enable mipmapping and generate those lower-resolution images for you.
+is not, so your image blends into a non-existent lower-resolution version of itself.  Fix this by setting `TextureSpec.filterMode = MIPMAP`, as seen below, for this module's code to enable mipmapping and generate those additional lower-resolution textures for you.
 
 > Vulkan: switching between images for rendering #914  
 > https://github.com/ocornut/imgui/pull/914
