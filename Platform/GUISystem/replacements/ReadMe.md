@@ -13,9 +13,9 @@ currently loaded font atlas, which was the first (and only) image loaded.  So ch
 here [https://github.com/ocornut/imgui/issues/1848](https://github.com/ocornut/imgui/issues/1848) and here 
 [https://github.com/ocornut/imgui/commit/948009a8b2e98ef35fb8ddfe19299535a16c0834](https://github.com/ocornut/imgui/commit/948009a8b2e98ef35fb8ddfe19299535a16c0834)).
 
-These files change that and provide this functionality.  Note that one bug seems to persist however, on Macs using MoltenVK, although the
-image loads and appears correctly at full-size, when scaled-down using ImGui, it "fades to red" the smaller it gets.  This is perhaps due
-to the particular `VkSampler` that ImGui uses internally.  We will investigate this further later.
+These files, when subsituted into your "imgui" tree, change that operation by providing this functionality.  You may notice one anomaly, however: the image loads and appears correctly at full-size,
+but when scaled-down using ImGui, it "fades to red" the smaller it gets.  This seems to be due to ImGui using mipmapping, but your "user texture"
+is not, so your image blends into a non-existent lower-resolution version of itself.  Fix this by setting `TextureSpec.filterMode = MIPMAP`, as seen below, for this module's code to enable mipmapping and generate those lower-resolution images for you.
 
 > Vulkan: switching between images for rendering #914  
 > https://github.com/ocornut/imgui/pull/914
@@ -24,10 +24,11 @@ The changes folded into these most-recent files originated from (and full credit
 [https://github.com/martty/imgui/commit/f1f948bea715754ad5e83d4dd9f928aecb4ed1d3](https://github.com/martty/imgui/commit/f1f948bea715754ad5e83d4dd9f928aecb4ed1d3)
 
 Unlike his implementation, however, I use `VkDescriptorImageInfo` to pass `VkSampler`, `VkImageView`, and `VkImageLayout` all at once.
-So usage looks like this:
+So usage in this VulkanModule looks like this:
 
     TextureSpec texspec;
-    texspec.filename = "image.png";
+    texspec.filename = "image.png";   // ← your filename of course goes here
+    texspec.filterMode = MIPMAP;
     TextureImage* pImage = new TextureImage(texspec, vulkan.command.vkPool(), vulkan.device, platform);
     ImTextureID userTextureId = ImGui_ImplVulkan_AddTexture(pImage->getDescriptorImageInfo());
 
