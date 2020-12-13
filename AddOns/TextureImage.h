@@ -40,6 +40,7 @@ struct TextureSpec
 	FilterMode	filterMode	 = LINEAR;
 	WrapMode	wrapMode	 = REPEAT;
 	bool		flipVertical = false;	// Set only for pre-flipped image coming from OpenGL. Vulkan orients texture Y-origin correctly.
+	bool		wantMutable	 = false;	// User will modify texture later (so retain staging buffer and re-copyBufferToImage "dirtied" subregions).
 };
 
 
@@ -57,8 +58,6 @@ private:
 	VkImageView		imageView;
 	VkSampler		sampler;
 
-	VkFormat		format;
-
 	Mipmaps			mipmaps;
 
 	ImageInfo		imageInfo;
@@ -67,8 +66,7 @@ private:
 
 		// METHODS
 private:
-	void create(TextureSpec& texSpec, GraphicsDevice& graphicsDevice,
-				iPlatform& platform, bool wantTexelAccess = false);
+	void create(TextureSpec& texSpec, GraphicsDevice& graphicsDevice, iPlatform& platform);
 	void destroy();
 	void createImageView();
 	void createSampler(TextureSpec& texSpec);
@@ -79,7 +77,8 @@ private:
 							   VkImageLayout newLayout);
 	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 public:
-	void Recreate();
+	//void Recreate();
+	void ReGenerateMipmaps();
 
 		// getters
 	VkDescriptorImageInfo getDescriptorImageInfo() {
@@ -91,6 +90,39 @@ public:
 	}
 	VkImage&		getImage()		{ return image;		}
 	ImageInfo&		getInfo()		{ return imageInfo;	}
+
+
+private:
+	class StagingBuffer
+	{
+	public:
+		StagingBuffer(TextureImage& texture);
+		~StagingBuffer();
+
+	private:
+			// MEMBERS
+		VkBuffer		vkBuffer;
+		VkDeviceMemory	deviceMemory;
+
+		TextureImage&	texture;
+
+		char*	pBytes;
+
+		bool	keepMemoryMapped = false;
+
+	public:
+			// METHODS
+		void 	CopyInImageData(TextureSpec& spec);
+		void	CopyOutToParentImage();
+		void	ExperimentalWrite();
+
+	}* pStagingBuffer;
+public:
+	StagingBuffer&	StagingBuffer() {
+		if (! pStagingBuffer)
+			Fatal("Accessing StagingBuffer requires TextureSpec.wantMutable TRUE.");
+		return *pStagingBuffer;
+	}
 };
 
 #endif // TextureImage_h

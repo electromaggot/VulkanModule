@@ -34,16 +34,25 @@ TextureImage::~TextureImage()
 	if (! wasSamplerInjected)
 		vkDestroySampler(device, sampler, nullptr);
 	vkDestroyImageView(device, imageView, nullptr);
-
+	if (pStagingBuffer) {
+		delete pStagingBuffer;
+		pStagingBuffer = nullptr;
+	}
 	vkDestroyImage(device, image, nullptr);
 	vkFreeMemory(device, deviceMemory, nullptr);
 }
 
-
-void TextureImage::create(TextureSpec& texSpec, GraphicsDevice& graphicsDevice, iPlatform& platform, bool wantTexelAccess)
+void TextureImage::ReGenerateMipmaps()
 {
-	VkImageTiling tiling = wantTexelAccess ? VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_OPTIMAL;
+	if (pStagingBuffer)	// i.e. wantMutable && texSpec.filterMode == MIPMAP)
+		mipmaps.Generate(image, imageInfo.format, imageInfo.wide, imageInfo.high);
+}
 
+
+void TextureImage::create(TextureSpec& texSpec, GraphicsDevice& graphicsDevice, iPlatform& platform)
+{
+	VkImageTiling tiling = /*texSpec.wantMutable ? VK_IMAGE_TILING_LINEAR :*/ VK_IMAGE_TILING_OPTIMAL;	//TODO: uncomment when handled better:
+														   //TODO: ^this^ presumed necessary, but MoltenVK error: VK_ERROR_FEATURE_NOT_PRESENT
 	string fileFullPath = FileSystem::TextureFileFullPath(texSpec.fileName);
 
 	imageInfo = platform.ImageSource().Load(fileFullPath.c_str());
@@ -54,33 +63,13 @@ void TextureImage::create(TextureSpec& texSpec, GraphicsDevice& graphicsDevice, 
 		Log(WARN, "    Converting to: %s", VkFormatString(BEST_FORMAT));
 		imageInfo = platform.ImageSource().ConvertTo(BEST_FORMAT);
 	}
+	uint32_t width	= imageInfo.wide;
+	uint32_t height	= imageInfo.high;
+	VkFormat format	= imageInfo.format;
 
-	size_t	 imageSize	= imageInfo.numBytes;
-	void*	 pPixels	= imageInfo.pPixels;
-	uint32_t width		= imageInfo.wide;
-	uint32_t height		= imageInfo.high;
-	format				= imageInfo.format;
+	pStagingBuffer	= new class StagingBuffer(*this);
 
-	VkBuffer stagingBuffer;
-	VkDeviceMemory stagingBufferMemory;
-	createGeneralBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-						stagingBuffer, stagingBufferMemory);
-	void* pStagingBuffer;
-	vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &pStagingBuffer);
-	if (!texSpec.flipVertical)
-		memcpy(pStagingBuffer, pPixels, static_cast<size_t>(imageSize));
-	else {
-		size_t bytesPerRow = imageSize / height;	// (imageSize was calculated using pitch)
-		char* pSource = (char*) pPixels;
-		char* pDestination = (char*) pStagingBuffer + imageSize;
-		for (uint32_t iRow = height; iRow > 0; --iRow) {
-			pDestination -= bytesPerRow;
-			memcpy(pDestination, pSource, bytesPerRow);
-			pSource += bytesPerRow;
-		}
-	}
-	vkUnmapMemory(device, stagingBufferMemory);
+	pStagingBuffer->CopyInImageData(texSpec);
 
 	createImage(width, height, format, tiling,
 				VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
@@ -89,18 +78,18 @@ void TextureImage::create(TextureSpec& texSpec, GraphicsDevice& graphicsDevice, 
 	transitionImageLayout(image, format, VK_IMAGE_LAYOUT_UNDEFINED,					// from
 						  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);					// <- to
 
-	copyBufferToImage(stagingBuffer, image, width, height);
+	pStagingBuffer->CopyOutToParentImage();
 
-	if (texSpec.filterMode == MIPMAP) {
-
+	if (texSpec.filterMode == MIPMAP)
 		mipmaps.Generate(image, format, width, height);
-	}
 	else
 		transitionImageLayout(image, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,	// from
 							  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);			// <- to
 
-	vkDestroyBuffer(device, stagingBuffer, nullptr);
-	vkFreeMemory(device, stagingBufferMemory, nullptr);
+	if (! texSpec.wantMutable) {
+		delete pStagingBuffer;
+		pStagingBuffer = nullptr;
+	}
 }
 
 // VkCreate a texture-specific ImageView, which is how the image data is accessed.
@@ -115,7 +104,7 @@ void TextureImage::createImageView()
 		.flags	= 0,
 		.image		= image,
 		.viewType	= VK_IMAGE_VIEW_TYPE_2D,
-		.format		= format,
+		.format		= imageInfo.format,
 		.components = { .r = VK_COMPONENT_SWIZZLE_IDENTITY, .g = VK_COMPONENT_SWIZZLE_IDENTITY,
 						.b = VK_COMPONENT_SWIZZLE_IDENTITY, .a = VK_COMPONENT_SWIZZLE_IDENTITY },
 		.subresourceRange = {
@@ -280,6 +269,7 @@ void TextureImage::transitionImageLayout(VkImage image, VkFormat format, VkImage
 	endAndSubmitCommands(commands);
 }
 
+// Use CommandBuffer/GPU to copy StagingBuffer to VkImage.  Be mindful on Mac of your VK_FORMAT should the following message result:
 //[***MoltenVK ERROR***] VK_ERROR_FORMAT_NOT_SUPPORTED: vkCmdCopyBufferToImage(): The image is using Metal format MTLPixelFormatInvalid as a
 //	substitute for Vulkan format VK_FORMAT_UNDEFINED. Since the pixel size is different, content for the image cannot be copied to or from a buffer.
 //
@@ -293,7 +283,7 @@ void TextureImage::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t wi
 		.bufferImageHeight	= 0,
 		.imageSubresource = {
 			.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT,
-			.mipLevel		= 0,
+			.mipLevel		= 0,	// only applies to the 1:1 mipmap (user: re-generate for the other levels)
 			.baseArrayLayer	= 0,
 			.layerCount		= 1
 		},
@@ -306,6 +296,72 @@ void TextureImage::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t wi
 						   numRegions, &copyRegion);
 
 	endAndSubmitCommands(commands);
+}
+
+//\\//\\  STAGING BUFFER nested class   //\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\
+
+TextureImage::StagingBuffer::StagingBuffer(TextureImage& image)
+	:	texture(image)
+{ }
+#define DEREFERENCE(textureImage)	ImageInfo&	  imageData = textureImage.imageInfo;	\
+									VkDeviceSize& nBytes	= imageData.numBytes;		\
+									int&		  width		= imageData.wide;			\
+									int&		  height	= imageData.high;
+// Copy into the StagingBuffer the just-loaded image.
+void TextureImage::StagingBuffer::CopyInImageData(TextureSpec& spec)
+{
+	DEREFERENCE(texture)
+	char* pPixels = (char*) imageData.pPixels;
+
+	texture.createGeneralBuffer(nBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+								VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+								vkBuffer, deviceMemory);
+
+	vkMapMemory(texture.device, deviceMemory, 0, nBytes, 0, (void**) &pBytes);
+
+	if (! spec.flipVertical)
+		memcpy(pBytes, pPixels, static_cast<size_t>(nBytes));
+	else {
+		size_t bytesPerRow = nBytes / width;	// (imageSize was calculated using pitch)
+		char* pSource = pPixels;
+		char* pDestination = pBytes + nBytes;
+		for (uint32_t iRow = height; iRow > 0; --iRow) {
+			pDestination -= bytesPerRow;
+			memcpy(pDestination, pSource, bytesPerRow);
+			pSource += bytesPerRow;
+		}
+	}
+	if (spec.wantMutable)
+		keepMemoryMapped = true;
+	else
+		vkUnmapMemory(texture.device, deviceMemory);
+}
+TextureImage::StagingBuffer::~StagingBuffer()
+{
+	if (keepMemoryMapped)
+		vkUnmapMemory(texture.device, deviceMemory);
+	vkDestroyBuffer(texture.device, vkBuffer, nullptr);
+	vkFreeMemory(texture.device, deviceMemory, nullptr);
+}
+
+void TextureImage::StagingBuffer::CopyOutToParentImage()
+{
+	texture.copyBufferToImage(vkBuffer, texture.image, texture.imageInfo.wide, texture.imageInfo.high);
+}
+
+// For test/debug: diagonal line of black pixels across image.
+//	Note that for mipmaps, this may only write to the max-resolution map (and "blend
+//	away" into the next-lower map shown) unless you re-generate the mipmaps post-mutate.
+void TextureImage::StagingBuffer::ExperimentalWrite() {
+	DEREFERENCE(texture)
+	size_t bytesPerRow = nBytes / height;
+	size_t bytesPerPixel = nBytes / (width * height);
+	char* pDestination = pBytes;
+	char* pEnd = pDestination + nBytes;
+	while (pDestination < pEnd) {
+		memset(pDestination, 0, bytesPerPixel);
+		pDestination += bytesPerRow + bytesPerPixel;
+	}
 }
 
 
