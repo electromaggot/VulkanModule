@@ -39,7 +39,7 @@ void LogStartup()	// Provide a startup sanity check...
 }
 
 
-// Assumes..: enum Tier { ERROR, WARN, NOTE, RAW, HANG, LOW };
+// Assumes..: enum Tier { ERROR, WARN, NOTE, RAW, SAME, LOW };
 const char* Prefix[] = { "ERROR! ", "Warning: ", "Note: ", "", "", "" };
 
 string logFileName;
@@ -48,10 +48,10 @@ const char* pLogFileName = nullptr;
 
 void Log(Tier tier, string message) {
 	#ifndef DEBUG_LOW
-	if (tier == LOW) return;
+	if (tier == LOW)  return;
 	#endif
 	cout << Prefix[tier] << message;
-	if (tier != HANG)  cout << ENDL;
+	if (tier != SAME)  cout << ENDL;
 
 	if (AppConstants.Settings.isDebugLogToFile)
 		logToFile(tier, message.c_str());
@@ -60,7 +60,7 @@ void Log(Tier tier, string message) {
 void Log(Tier tier, const char* format, ...)
 {
 	#ifndef DEBUG_LOW
-	if (tier == LOW) return;
+	if (tier == LOW)  return;
 	#endif
 
 	char buffer[1024];
@@ -69,7 +69,7 @@ void Log(Tier tier, const char* format, ...)
 	vsnprintf(buffer, sizeof buffer, format, vargs);
 	va_end(vargs);
 	cout << Prefix[tier] << buffer;
-	if (tier != HANG) cout << ENDL;
+	if (tier != SAME)  cout << ENDL;
 
 	if (AppConstants.Settings.isDebugLogToFile)
 		logToFile(tier, buffer);
@@ -86,7 +86,7 @@ void logToFile(Tier tier, const char* buffer)
 	if (settingsFile.is_open())
 	{
 		settingsFile << Prefix[tier] << buffer;
-		if (tier != HANG) settingsFile << endl << flush;
+		if (tier != SAME)  settingsFile << endl << flush;
 
 		settingsFile.close();
 	}

@@ -20,7 +20,13 @@
 extern void LogStartup();
 
 
-enum Tier { ERROR, WARN, NOTE, RAW, HANG, LOW };
+enum Tier { ERROR,	// For: major problem, although non-fatal.
+			WARN,	//		minor problem, probably ignorable.
+			NOTE,	//		inform progress.	// This tier and below may be "noise" and filtered out.
+			RAW,	//	 Won't prefix line with tier-indicator-string (works well after SAME).
+			SAME,	//		like NOTE but no newline at line-end, keep next message on SAME line.
+			LOW };	//		low-level debugging, could be too verbose.
+
 extern void Log(Tier tier, string message);
 extern void Log(Tier tier, const char* format, ...);
 
