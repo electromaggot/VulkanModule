@@ -39,8 +39,8 @@ protected:
 	StrPtr	namePlatform;
 
 public:
-	bool	isWindowResized   = false;
-	bool	isWindowMinimized = false;
+	bool	isWindowResized = false;
+	bool	isWindowHidden	= false;
 
 	int		pixelsWide = 0;		// Publicly-vulnerable but low-overhead convenience values,
 	int		pixelsHigh = 0;		//	especially if read every frame, avoid continuous heavy calls
@@ -81,7 +81,7 @@ public:
 	bool		IsWindowResized()				{ bool wasWindowResized = isWindowResized;
 				/* This is a ONE SHOT! */		  isWindowResized = false;
 				/*	Only resets once read. */	  return wasWindowResized; }
-	bool		IsWindowMinimized()				{ return isWindowMinimized; }
+	bool		IsWindowMinimizedOrHidden()		{ return isWindowHidden; }
 
 	bool		IsDebugReportProvided()			{ return extendedPlatform.IsDebugReportSupported(); }
 

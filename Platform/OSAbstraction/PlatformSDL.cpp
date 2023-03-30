@@ -104,7 +104,6 @@ void PlatformSDL::createVulkanCompatibleWindow()
 
 // Finer-granularity callbacks as Window border is grabbed & dragged, making rendering
 //	calls to update window content as it is resized.
-//	See
 //
 int PlatformSDL::realtimeResizingEventWatcher(void* data, SDL_Event* event)
 {
@@ -249,7 +248,7 @@ bool PlatformSDL::GetWindowSize(int& pixelWidth, int& pixelHeight)
 
 void PlatformSDL::recordWindowGeometry() // (with logging too)
 {
-	Log(HANG, "Note: Save Window Geometry: ");
+	Log(SAME, "Note: Save Window Geometry: ");
 
 	AppSettings& settings = AppConstants.Settings;
 	settings.startingWindowWidth  = pixelsWide;
@@ -326,7 +325,7 @@ void PlatformSDL::DialogBox(const char* message, const char* title, AlertLevel l
 
 // RUNTIME -----------------------------------------------------------------------------------------
 
-// Polling is the way to go; using SDL_PollEvent gives best responsiveness/performance with
+// Polling is core to SDL; using SDL_PollEvent gives best responsiveness/performance with
 //	one unified IO/Render thread, but even with a multi-threaded/synchronized arrangement.
 //	(Note that SDL_Wait blocks indefinitely without returning (seizes rendering) while
 //	 SDL_WaitTimeout blocks at a minimum interval of one millisecond, which: is still too
@@ -345,22 +344,28 @@ bool PlatformSDL::PollEvent()
 		switch (event.type) {
 			case SDL_WINDOWEVENT:
 				switch (event.window.event) {
-					case SDL_WINDOWEVENT_SIZE_CHANGED:		// (and ignoring SDL_WINDOWEVENT_RESIZED, see DEV NOTE 1 at bottom)
-						recordWindowSize(event.window.data1, event.window.data2);			// want this to save resized window size to Settings file
+					case SDL_WINDOWEVENT_SIZE_CHANGED:	// (and ignoring SDL_WINDOWEVENT_RESIZED, see DEV NOTE 1 at bottom)
+						recordWindowSize(event.window.data1, event.window.data2);	// want this to save resized window size to Settings file
 						isWindowResized = true;			// (note this remains set until retrieved, whence one-shot resets it)
-printf("RESIZE %d x %d\n", event.window.data1, event.window.data2);
-						Log(LOW, "      Resized %d x %d", pixelsWide, pixelsHigh);	// show resize is finished
+						Log(LOW, "      Window Resized %d x %d", pixelsWide, pixelsHigh);	// show resize is finished
 						break;
 					case SDL_WINDOWEVENT_MOVED:
 						windowMovedToX = event.window.data1;	// (see DEV NOTE 2)
 						windowMovedToY = event.window.data2;
-						Log(LOW, "      Move %d, %d...", windowMovedToX, windowMovedToY);
+						Log(LOW, "      Window Move %d, %d...", windowMovedToX, windowMovedToY);
 						return true;
 					case SDL_WINDOWEVENT_MINIMIZED:
-						isWindowMinimized = true;
+					case SDL_WINDOWEVENT_HIDDEN:
+						isWindowHidden = true;
 						break;
-					case SDL_WINDOWEVENT_RESTORED:
-						isWindowMinimized = false;
+					case SDL_WINDOWEVENT_SHOWN:
+					case SDL_WINDOWEVENT_EXPOSED:
+						isWindowHidden = false;
+						break;
+					case SDL_WINDOWEVENT_MAXIMIZED:
+					case SDL_WINDOWEVENT_RESTORED: // (from being maximized)
+						isWindowResized = true;
+						isWindowHidden = false;
 						break;
 				}
 				break;
