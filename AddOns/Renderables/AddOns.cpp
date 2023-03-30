@@ -86,7 +86,7 @@ void AddOns::createDescribedItems(UBO* pUBO, vector<TextureSpec>& textureSpecs,
 			TextureImage* pTexture = new TextureImage(texspecs.back(), vulkan.command.vkPool(), vulkan.device, platform);
 			if (pTexture) {
 				pTextureImages.emplace_back(pTexture);
-				described.emplace_back( pTexture->getDescriptorImageInfo(),				// layout(binding = 1) ... 2) ... 3)...
+				described.emplace_back( pTexture->getDescriptorImageInfo(),			// layout(binding = 1) ... 2) ... 3)...
 										VK_SHADER_STAGE_FRAGMENT_BIT);
 										// ^^^^^^ TODO: ^^^^^^^^ We don't have a mechanism (YET!) allowing an image to
 			}							//		be specified for the VERTEX STAGE, which could be helpful for something
