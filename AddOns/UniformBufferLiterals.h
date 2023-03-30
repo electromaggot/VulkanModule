@@ -34,7 +34,7 @@ struct UBO_MVP {
 	alignas(16)		mat4 proj;
 };
 
-// This UBO passes real-time state used by a Fragement Shader
+// This UBO passes real-time state used by a Fragment Shader
 //	renderer, e.g. a Ray-based algorithm, so it is intended for
 //	the Fragment Stage, which is its default value below.
 //
