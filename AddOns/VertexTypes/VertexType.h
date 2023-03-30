@@ -12,21 +12,7 @@
 #ifndef VertexType_h
 #define VertexType_h
 
-#if NO_GLM		// (if your needs are ultra simple...)
-	typedef float vec2[2];
-	typedef float vec3[3];	// Note that these floats match SFLOAT in VK_FORMAT.
-	typedef float mat4[4][4];
-#else
-	// (Make sure glm's base directory is in your project's header paths!)
-
-	#define GLM_FORCE_RADIANS
-	#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
-	#include <glm/glm.hpp>
-	#include <glm/gtc/matrix_transform.hpp>
-
-	using glm::vec2; using glm::vec3; using glm::vec4; using glm::mat4;
-	using glm::radians;
-#endif
+#include "VulkanMath.h"
 
 
 typedef uint16_t	IndexBufferIndexType;
