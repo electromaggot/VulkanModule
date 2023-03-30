@@ -1,4 +1,9 @@
 //
+// IMPORTANT NOTE: This GLFW support is incomplete; it may not even compile.
+//	See comment atop PlatformGLFW.cpp for details and further explanation.
+//
+
+//
 // PlatformGLFW.h
 //	General App Chassis
 //

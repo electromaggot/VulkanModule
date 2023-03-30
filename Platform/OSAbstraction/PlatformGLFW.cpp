@@ -1,4 +1,17 @@
 //
+// IMPORTANT NOTE: This project's intent is not only to be platform-independent, but as originally
+//	conceived, even attempted to skirt dependence on third-party platform-abstraction-layer
+//	libraries, so for instance tried to support not just SDL, but GLFW, perhaps XCB, etc.
+//	However and unfortunately, this somewhat defeats the purpose of such a library to begin with,
+//	adding, in the end, unnecessary complexity.  So we picked one focus:  SDL
+//	Therefore GLFW (and XCB) support fell behind and was abandoned relatively early-on.  This code
+//	probably won't work, let alone build, and at the very least needs testing on another platform.
+//	These files are left here for academic reasons or as a start to anyone wishing to "pick up the
+//	GLFW/XCB ball and run with it."  If GLFW is what you love (or you dislike SDL), feel free to
+//	extend this project beyond SDL, then please share with other GLFW fans via Pull Request!
+//
+
+//
 // PlatformGLFW.cpp
 //	General App Chassis
 //
@@ -8,9 +21,6 @@
 //	© 0000 (uncopyrighted; use at will)
 //
 #include "PlatformGLFW.h"
-
-
-//TJ_TODO: TJ_TEMPORARY_NOTE: This probably won't work, let alone build; needs testing on another platform.
 
 
 PlatformGLFW::PlatformGLFW()
@@ -111,14 +121,14 @@ void PlatformGLFW::framebufferResizeCallback(GLFWwindow* pWindow, int width, int
 
 // Avoid repeated (polled) calls to glfwGetWindowAttrib(pWindow, GLFW_ICONIFIED)
 //	by only setting the boolean when window is actually either iconified or restored.
-//	FYI: glfwGetFramebufferSize(pWindow, &width, &height); isMinimized = (width == 0 || height == 0);
+//	FYI: glfwGetFramebufferSize(pWindow, &width, &height); isWindowHidden = (width == 0 || height == 0);
 //	(e.g. https://vulkan-tutorial.com/en/Drawing_a_triangle/Swap_chain_recreation#page_Handling-minimization )
 //	...is another suggested approach, but the code below couldn't be simpler and can't be beat.
 //
 void PlatformGLFW::windowIconifyCallback(GLFWwindow* pWindow, int isIconified)
 {
 	auto self = reinterpret_cast<PlatformGLFW*>(glfwGetWindowUserPointer(pWindow));
-	self->IsWindowMinimized = isIconified ? true : false;
+	self->IsWindowMinimizedOrHidden = isIconified ? true : false;
 }
 
 void PlatformGLFW::mouseMotionCallback(GLFWwindow* pWindow, double xpos, double ypos)
