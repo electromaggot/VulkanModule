@@ -46,6 +46,9 @@ private:
 	PFNResizeForceRender pfnResizeForceRender = nullptr;
 	void* pRenderingObject = nullptr;
 
+	int	lastSavedPixelsWide = 0;
+	int	lastSavedPixelsHigh = 0;
+
 		// METHODS
 public:
 	void CreateVulkanSurface(VkInstance instance, VkSurfaceKHR& surface);
@@ -75,6 +78,8 @@ private:
 	void recordWindowPosition(int x, int y);
 	float getDisplayScaling();
 	float getDisplayDPI(int iDisplay = 0);
+
+	void process(SDL_WindowEvent& windowEvent);
 
 	// WIP, TODO: "more officially" integrate later
 	void createMultiMonitorWindows();
