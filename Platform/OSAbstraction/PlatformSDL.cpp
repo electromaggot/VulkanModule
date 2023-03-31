@@ -90,8 +90,8 @@ void PlatformSDL::createVulkanCompatibleWindow()
 	if (!pWindow)
 		Fatal("Fail to Create Vulkan-compatible Window with SDL: " + string(SDL_GetError()));
 
-	pixelsWide = winWide;
-	pixelsHigh = winHigh;
+	pixelsWide = lastSavedPixelsWide = winWide;
+	pixelsHigh = lastSavedPixelsHigh = winHigh;
 	windowX = winX;
 	windowY = winY;
 
@@ -99,7 +99,10 @@ void PlatformSDL::createVulkanCompatibleWindow()
 	//No, on 2nd thought, won't.  If re-run, will re-assign the same way.  If user tweaks, then it will save.
 	//(plus, the above seems to wipe out the saved credentials, which need to be pulled from Vault if that's to happen)
 
-	SDL_AddEventWatch(realtimeResizingEventWatcher, this);
+//	if (! isMobilePlatform)		// we don't need this for full-screen or mobile (where called unnecessarily on device rotation)
+		SDL_AddEventWatch(realtimeResizingEventWatcher, this);
+//TODO: had commented the above test, but not documented why. Later, justify resizeEventWatcher on mobile...
+//		   was it to actually catch and process the device rotation?
 }
 
 // Finer-granularity callbacks as Window border is grabbed & dragged, making rendering
@@ -256,23 +259,12 @@ void PlatformSDL::recordWindowGeometry() // (with logging too)
 	settings.startingWindowX = windowX;
 	settings.startingWindowY = windowY;
 	settings.Save();
-/*
-	static int tempPixelsWide = 0,	 // just to make sure not to rewrite file with same values
-			   tempPixelsHigh = 0;
-	GetWindowSize(tempPixelsWide, tempPixelsHigh);
-	if (tempPixelsWide != pixelsWide || tempPixelsHigh != pixelsHigh) {
-//		Log(NOTE, "Window Resolution is:  %d x %d", tempPixelsWide, tempPixelsHigh);
-		pixelsWide = tempPixelsWide;
-		pixelsHigh = tempPixelsHigh;
-	}
-*/
-	//SDL_GEtWindowPosition
 }
 void PlatformSDL::recordWindowSize(int wide, int high)
 {
-	if (pixelsWide != wide || pixelsHigh != high) {
-		pixelsWide = wide;
-		pixelsHigh = high;
+	if (lastSavedPixelsWide != wide || lastSavedPixelsHigh != high) {
+		lastSavedPixelsWide = wide;
+		lastSavedPixelsHigh = high;
 		recordWindowGeometry();
 	}
 }
@@ -334,8 +326,6 @@ void PlatformSDL::DialogBox(const char* message, const char* title, AlertLevel l
 //
 bool PlatformSDL::PollEvent()
 {
-	static int windowMovedToY, windowMovedToX = INT_MIN;
-
 	if (SDL_PollEvent(&event))
 	{
 		GUISystemProcessEvent(&event);
@@ -343,31 +333,7 @@ bool PlatformSDL::PollEvent()
 
 		switch (event.type) {
 			case SDL_WINDOWEVENT:
-				switch (event.window.event) {
-					case SDL_WINDOWEVENT_SIZE_CHANGED:	// (and ignoring SDL_WINDOWEVENT_RESIZED, see DEV NOTE 1 at bottom)
-						recordWindowSize(event.window.data1, event.window.data2);	// want this to save resized window size to Settings file
-						isWindowResized = true;			// (note this remains set until retrieved, whence one-shot resets it)
-						Log(LOW, "      Window Resized %d x %d", pixelsWide, pixelsHigh);	// show resize is finished
-						break;
-					case SDL_WINDOWEVENT_MOVED:
-						windowMovedToX = event.window.data1;	// (see DEV NOTE 2)
-						windowMovedToY = event.window.data2;
-						Log(LOW, "      Window Move %d, %d...", windowMovedToX, windowMovedToY);
-						return true;
-					case SDL_WINDOWEVENT_MINIMIZED:
-					case SDL_WINDOWEVENT_HIDDEN:
-						isWindowHidden = true;
-						break;
-					case SDL_WINDOWEVENT_SHOWN:
-					case SDL_WINDOWEVENT_EXPOSED:
-						isWindowHidden = false;
-						break;
-					case SDL_WINDOWEVENT_MAXIMIZED:
-					case SDL_WINDOWEVENT_RESTORED: // (from being maximized)
-						isWindowResized = true;
-						isWindowHidden = false;
-						break;
-				}
+				process(event.window);
 				break;
 			case SDL_MOUSEMOTION:
 				mouseX = event.motion.x;
@@ -389,13 +355,44 @@ bool PlatformSDL::PollEvent()
 			default:
 				break;
 		}
-		if (windowMovedToX != INT_MIN) { // Current event was not WINDOW _MOVED, but this indicates that previous event was,
-			recordWindowPosition(windowMovedToX, windowMovedToY);	//	therefore "end of dragging around window," so save its position.
-			windowMovedToX = INT_MIN;
-		}
 		return true;
 	}
 	return false;
+}
+
+void PlatformSDL::process(SDL_WindowEvent& windowEvent)
+{
+	static int windowMovedToY, windowMovedToX = INT_MIN;
+
+	switch (windowEvent.event) {
+		case SDL_WINDOWEVENT_SIZE_CHANGED:	// (and ignoring SDL_WINDOWEVENT_RESIZED, see DEV NOTE at bottom)
+			recordWindowSize(event.window.data1, event.window.data2);	// want this to save resized window size to Settings file
+			isWindowResized = true;			// (note this remains set until retrieved, whence one-shot resets it)
+			Log(LOW, "      Window Resized %d x %d", pixelsWide, pixelsHigh);	// show resize is finished
+			break;
+		case SDL_WINDOWEVENT_MOVED:
+			windowMovedToX = event.window.data1;
+			windowMovedToY = event.window.data2;
+			Log(LOW, "      Window Move %d, %d...", windowMovedToX, windowMovedToY);
+			return;
+		case SDL_WINDOWEVENT_MINIMIZED:
+		case SDL_WINDOWEVENT_HIDDEN:
+			isWindowHidden = true;
+			break;
+		case SDL_WINDOWEVENT_SHOWN:
+		case SDL_WINDOWEVENT_EXPOSED:
+			isWindowHidden = false;
+			break;
+		case SDL_WINDOWEVENT_MAXIMIZED:
+		case SDL_WINDOWEVENT_RESTORED: // (from being maximized)
+			isWindowResized = true;
+			isWindowHidden = false;
+			break;
+	}
+	if (windowMovedToX != INT_MIN) { // Current event was not WINDOW _MOVED, but this indicates that previous event was,
+		recordWindowPosition(windowMovedToX, windowMovedToY);	//	therefore "end of dragging around window," so save its position.
+		windowMovedToX = INT_MIN;
+	}
 }
 
 bool PlatformSDL::IsEventQUIT()
