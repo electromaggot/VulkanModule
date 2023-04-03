@@ -18,6 +18,7 @@
 #include "PlatformExtension.h"
 #include "AppSettings.h"
 #include "iImageSource.h"
+#include "iControlScheme.h"
 
 
 class iPlatform
@@ -61,7 +62,7 @@ public:
 
 	virtual void DialogBox(const char* message, const char* title, AlertLevel level) = 0;
 
-	virtual bool PollEvent()	= 0;		// return false if failure to poll
+	virtual bool PollEvent(iControlScheme* pController = nullptr)	= 0;	// return false if failure to poll
 	virtual bool IsEventQUIT()	= 0;
 	virtual void AwaitEvent()	= 0;
 	virtual void ClearEvents()	= 0;

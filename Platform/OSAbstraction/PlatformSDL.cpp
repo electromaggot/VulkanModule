@@ -324,7 +324,7 @@ void PlatformSDL::DialogBox(const char* message, const char* title, AlertLevel l
 //	 coarse (possibly causing a task-switch), leads to stuttering in rendering or immediate
 //	 user-input to visual-output response.  Thus neither Wait method is suitable.)
 //
-bool PlatformSDL::PollEvent()
+bool PlatformSDL::PollEvent(iControlScheme* pController)
 {
 	if (SDL_PollEvent(&event))
 	{
@@ -336,8 +336,28 @@ bool PlatformSDL::PollEvent()
 				process(event.window);
 				break;
 			case SDL_MOUSEMOTION:
-				mouseX = event.motion.x;
+				mouseX = event.motion.x;	// handle mouse input passively
 				mouseY = event.motion.y;
+				if (pController)			// handle actively
+					pController->handlePrimaryPressAndDrag(mouseX, mouseY);
+				break;
+			case SDL_MOUSEBUTTONDOWN:
+				if (pController)
+					switch (event.button.button)
+					{
+					case SDL_BUTTON_LEFT:
+						pController->handlePrimaryPressDown(event.button.x, event.button.y);
+						break;
+					}
+				break;
+			case SDL_MOUSEBUTTONUP:
+				if (pController)
+					switch (event.button.button)
+					{
+					case SDL_BUTTON_LEFT:
+						pController->handlePrimaryPressUp(event.button.x, event.button.y);
+						break;
+					}
 				break;
 			case SDL_KEYUP: {
 				#if TARGET_OS_IOS
