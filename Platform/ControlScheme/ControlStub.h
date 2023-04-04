@@ -2,10 +2,9 @@
 // ControlStub.h
 //	Instantiation sans implementation
 //
-// See header file for main comment.  This class is empty and simply serves as an example.
-//
 // Derive your custom class from iControlScheme, or use this file as a template and fill-in your own
-//	implementation.  On construction, pass in a reference to an object you want this controller to act upon.
+//	implementation.  On construction, pass in a reference to an object you want this controller to act
+//	upon (and it doesn't have to be gxCamera, it can be an Object3D or anything you want to control).
 //
 // Created 15-Sep-2018 by Tadd Jensen
 //	© 0000 (uncopyrighted; use at will)
