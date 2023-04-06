@@ -348,6 +348,9 @@ bool PlatformSDL::PollEvent(iControlScheme* pController)
 					case SDL_BUTTON_LEFT:
 						pController->handlePrimaryPressDown(event.button.x, event.button.y);
 						break;
+					case SDL_BUTTON_RIGHT:
+						pController->handleSecondaryPressDown(event.button.x, event.button.y);
+						break;
 					}
 				break;
 			case SDL_MOUSEBUTTONUP:
@@ -357,7 +360,23 @@ bool PlatformSDL::PollEvent(iControlScheme* pController)
 					case SDL_BUTTON_LEFT:
 						pController->handlePrimaryPressUp(event.button.x, event.button.y);
 						break;
+					case SDL_BUTTON_RIGHT:
+						pController->handleSecondaryPressUp(event.button.x, event.button.y);
+						break;
 					}
+				break;
+			case SDL_MOUSEWHEEL:
+				if (pController)
+					pController->handleMouseWheel(event.wheel.x, event.wheel.y);
+				break;
+			case SDL_MULTIGESTURE:
+				// FYI https://skia.googlesource.com/third_party/sdl/+/master/docs/README-gesture.md
+				//		file://../../../3rdParty/SDL/SDL/include/SDL_events.h
+				if (pController && event.mgesture.numFingers == 2)
+				{
+					pController->handlePinchSpread(event.mgesture.dDist);
+					pController->handleTwoFingerTwist(event.mgesture.dTheta);
+				}
 				break;
 			case SDL_KEYUP: {
 				#if TARGET_OS_IOS
