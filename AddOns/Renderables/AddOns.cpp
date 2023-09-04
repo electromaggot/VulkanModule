@@ -20,7 +20,7 @@ AddOns::AddOns(Renderable& renderable, VulkanSetup& setup, iPlatform& abstractPl
 		platform(abstractPlatform)
 {
 	createVertexAndOrIndexBuffers(renderable.vertexSpec);
-	createDescribedItems(renderable.pUBOs.data(), renderable.textureSpecs, abstractPlatform);
+	createDescribedItems(renderable.pUBOs, renderable.textureSpecs, abstractPlatform);
 }
 
 AddOns::~AddOns()
@@ -68,15 +68,16 @@ void AddOns::Recreate(VertexBasedObject& vertexObject)
 // Assemble a collection of Descriptors to be "added on."  Ordering is critical:
 //	make sure each INDEX matches its "layout(binding = <INDEX>)" in your Shader...
 //																					// e.g. :
-void AddOns::createDescribedItems(UBO* pUBO, vector<TextureSpec>& textureSpecs,
+void AddOns::createDescribedItems(vector<UBO>& UBOs, vector<TextureSpec>& textureSpecs,
 								  iPlatform& platform)
 {
 	// Uniform Buffer Objects first (explicitly: the MVP UBO)
-	if (pUBO) {
-		ubo = *pUBO;
-		pUniformBuffer = new UniformBuffer(ubo.byteSize, vulkan.swapchain, vulkan.device);
+	for (UBO& eachUBO : UBOs) {
+		ubos.push_back(eachUBO);
+		UniformBuffer* pUniformBuffer = new UniformBuffer(eachUBO.byteSize, vulkan.swapchain, vulkan.device);
+		pUniformBuffers.push_back(pUniformBuffer);
 		described.emplace_back( pUniformBuffer->getDescriptorBufferInfo(),			// layout(binding = 0)
-								ubo.getShaderStageFlags());
+								eachUBO.getShaderStageFlags());
 	}
 
 	// Textures next (may be more than one)... order is important here too == binding index
@@ -97,7 +98,7 @@ void AddOns::createDescribedItems(UBO* pUBO, vector<TextureSpec>& textureSpecs,
 
 void AddOns::RecreateDescribables()
 {
-	if (pUniformBuffer)
+	for (auto& pUniformBuffer : pUniformBuffers)
 		pUniformBuffer->Recreate(-1, vulkan.swapchain);
 
 	// Recreation (reload or regeneration) of TextureImages wasn't given much consideration, so if it is
@@ -118,9 +119,9 @@ void AddOns::RecreateDescribables()
 vector<DescribEd> AddOns::reDescribe()
 {
 	vector<DescribEd> redescribedAddOns;
-	if (pUniformBuffer)
-		redescribedAddOns.emplace_back(pUniformBuffer->getDescriptorBufferInfo(),
-									   ubo.getShaderStageFlags());
+	for (int index = 0; index < pUniformBuffers.size(); ++index)
+		redescribedAddOns.emplace_back(pUniformBuffers[index]->getDescriptorBufferInfo(),
+									   ubos[index].getShaderStageFlags());
 	for (auto& pTextureImage : pTextureImages)
 		redescribedAddOns.emplace_back(pTextureImage->getDescriptorImageInfo(),
 									   VK_SHADER_STAGE_FRAGMENT_BIT);

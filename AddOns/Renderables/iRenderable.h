@@ -177,6 +177,8 @@ public:
 		recordables[iRecordable].pRenderables.push_back(pRenderable);
 	}
 
+	//TJ_TODO: this is where all Renderables get their Update() methods called.
+	//
 	void Update(float deltaTime)
 	{
 		for (CommandRecordable& recordable : recordables)
@@ -190,13 +192,14 @@ public:
 			for (auto& pRenderable : recordable.pRenderables) {
 				if (!pRenderable->isSelfManaged) {
 					AddOns& addOns = pRenderable->addOns;
-					if (addOns.described.size() > 0 && addOns.pUniformBuffer) {
-						UniformBuffer& unibuf = *addOns.pUniformBuffer;
-						void* pUboData = addOns.ubo.pBytes;
-						size_t numBytes = addOns.ubo.byteSize;
-						assert(numBytes == unibuf.nbytesBufferObject);
-						unibuf.Update(iNextImage, pUboData, numBytes);
-					}
+					if (addOns.described.size() > 0)
+						for (int index = 0; index < addOns.pUniformBuffers.size(); ++index) {
+							UniformBuffer& unibuf = *addOns.pUniformBuffers[index];
+							void* pUboData = addOns.ubos[index].pBytes;
+							size_t numBytes = addOns.ubos[index].byteSize;
+							assert(numBytes == unibuf.nbytesBufferObject);
+							unibuf.Update(iNextImage, pUboData, numBytes);
+						}
 				}
 			}
 	}
