@@ -25,8 +25,11 @@ enum DestinationStage {
 };
 
 
-// Model-/View-/Projection-matrix UBOs are usually destined for
-//	the Vertex Stage, so that will be their default below.
+//-- Model-/View-/Projection-matrix UBOs -------------------------------------
+// Primarily destined for the Vertex Stage, so that will be their default below.
+//  For convenience, these can assume two forms:
+
+// One for simplistic cases where only a single model matrix is needed...
 //
 struct UBO_MVP {
 	alignas(16)		mat4 model;
@@ -34,9 +37,20 @@ struct UBO_MVP {
 	alignas(16)		mat4 proj;
 };
 
-// This UBO passes real-time state used by a Fragment Shader
-//	renderer, e.g. a Ray-based algorithm, so it is intended for
-//	the Fragment Stage, which is its default value below.
+// ...and a more-refined form where View-Projection matrices for the camera are
+//	global thus passed separately, with Model matrix excluded, instead considered
+//	"local" thus transferred per-Object3D, done via UBO(mat4& ...) seen below.
+//
+struct UBO_VP {
+	alignas(16)		mat4 view;
+	alignas(16)		mat4 proj;
+};
+
+
+//-- Other UBO Variants ------------------------------------------------------
+
+// This UBO passes real-time state used by a Fragment Shader renderer, e.g. a Ray-based
+//	algorithm, so it is intended for the Fragment Stage, which is its default value below.
 //
 struct UBO_rtm {
 	alignas(16)		vec4  resolution;
@@ -44,6 +58,8 @@ struct UBO_rtm {
 	alignas(4)		float time;
 	alignas(16)		vec4  mouse;
 };
+
+//----------------------------------------------------------------------------
 
 
 struct UBO {
@@ -53,6 +69,11 @@ struct UBO {
 
 	UBO(UBO_MVP& mvp, DestinationStage dstage = DESTINATION_VERTEX_STAGE)
 		:	byteSize(sizeof(UBO_MVP)), pBytes(&mvp), destinationStage(dstage)	{ }
+
+	UBO(mat4& model, DestinationStage dstage = DESTINATION_VERTEX_STAGE)
+		:	byteSize(sizeof(mat4)), pBytes(&model), destinationStage(dstage)	{ }
+	UBO(UBO_VP& vp, DestinationStage dstage = DESTINATION_VERTEX_STAGE)
+		:	byteSize(sizeof(UBO_VP)), pBytes(&vp), destinationStage(dstage)		{ }
 
 	UBO(UBO_rtm& rtm, DestinationStage dstage = DESTINATION_FRAGMENT_STAGE)
 		:	byteSize(sizeof(UBO_rtm)), pBytes(&rtm), destinationStage(dstage)	{ }
