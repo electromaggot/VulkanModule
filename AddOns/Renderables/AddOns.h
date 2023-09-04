@@ -48,10 +48,10 @@ protected:
 	PrimitiveBuffer*	pVertexBuffer		= nullptr;
 	PrimitiveBuffer*	pIndexBuffer		= nullptr;
 
-	UniformBuffer*		  pUniformBuffer	= nullptr;
-	vector<TextureImage*> pTextureImages;
+	vector<UniformBuffer*>	pUniformBuffers;
+	vector<TextureImage*>	pTextureImages;
 
-	UBO					ubo;			// Store local copies of these,
+	vector<UBO>			ubos;			// Store local copies of these,
 	vector<TextureSpec>	texspecs;		//	otherwise they go away.
 
 	VulkanSetup&		vulkan;			// These are retained mainly
@@ -62,7 +62,7 @@ protected:
 	void createVertexAndOrIndexBuffers(VertexBasedObject& vertexObject);
 	void destroyVertexAndOrIndexBuffers();
 
-	void createDescribedItems(UBO* pUBO, vector<TextureSpec>& textureSpecs, iPlatform& platform);
+	void createDescribedItems(vector<UBO>& UBO, vector<TextureSpec>& textureSpecs, iPlatform& platform);
 
 	void Recreate(VertexBasedObject& vertexObject);
 	void RecreateDescribables();
