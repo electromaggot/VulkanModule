@@ -25,5 +25,9 @@ enum Customizer
 	MODELED_FOR_VULKAN	= 0b00001000	// versus default, model created for OpenGL + Right-Handed
 };
 
+inline Customizer operator | (Customizer left, Customizer right)
+{
+  return static_cast<Customizer>(static_cast<int>(left) | static_cast<int>(right));
+}
 
 #endif	// Customizer_h
