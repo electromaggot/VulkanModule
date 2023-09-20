@@ -26,7 +26,7 @@
 #include "GraphicsPipeline.h"
 
 #include "AddOns.h"
-#include "VertexBasedObject.h"
+#include "MeshObject.h"
 #include "UniformBufferLiterals.h"
 #include "UniformBuffer.h"
 #include "TextureImage.h"
@@ -35,7 +35,7 @@
 
 struct RenderableSpec {
 public:
-	VertexBasedObject&	vertexSpec;
+	MeshObject&			vertexSpec;
 	Shaders				shaders;
 	vector<UBO>			pUBOs;
 	vector<TextureSpec>	textureSpecs;
@@ -44,8 +44,8 @@ public:
 
 class Renderable : public RenderableSpec {
 public:
-	Renderable(VertexBasedObject& refVtxObj)
-		:	RenderableSpec { refVtxObj }
+	Renderable(MeshObject& refMeshObj)
+		:	RenderableSpec { refMeshObj }
 	{ }		// other members, all vectors, should automatically construct empty
 
 	Renderable(RenderableSpec& refSpec)
@@ -111,7 +111,7 @@ struct iRenderable : iRenderableBase
 	Descriptors&		descriptors;
 	GraphicsPipeline&	pipeline;
 
-	VertexBasedObject&	vertexObject;	// (retain for Recreate)
+	MeshObject&			vertexObject;	// (retain for Recreate)
 	Customizer			customizer;
 
 

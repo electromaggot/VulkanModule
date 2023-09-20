@@ -18,13 +18,13 @@
 
 #include "CommandBufferBase.h"
 #include "DeviceQueues.h"
-#include "VertexBasedObject.h"
+#include "MeshObject.h"
 
 
 class PrimitiveBuffer : CommandBufferBase
 {
 public:
-	PrimitiveBuffer(VertexBasedObject& vertexObject, VkCommandPool& pool, GraphicsDevice& device);
+	PrimitiveBuffer(MeshObject& meshObject, VkCommandPool& pool, GraphicsDevice& device);
 	PrimitiveBuffer(IndexBufferIndexType* pIndices, uint32_t nIndices, VkCommandPool& pool, GraphicsDevice& device);
 	PrimitiveBuffer(VkCommandPool& pool, GraphicsDevice& device);
 	~PrimitiveBuffer();

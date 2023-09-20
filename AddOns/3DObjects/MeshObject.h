@@ -1,7 +1,8 @@
 //
-// VertexBasedObject.h
+// MeshObject.h
 //	Vulkan Vertex-based Add-on
 //
+// "Mesh" encapsulates collection of Vertex Buffer and optional Index Buffer.
 // Represent a Vertex Array by an abstract Descriptor of vertex type,
 //	a pointer to all the vertices, and the number of them.
 // To keep the vertex array's initialization as simple as possible, while
@@ -22,7 +23,7 @@
 class PrimitiveBuffer;
 
 
-struct VertexBasedObject
+struct MeshObject
 {
 	VertexType&	 vertexType;
 	void*		 vertices		= nullptr;

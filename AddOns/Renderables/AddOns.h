@@ -4,13 +4,13 @@
 //
 // E.g. "AddOns" may be...		Dependency		...although optional because:
 //		---------------			----------		--------------------
-//		Vertex Buffer 		VertexBasedObject*	(vertex shaders may encapsulate their own vertices)
+//		Vertex Buffer 			MeshObject*		(vertex shaders may encapsulate their own vertices)
 //		Index Buffer				"			(also vertex shader implementation-specific)
 //	Uniform Buffer Objects		   UBO...		(technically not needed for a super-simple demo)
 //		  Textures			 TextureSpec[]...	(ditto)
 //						 ...and: Descriptors,
 //						   (via) DescribEd[]
-// * - Note that VertexBasedObject itself is non-optional (and is not managed here), but
+// * - Note that MeshObject itself is non-optional (and is not managed here), but
 //		this "vertex specifier" may indeed specify that no Vertex (or Index) Buffer is needed.
 //
 // 3/24/20 Tadd Jensen
@@ -22,7 +22,7 @@
 #include "VulkanSetup.h"
 
 #include "Descriptors.h"
-#include "VertexBasedObject.h"
+#include "MeshObject.h"
 #include "UniformBufferLiterals.h"
 #include "UniformBuffer.h"
 #include "TextureImage.h"
@@ -59,12 +59,12 @@ protected:
 
 		// METHODS
 
-	void createVertexAndOrIndexBuffers(VertexBasedObject& vertexObject);
+	void createVertexAndOrIndexBuffers(MeshObject& meshObject);
 	void destroyVertexAndOrIndexBuffers();
 
 	void createDescribedItems(vector<UBO>& UBO, vector<TextureSpec>& textureSpecs, iPlatform& platform);
 
-	void Recreate(VertexBasedObject& vertexObject);
+	void Recreate(MeshObject& meshObject);
 	void RecreateDescribables();
 private:
 	vector<DescribEd> reDescribe();
