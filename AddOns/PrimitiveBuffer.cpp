@@ -19,10 +19,10 @@ PrimitiveBuffer::PrimitiveBuffer(VkCommandPool& pool, GraphicsDevice& device)
 	:	CommandBufferBase(pool, device)
 { }
 
-PrimitiveBuffer::PrimitiveBuffer(VertexBasedObject& vertexObject, VkCommandPool& pool, GraphicsDevice& device)
+PrimitiveBuffer::PrimitiveBuffer(MeshObject& meshObject, VkCommandPool& pool, GraphicsDevice& device)
 	:	PrimitiveBuffer(pool, device)
 {
-	createDeviceLocalBuffer(vertexObject.vertices, vertexObject.vertexBufferSize(),
+	createDeviceLocalBuffer(meshObject.vertices, meshObject.vertexBufferSize(),
 							VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 							buffer, bufferMemory);
 }

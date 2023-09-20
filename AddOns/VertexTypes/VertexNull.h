@@ -12,7 +12,7 @@
 
 #include "VertexType.h"
 
-#include "VertexBasedObject.h"
+#include "MeshObject.h"
 
 
 struct VertexTypeNull : VertexType
@@ -35,7 +35,7 @@ public:
 extern VertexTypeNull		VertexNull;
 
 
-extern VertexBasedObject	ShaderSets3Vertices;
+extern MeshObject	ShaderSets3Vertices;
 
 
 #endif // VertexNull_h

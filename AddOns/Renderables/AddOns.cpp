@@ -31,14 +31,14 @@ AddOns::~AddOns()
 
 #pragma mark - VERTEX / INDEX BUFFERS
 
-void AddOns::createVertexAndOrIndexBuffers(VertexBasedObject& vertexObject)
+void AddOns::createVertexAndOrIndexBuffers(MeshObject& meshObject)
 {
-	if (vertexObject.vertices) {
+	if (meshObject.vertices) {
 		VkCommandPool commandPool = vulkan.command.vkPool();
-		pVertexBuffer = new PrimitiveBuffer(vertexObject, commandPool, vulkan.device);
-		if (vertexObject.indices)
-			pIndexBuffer = new PrimitiveBuffer((IndexBufferIndexType*) vertexObject.indices,
-																	   vertexObject.indexCount,
+		pVertexBuffer = new PrimitiveBuffer(meshObject, commandPool, vulkan.device);
+		if (meshObject.indices)
+			pIndexBuffer = new PrimitiveBuffer((IndexBufferIndexType*) meshObject.indices,
+																	   meshObject.indexCount,
 											   commandPool, vulkan.device);
 	}
 }
@@ -53,12 +53,12 @@ void AddOns::destroyVertexAndOrIndexBuffers()
 }
 
 
-void AddOns::Recreate(VertexBasedObject& vertexObject)
+void AddOns::Recreate(MeshObject& meshObject)
 {
-	if (vertexObject.vertices) {			// (if new vertices exist to overwrite the old ones)
+	if (meshObject.vertices) {				// (if new vertices exist to overwrite the old ones)
 		destroyVertexAndOrIndexBuffers();			// <--(this also deletes index buffers regardless of
 													//		if new indices exist to overwrite old ones)
-		createVertexAndOrIndexBuffers(vertexObject);
+		createVertexAndOrIndexBuffers(meshObject);
 	}
 }
 
