@@ -41,6 +41,7 @@ enum CoordinateSystem {
 #endif // VulkanMath_h
 
 
+// COORDINATE SYSTEM NOTE
 // Despite our codebase being Vulkan-centric, GLM_FORCE_LEFT_HANDED does not seem
 //	necessary because of the way that glm::lookAt() and glm:perspective() are called,
 //	then the Projection matrix specifically altered or Clip Space correction applied.
