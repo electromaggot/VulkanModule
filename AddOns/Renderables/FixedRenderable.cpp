@@ -33,7 +33,7 @@ void FixedRenderable::IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, i
 	}
 	if (addOns.pIndexBuffer) {
 		vkCmdBindIndexBuffer(commandBuffer, addOns.pIndexBuffer->getVk(),
-							 0, IndexBufferIndexTypeEnum);
+							 0, vertexObject.indexType);
 
 		vkCmdDrawIndexed(commandBuffer, vertexObject.indexCount, vertexObject.instanceCount,
 										vertexObject.firstIndex, vertexObject.vertexOffset,

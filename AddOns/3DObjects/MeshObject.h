@@ -5,8 +5,9 @@
 // "Mesh" encapsulates collection of Vertex Buffer and optional Index Buffer.
 // Represent a Vertex Array by an abstract Descriptor of vertex type,
 //	a pointer to all the vertices, and the number of them.
-// To keep the vertex array's initialization as simple as possible, while
-//	its individual vertices are typed, their structure must be trivial/
+// To keep the vertex array's initialization as simple as possible, and to
+//	not complicate this struct with myriad individual custom constructors:
+//   while individual vertices are typed, their structure must be trivial/
 //	plain-old-data, and especially, not inherited, like from an abstraction.
 //	So unfortunately, the so-called "abstract type" has to be a void pointer.
 //
@@ -26,27 +27,37 @@ class PrimitiveBuffer;
 struct MeshObject
 {
 	VertexType&	 vertexType;
+
 	void*		 vertices		= nullptr;
 	uint32_t	 vertexCount	= 0;
-	uint32_t	 firstVertex	= 0;
+
+	// (fyi, if you're not using indexes, you don't necessarily have
+	//	to include anything below here in your pre-initializer code)
+
+	void*		 indices		= nullptr;
+	uint32_t	 indexCount		= 0;
+
+	VkIndexType	 indexType		= IndexBufferIndexTypeEnum;
+
+	uint32_t	 firstVertex	= 0;		// (and the following can almost always
+											//	be left with these default values)
+	uint32_t	 firstIndex		= 0;
+	int32_t		 vertexOffset	= 0;
+
+	uint32_t	 instanceCount	= 1;		// (while these are shared between
+	uint32_t	 firstInstance	= 0;		//	Vertex Buffer and Index Buffer)
+
 
 	VkDeviceSize vertexBufferSize() {
 		return vertexCount * vertexType.byteSize();
 	}
 
-	uint32_t	 instanceCount	= 1;		// (shared between above Vertex
-	uint32_t	 firstInstance	= 0;		//	Buffer and below Index Buffer)
-
-	// (fyi, if you're not using indexes, you don't necessarily have to
-	//	include any or all of the following in your pre-initializer code)
-
-	void*		 indices		= nullptr;
-	uint32_t	 indexCount		= 0;
-	uint32_t	 firstIndex		= 0;
-	int32_t		 vertexOffset	= 0;
-
 	VkDeviceSize indexBufferSize() {
 		return indexCount * sizeof(IndexBufferIndexType);
+	}
+
+	bool isUndefined() {
+		return vertices == nullptr || vertexCount == 0;
 	}
 };
 
