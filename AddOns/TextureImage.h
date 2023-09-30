@@ -36,7 +36,7 @@ enum WrapMode {
 	CLAMP
 };
 
-struct TextureSpec
+struct TextureSpec	// Texture Specifier / Specification
 {
 	StrPtr		fileName	 = nullptr;	// If left null, specifies to create a blank (writable) texture.
 	FilterMode	filterMode	 = LINEAR;
