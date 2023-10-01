@@ -24,9 +24,12 @@
 class PrimitiveBuffer : CommandBufferBase
 {
 public:
-	PrimitiveBuffer(MeshObject& meshObject, VkCommandPool& pool, GraphicsDevice& device);
-	PrimitiveBuffer(IndexBufferIndexType* pIndices, uint32_t nIndices, VkCommandPool& pool, GraphicsDevice& device);
 	PrimitiveBuffer(VkCommandPool& pool, GraphicsDevice& device);
+	PrimitiveBuffer(MeshObject& meshObject, VkCommandPool& pool, GraphicsDevice& device);
+	PrimitiveBuffer(IndexBufferDefaultIndexType* pIndices, uint32_t nIndices,
+					VkCommandPool& pool, GraphicsDevice& device);
+	PrimitiveBuffer(MeshIndexType indexType, void* pIndices, uint32_t nIndices,
+					VkCommandPool& pool, GraphicsDevice& device);
 	~PrimitiveBuffer();
 
 		// MEMBERS
@@ -37,7 +40,7 @@ private:
 		// METHODS
 public:
 	void	 CreateVertexBuffer(vector<VertexType> vertices);
-	void	 CreateIndexBuffer(vector<IndexBufferIndexType> indices);
+	void	 CreateIndexBuffer(vector<IndexBufferDefaultIndexType> indices);
 private:
 	void	 createDeviceLocalBuffer(void* pSourceData, VkDeviceSize size, VkBufferUsageFlags usage,
 									 VkBuffer& deviceBuffer, VkDeviceMemory& deviceMemory);
