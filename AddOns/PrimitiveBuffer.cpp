@@ -27,10 +27,18 @@ PrimitiveBuffer::PrimitiveBuffer(MeshObject& meshObject, VkCommandPool& pool, Gr
 							buffer, bufferMemory);
 }
 
-PrimitiveBuffer::PrimitiveBuffer(IndexBufferIndexType* pIndices, uint32_t nIndices, VkCommandPool& pool, GraphicsDevice& device)
+PrimitiveBuffer::PrimitiveBuffer(IndexBufferDefaultIndexType* pIndices, uint32_t nIndices, VkCommandPool& pool, GraphicsDevice& device)
 	:	PrimitiveBuffer(pool, device)
 {
 	createDeviceLocalBuffer(pIndices, nIndices * sizeof(pIndices[0]),
+							VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+							buffer, bufferMemory);
+}
+
+PrimitiveBuffer::PrimitiveBuffer(MeshIndexType indexType, void* pIndices, uint32_t nIndices, VkCommandPool& pool, GraphicsDevice& device)
+	:	PrimitiveBuffer(pool, device)
+{
+	createDeviceLocalBuffer(pIndices, nIndices * MeshIndexByteSizes[indexType],
 							VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 							buffer, bufferMemory);
 }
@@ -51,7 +59,7 @@ void PrimitiveBuffer::CreateVertexBuffer(vector<VertexType> vertices)
 							buffer, bufferMemory);
 }
 
-void PrimitiveBuffer::CreateIndexBuffer(vector<IndexBufferIndexType> indices)
+void PrimitiveBuffer::CreateIndexBuffer(vector<IndexBufferDefaultIndexType> indices)
 {
 	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
