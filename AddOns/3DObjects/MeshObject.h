@@ -28,24 +28,24 @@ struct MeshObject
 {
 	VertexType&	 vertexType;
 
-	void*		 vertices		= nullptr;
-	uint32_t	 vertexCount	= 0;
+	void*		  vertices		= nullptr;
+	uint32_t	  vertexCount	= 0;
 
 	// (fyi, if you're not using indexes, you don't necessarily have
 	//	to include anything below here in your pre-initializer code)
 
-	void*		 indices		= nullptr;
-	uint32_t	 indexCount		= 0;
+	void*		  indices		= nullptr;
+	uint32_t	  indexCount	= 0;
 
-	VkIndexType	 indexType		= IndexBufferIndexTypeEnum;
+	MeshIndexType indexType		= MeshDefaultIndexType;
 
-	uint32_t	 firstVertex	= 0;		// (and the following can almost always
+	uint32_t	  firstVertex	= 0;		// (and the following can almost always
 											//	be left with these default values)
-	uint32_t	 firstIndex		= 0;
-	int32_t		 vertexOffset	= 0;
+	uint32_t	  firstIndex	= 0;
+	int32_t		  vertexOffset	= 0;
 
-	uint32_t	 instanceCount	= 1;		// (while these are shared between
-	uint32_t	 firstInstance	= 0;		//	Vertex Buffer and Index Buffer)
+	uint32_t	  instanceCount	= 1;		// (while these are shared between
+	uint32_t	  firstInstance	= 0;		//	Vertex Buffer and Index Buffer)
 
 
 	VkDeviceSize vertexBufferSize() {
@@ -53,7 +53,7 @@ struct MeshObject
 	}
 
 	VkDeviceSize indexBufferSize() {
-		return indexCount * sizeof(IndexBufferIndexType);
+		return indexCount * MeshIndexByteSizes[indexType];
 	}
 
 	bool isUndefined() {
