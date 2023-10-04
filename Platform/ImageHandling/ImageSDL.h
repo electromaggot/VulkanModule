@@ -40,7 +40,7 @@ protected:
 	//
 	ImageInfo Load(StrPtr filePath)
 	{
-		Log(RAW, "Load: %s", filePath);
+		Log(RAW, "Load: image - file: %s", filePath);
 
 		pImage = IMG_Load(filePath);
 
