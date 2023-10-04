@@ -26,6 +26,7 @@ VulkanSetup::VulkanSetup(iPlatform& platform)
 		syncObjects(device),
 		command(* new CommandControl(framebuffers, device))		// initialize CommandPool
 {
+	Log(NOTE, "----V-U-L-K-A-N---R-E-A-D-Y----");
 }
 
 // On the other hand, these later child objects will NOT leave scope and self-destruct,
@@ -43,7 +44,7 @@ void VulkanSetup::RecreateRenderingRudiments()
 	swapchain.Recreate();
 	framebuffers.Recreate(swapchain, renderPass);
 
-	// note, not needing recreation: commandPool, syncObjs, renderPass, device, window
+	// note, not needing re-creation: commandPool, syncObjs, renderPass, device, window
 
 	command.RecreateRenderables(*this);
 }

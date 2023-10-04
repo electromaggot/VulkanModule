@@ -41,19 +41,20 @@ string FileSystem::FontFileFullPath(StrPtr fileName)
 
 vector<char> FileSystem::ReadShaderFile(const string& shaderFilename)
 {
-	return readFile(shaderFilename, SHADER_SUBDIRECTORY);
+	return readFile(shaderFilename, SHADER_SUBDIRECTORY, "shader");
 }
 
 vector<char> FileSystem::ReadTextureFile(const string& imageFilename)
 {
-	return readFile(imageFilename, TEXTURE_SUBDIRECTORY);
+	return readFile(imageFilename, TEXTURE_SUBDIRECTORY, "texture");
 }
 
 
-vector<char> FileSystem::readFile(const string& fileName, const char* subdirectoryName)
+vector<char> FileSystem::readFile(const string& fileName, const char* subdirectoryName,
+														  const char* showFileType)
 {
 	const string fullPath = ExeAccompaniedFullPath(fileName, subdirectoryName);
-	Log(NOTE, "reading file at path: " + fullPath);
+	Log(RAW, "Read: %s - file: %s", showFileType, fullPath.c_str());
 	return readFile(fullPath);
 }
 

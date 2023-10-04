@@ -53,7 +53,7 @@ public:
 	vector<char> ReadShaderFile(const string& shaderFilename);
 	vector<char> ReadTextureFile(const string& imageFilename);
 private:
-	vector<char> readFile(const string& fileName, const char* subdirectoryName);
+	vector<char> readFile(const string& fileName, const char* subdirectoryName, const char* showFileType);
 	vector<char> readFile(const string& pathName);
 };
 
