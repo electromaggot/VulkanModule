@@ -15,7 +15,7 @@
 #ifndef UniformBufferLiterals_h
 #define UniformBufferLiterals_h
 
-#include "VertexType.h"
+#include "VertexAbstract.h"
 
 
 enum DestinationStage {

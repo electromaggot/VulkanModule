@@ -10,12 +10,12 @@
 #ifndef VertexNull_h
 #define VertexNull_h
 
-#include "VertexType.h"
+#include "VertexAbstract.h"
 
 #include "MeshObject.h"
 
 
-struct VertexTypeNull : VertexType
+struct VertexTypeNull : VertexAbstract
 {
 public:
 	size_t	 byteSize()				  { return 0; }
@@ -38,4 +38,4 @@ extern VertexTypeNull		VertexNull;
 extern MeshObject	ShaderSets3Vertices;
 
 
-#endif // VertexNull_h
+#endif	// VertexNull_h

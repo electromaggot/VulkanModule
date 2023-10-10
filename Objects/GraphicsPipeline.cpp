@@ -12,7 +12,7 @@
 
 GraphicsPipeline::GraphicsPipeline(ShaderModules& shaders, RenderPass& renderPass,
 								   Swapchain& swapchain, GraphicsDevice& graphics,
-								   VertexType* pVertex, Descriptors* pDescriptors,
+								   VertexAbstract* pVertex, Descriptors* pDescriptors,
 								   Customizer customize)
 	:	device(graphics.getLogical())
 {
@@ -30,7 +30,7 @@ void GraphicsPipeline::destroy()
 }
 
 
-void GraphicsPipeline::create(ShaderModules& shaderModules, VertexType* pVertex,
+void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVertex,
 							  VkExtent2D swapchainExtent, VkRenderPass renderPass,
 							  Descriptors* pDescriptors, Customizer customize)
 {
@@ -169,7 +169,7 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexType* pVertex,
 }
 
 void GraphicsPipeline::Recreate(ShaderModules& shaders, RenderPass& renderPass, Swapchain& swapchain,
-								VertexType* pVertex, Descriptors* pDescriptors, Customizer customize)
+								VertexAbstract* pVertex, Descriptors* pDescriptors, Customizer customize)
 {
 	destroy();
 	create(shaders, pVertex, swapchain.getExtent(), renderPass.getVkRenderPass(), pDescriptors, customize);
