@@ -26,32 +26,7 @@
 #include "GraphicsPipeline.h"
 
 #include "AddOns.h"
-#include "MeshObject.h"
-#include "UniformBufferLiterals.h"
-#include "UniformBuffer.h"
-#include "TextureImage.h"
-#include "Customizer.h"
-
-
-struct RenderableSpec {
-public:
-	MeshObject&			vertexSpec;
-	Shaders				shaders;
-	vector<UBO>			pUBOs;
-	vector<TextureSpec>	textureSpecs;
-	Customizer			customize = NONE;
-};
-
-class Renderable : public RenderableSpec {
-public:
-	Renderable(MeshObject& refMeshObj)
-		:	RenderableSpec { refMeshObj }
-	{ }		// other members, all vectors, should automatically construct empty
-
-	Renderable(RenderableSpec& refSpec)
-		:	RenderableSpec { refSpec }
-	{ }
-};
+#include "DrawableSpec.h"
 
 
 enum CommandRecording {		// i.e. Request this CommandBuffer to be recorded:
