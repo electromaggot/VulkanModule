@@ -50,7 +50,7 @@ PrimitiveBuffer::~PrimitiveBuffer()
 }
 
 
-void PrimitiveBuffer::CreateVertexBuffer(vector<VertexType> vertices)
+void PrimitiveBuffer::CreateVertexBuffer(vector<VertexAbstract> vertices)
 {
 	VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 

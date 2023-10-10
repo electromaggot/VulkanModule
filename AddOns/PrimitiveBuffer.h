@@ -39,7 +39,7 @@ private:
 
 		// METHODS
 public:
-	void	 CreateVertexBuffer(vector<VertexType> vertices);
+	void	 CreateVertexBuffer(vector<VertexAbstract> vertices);
 	void	 CreateIndexBuffer(vector<IndexBufferDefaultIndexType> indices);
 private:
 	void	 createDeviceLocalBuffer(void* pSourceData, VkDeviceSize size, VkBufferUsageFlags usage,

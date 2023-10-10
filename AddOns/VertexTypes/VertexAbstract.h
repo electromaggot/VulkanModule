@@ -1,21 +1,21 @@
 //
-// VertexType.h
+// VertexAbstract.h
 //	Vulkan Core Class
 //
-// Abstract Vertex Descriptor, for:
+// Abstraction of a Vertex Descriptor, for:
 //	- deriving from, to define multivariate vertices
 //	- passing around as a Liskov-substitutable
 //
 // Created 6/14/19 by Tadd Jensen
 //	© 2112 (uncopyrighted; use at will)
 //
-#ifndef VertexType_h
-#define VertexType_h
+#ifndef VertexAbstract_h
+#define VertexAbstract_h
 
 #include "VulkanMath.h"
 
 
-struct VertexType	// abstraction
+struct VertexAbstract
 {
 public:
 	virtual size_t	 byteSize() = 0;
@@ -62,4 +62,4 @@ typedef IndexBufferSmallIndexType	IndexBufferDefaultIndexType;	// Beware! 65535 
 const	MeshIndexType	MeshDefaultIndexType = MESH_SMALL_INDEX;
 
 
-#endif // VertexType_h
+#endif	// VertexAbstract_h
