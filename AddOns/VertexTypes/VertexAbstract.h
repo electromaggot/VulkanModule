@@ -13,6 +13,7 @@
 #define VertexAbstract_h
 
 #include "VulkanMath.h"
+#include "VertexAttribute.h"
 
 
 struct VertexAbstract
@@ -25,6 +26,9 @@ public:
 
 	virtual const VkVertexInputBindingDescription*	 pBindingDescriptions()	  = 0;
 	virtual const VkVertexInputAttributeDescription* pAttributeDescriptions() = 0;
+
+	virtual void initialize(VertexAttribute* pAttrs, int nAttrs, int nBytesVertex) { }
+	virtual void initialize(AttributeBits bits) { }
 };
 
 

@@ -17,6 +17,93 @@
 #include "VertexAbstract.h"
 
 
+struct VertexDescriptionDynamic : VertexAbstract
+{
+	int		numAttributes = 0;
+	int		numBytesPerVertex = 0;
+	AttributeBits	attribits = 0;
+	VertexAttribute*	pLayout = nullptr;
+
+	VkVertexInputBindingDescription		bindingDescription;
+	VkVertexInputAttributeDescription*	attributeDescriptions = nullptr;
+
+public:
+	size_t	 byteSize()				  override	{ return numBytesPerVertex; }
+
+	uint32_t nBindingDescriptions()	  override	{ return 1; }
+	uint32_t nAttributeDescriptions() override	{ return numAttributes; }
+
+	const VkVertexInputAttributeDescription* pAttributeDescriptions() override {
+		return attributeDescriptions;
+	}
+	const VkVertexInputBindingDescription* pBindingDescriptions() override {
+		return &bindingDescription;
+	}
+
+	VertexDescriptionDynamic() { }
+
+	void initialize(VertexAttribute* pAttrs, int nAttrs, int nBytesVertex) override {	// obsolete
+		pLayout = pAttrs;
+		numAttributes = nAttrs;
+		numBytesPerVertex = nBytesVertex;
+		attributeDescriptions = new VkVertexInputAttributeDescription[numAttributes];
+
+		createAttributeDescriptions(pLayout);
+		createBindingDescription();
+	}
+	void initialize(AttributeBits bits) override {
+		attribits = bits;
+		std::bitset<8 * sizeof(AttributeBits)> onebits(bits);
+		numAttributes = (int) onebits.count();
+		numBytesPerVertex = numBytesGivenAttributes(bits);
+		attributeDescriptions = new VkVertexInputAttributeDescription[numAttributes];
+
+		createAttributeDescriptions(bits);
+		createBindingDescription();
+	}
+
+	~VertexDescriptionDynamic() {
+		if (attributeDescriptions)
+			delete attributeDescriptions;
+	}
+
+
+	void createAttributeDescriptions(VertexAttribute* attrEnums) {
+		int byteCount = 0;
+		for (int iAttr = 0; iAttr < numAttributes; ++iAttr) {
+			int iLayout = attrEnums[iAttr];
+			attributeDescriptions[iAttr].location =	iAttr;
+			attributeDescriptions[iAttr].binding  =	0;
+			attributeDescriptions[iAttr].format =	AttributeFormats[iLayout];
+			attributeDescriptions[iAttr].offset =	byteCount;
+			byteCount += AttributeByteSizes[iLayout];
+		}
+		assert(byteCount == numBytesPerVertex);
+	}
+	void createAttributeDescriptions(AttributeBits attrbits) {
+		int iAttr = 0, iDesc = 0, byteCount = 0;
+		for (AttributeBits bit = 0b0001; bit < PastLastBit; bit <<= 1) {
+			if (bit & attrbits) {
+				attributeDescriptions[iDesc].location =	iDesc;
+				attributeDescriptions[iDesc].binding  =	0;
+				attributeDescriptions[iDesc].format =	AttributeFormats[iAttr];
+				attributeDescriptions[iDesc].offset =	byteCount;
+				byteCount += AttributeByteSizes[iAttr];
+				++iDesc;
+			}
+			++iAttr;
+		}
+		assert(byteCount == numBytesPerVertex);
+	}
+
+	void createBindingDescription() {
+		bindingDescription.binding =	0;
+		bindingDescription.stride =		numBytesPerVertex;
+		bindingDescription.inputRate =	VK_VERTEX_INPUT_RATE_VERTEX;
+	}
+};
+
+
 // Create procedurally.
 //
 template <typename T>
