@@ -53,4 +53,18 @@ const int NumBitsUsed = N_ELEMENTS_IN_ARRAY(Attribits);
 const AttributeBits PastLastBit = 1 << NumBitsUsed;
 
 
+inline int numBytesGivenAttributes(AttributeBits attribits) {
+	int sizeVertex = 0;
+	for (int iBit = 0; iBit < N_ELEMENTS_IN_ARRAY(Attribits); ++iBit)
+		sizeVertex += (Attribits[iBit] & attribits) ? AttributeByteSizes[iBit] : 0;
+	return sizeVertex;
+}
+	/* alternately... uh, non-iterative, but more-hard-coded and less-maintainable
+	sizeVertex = (attribits & Attribits[POSITION]) ? AttributeByteSizes[POSITION] : 0
+			   + (attribits & Attribits[NORMAL])   ? AttributeByteSizes[NORMAL]	  : 0
+			   + (attribits & Attribits[TEXCOORD]) ? AttributeByteSizes[TEXCOORD] : 0
+			   + (attribits & Attribits[COLOR])	   ? AttributeByteSizes[COLOR]	  : 0;
+}*/
+
+
 #endif	// VertexAttribute_h
