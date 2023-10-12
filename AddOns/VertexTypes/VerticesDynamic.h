@@ -16,6 +16,7 @@
 
 #include "VertexAttribute.h"
 #include "Vertex3DTypes.h"
+#include "Logging.h"
 
 
 struct VerticesDynamic {
@@ -52,10 +53,17 @@ struct VerticesDynamic {
 				sizeLastAlloc *= growAllocsBy;
 			else
 				sizeLastAlloc = size1stAlloc;
-			pBytes = (char*) realloc(pBytes, sizeLastAlloc);
+			localRealloc(sizeLastAlloc);
+			if (failed) return;
 		}
 		memcpy(pBytes + sizeVertices, &vertex, sizeVertex);
 		sizeVertices += sizeVertex;
+	}
+
+	void exactResize() {
+		localRealloc(sizeVertices);
+		if (failed) return;
+		sizeLastAlloc = sizeVertices;
 	}
 
 	size_t size()		{ return sizeVertices; }
@@ -68,10 +76,6 @@ struct VerticesDynamic {
 		return pBytes + index * sizeVertex;
 	}
 
-	/*bool operator == (const VerticesDynamic& other) const {
-		return memcmp(pVertices, other.pVertices, nBytes) == 0;
-	}*/
-
 private:	// not to be assigned directly
 
 	friend class	MeshObject;		// (although)
@@ -80,6 +84,20 @@ private:	// not to be assigned directly
 
 	AttributeBits attribits = 0;
 	VertexAttribute layout[N_ELEMENTS_IN_ARRAY(AttributeFormats)];
+
+
+	// realloc() but with rudimentary error-check/recovery
+	//
+	void localRealloc(size_t newSize)
+	{
+		char* pAlloced = (char*) realloc(pBytes, newSize);
+		failed = (pAlloced == nullptr);
+		if (failed)
+			Log(ERROR, "VerticesDynamic: realloc(%ul) failed, model can't grow past %ul, may appear truncated.", newSize, sizeLastAlloc);
+		else
+			pBytes = pAlloced;
+	}
+	bool failed = false;
 };
 
 
