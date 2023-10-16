@@ -13,6 +13,7 @@
 
 #include "GraphicsDevice.h"
 #include "Swapchain.h"
+#include "DepthBuffer.h"
 #include "RenderPass.h"
 
 
@@ -23,7 +24,8 @@ public:
 		return framebuffers[index];
 	}
 
-	Framebuffers(Swapchain& swapchain, RenderPass& renderPass, GraphicsDevice& graphics);
+	Framebuffers(Swapchain& swapchain, DepthBuffer& depthBuffer,
+				 RenderPass& renderPass, GraphicsDevice& graphics);
 	~Framebuffers();
 
 		// MEMBERS
@@ -34,10 +36,11 @@ private:
 
 		// METHODS
 private:
-	void create(vector<VkImageView>& imageViews, VkExtent2D& extent, VkRenderPass renderPass);
+	void create(vector<VkImageView>& swapchainImageViews, VkExtent2D& extent,
+				VkRenderPass renderPass, VkImageView* pDepthImageView);
 	void destroy();
 public:
-	void Recreate(Swapchain& swapchain, RenderPass& renderPass);
+	void Recreate(Swapchain& swapchain, DepthBuffer& depthBuffer, RenderPass& renderPass);
 
 		// getters
 	vector<VkFramebuffer>& getVkFramebuffers()	{ return framebuffers; }

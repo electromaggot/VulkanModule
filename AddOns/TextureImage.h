@@ -46,17 +46,19 @@ struct TextureSpec	// Texture Specifier / Specification
 	ImageInfo*	pImageInfo	 = nullptr;
 };
 
+const bool NO_MIPMAP = false;
 
-class TextureImage : CommandBufferBase
+
+class TextureImage : protected CommandBufferBase
 {
 public:
 	TextureImage(TextureSpec& texSpec, VkCommandPool& pool, GraphicsDevice& graphicsDevice,
 				 iPlatform& platform, VkSampler sampler = VK_NULL_HANDLE);
-	TextureImage(ImageInfo& info, VkCommandPool& pool, GraphicsDevice& device, iPlatform& platform);
+	TextureImage(GraphicsDevice& device, iPlatform& platform);
 	~TextureImage();
 
 		// MEMBERS
-private:
+protected:
 	VkImage			image;
 	VkDeviceMemory	deviceMemory;
 	VkImageView		imageView;
@@ -70,11 +72,11 @@ private:
 	bool			wasSamplerInjected = false;
 
 		// METHODS
-private:
+protected:
 	void create(TextureSpec& texSpec, GraphicsDevice& graphicsDevice, iPlatform& platform);
 	void createBlank(ImageInfo& parameters, GraphicsDevice& graphicsDevice, iPlatform& platform, bool mipmap = true);
 	void destroy();
-	void createImageView();
+	void createImageView(VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT);
 	void createSampler(TextureSpec& texSpec);
 	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling,
 					 VkImageUsageFlags usage, VkMemoryPropertyFlags properties,

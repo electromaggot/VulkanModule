@@ -11,10 +11,12 @@
 #include "VulkanSingleton.h"
 
 
-Framebuffers::Framebuffers(Swapchain& swapchain, RenderPass& renderPass, GraphicsDevice& graphics)
+Framebuffers::Framebuffers(Swapchain& swapchain, DepthBuffer& depthBuffer,
+						   RenderPass& renderPass, GraphicsDevice& graphics)
 	:	device(graphics.getLogical())
 {
-	create(swapchain.getImageViews(), swapchain.getExtent(), renderPass.getVkRenderPass());
+	create(swapchain.getImageViews(), swapchain.getExtent(),
+		   renderPass.getVkRenderPass(), depthBuffer.getpImageView());
 }
 
 Framebuffers::~Framebuffers()  { destroy(); }
@@ -26,26 +28,31 @@ void Framebuffers::destroy()
 }
 
 
-void Framebuffers::create(vector<VkImageView>& imageViews, VkExtent2D& extent,
-														VkRenderPass renderPass)
+void Framebuffers::create(vector<VkImageView>& swapchainImageViews, VkExtent2D& extent,
+						  VkRenderPass renderPass, VkImageView* pDepthImageView = nullptr)
 {
-	size_t nImageViews = imageViews.size();
+	size_t nImageViews = swapchainImageViews.size();
 
 	framebuffers.resize(nImageViews);
 
+	bool useDepthBuffer = (pDepthImageView != nullptr);
+
+	uint32_t nAttachmentsPerBuffer = 1;
+	if (useDepthBuffer) nAttachmentsPerBuffer += 1;
+
 	for (size_t iBufferView = 0; iBufferView < nImageViews; ++iBufferView)
 	{
-		VkImageView attachments[] = {
-
-			imageViews[iBufferView]
-		};
+		VkImageView attachments[nAttachmentsPerBuffer];
+		attachments[0] = swapchainImageViews[iBufferView];
+		if (useDepthBuffer)
+			attachments[1] = *pDepthImageView;
 
 		VkFramebufferCreateInfo framebufferInfo = {
 			.sType	= VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
 			.pNext	= nullptr,
 			.flags	= 0,
 			.renderPass		 = renderPass,
-			.attachmentCount = 1,
+			.attachmentCount = nAttachmentsPerBuffer,
 			.pAttachments	 = attachments,
 			.width			 = extent.width,
 			.height			 = extent.height,
@@ -59,8 +66,9 @@ void Framebuffers::create(vector<VkImageView>& imageViews, VkExtent2D& extent,
 	}
 }
 
-void Framebuffers::Recreate(Swapchain& swapchain, RenderPass& renderPass)
+void Framebuffers::Recreate(Swapchain& swapchain, DepthBuffer& depthBuffer, RenderPass& renderPass)
 {
 	destroy();
-	create(swapchain.getImageViews(), swapchain.getExtent(), renderPass.getVkRenderPass());
+	create(swapchain.getImageViews(), swapchain.getExtent(),
+		   renderPass.getVkRenderPass(), depthBuffer.getpImageView());
 }

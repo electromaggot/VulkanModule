@@ -19,6 +19,7 @@
 #include "GraphicsDevice.h"
 #include "WindowSurface.h"
 #include "Swapchain.h"
+#include "DepthBuffer.h"
 #include "RenderPass.h"
 #include "Framebuffers.h"
 #include "SyncObjects.h"
@@ -40,8 +41,9 @@ public:
 	DebugReport	 		debugReport;
 	WindowSurface		windowSurface;
 	GraphicsDevice		device;
-	RenderPass			renderPass;
 	Swapchain			swapchain;
+	DepthBuffer			depthBuffer;
+	RenderPass			renderPass;
 	Framebuffers		framebuffers;
 	SyncObjects			syncObjects;
 	CommandControl&		command;

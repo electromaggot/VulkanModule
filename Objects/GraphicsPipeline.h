@@ -38,7 +38,7 @@ private:
 		// METHODS
 private:
 	void create(ShaderModules& shaderModules, VertexAbstract* pVertex, VkExtent2D swapchainExtent,
-				VkRenderPass renderPass, Descriptors* pDescriptors, Customizer customize);
+				RenderPass& renderPass, Descriptors* pDescriptors, Customizer customize);
 	void destroy();
 public:
 	void Recreate(ShaderModules& shaderModules, RenderPass& renderPass, Swapchain& swapchain,

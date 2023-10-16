@@ -11,6 +11,7 @@
 #include "FileSystem.h"
 
 #include "iPlatform.h"
+#include "CommandObjects.h"
 #include "RenderSettings.h"
 
 
@@ -37,14 +38,11 @@ TextureImage::TextureImage(TextureSpec& texSpec, VkCommandPool& pool, GraphicsDe
 	}
 }
 
-// Alternatively construct a Blank Texture (writable) with size/format of given ImageInfo and a default Texture Specifier.
-TextureImage::TextureImage(ImageInfo& info, VkCommandPool& pool, GraphicsDevice& device, iPlatform& platform)
-	:	CommandBufferBase(pool, device), mipmaps(pool, device)
+TextureImage::TextureImage(GraphicsDevice& device, iPlatform& platform)
+	:	CommandBufferBase(CommandControl::vkPool(), device),
+		mipmaps(CommandControl::vkPool(), device)	// (even if unused must still initialize)
 {
-	createBlank(info, device, platform);
-	createImageView();
-	TextureSpec defaultTexSpec;
-	createSampler( defaultTexSpec );
+	wasSamplerInjected = true;	//TJ_TODO: temporary, staves-off crash in vkDestroySampler below.
 }
 
 TextureImage::~TextureImage()
@@ -142,7 +140,7 @@ void TextureImage::createBlank(ImageInfo& params, GraphicsDevice& graphicsDevice
 // (some code here is identical to Swapchain::createImageViews, but not much, plus it's
 //	specialized and isolated in that class... so actually more minimal to repeat/separate)
 //
-void TextureImage::createImageView()
+void TextureImage::createImageView(VkImageAspectFlags aspectFlags/* = VK_IMAGE_ASPECT_COLOR_BIT*/)
 {
 	VkImageViewCreateInfo viewInfo = {
 		.sType	= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -154,9 +152,9 @@ void TextureImage::createImageView()
 		.components = { .r = VK_COMPONENT_SWIZZLE_IDENTITY, .g = VK_COMPONENT_SWIZZLE_IDENTITY,
 						.b = VK_COMPONENT_SWIZZLE_IDENTITY, .a = VK_COMPONENT_SWIZZLE_IDENTITY },
 		.subresourceRange = {
-			.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT,
+			.aspectMask		= aspectFlags,
 			.baseMipLevel	= 0,
-			.levelCount		= mipmaps.NumLevels(),
+			.levelCount		= mipmaps.NumLevels(),		// (note: will be 1 if mipmaps not used)
 			.baseArrayLayer = 0,
 			.layerCount		= 1
 		}

@@ -19,7 +19,7 @@ public:
 	const char* EngineName		 = "None";		// (would perhaps have special significance for an
 	const uint32_t EngineVersion = VK_MAKE_VERSION(0, 0, 0);	// engine like unreal/unity/etc.)
 
-	VkClearValue ClearColor		 = AppConstants.DefaultClearColor;
+	VkClearColorValue ClearColor = AppConstants.DefaultClearColor;
 
 
 // CONSTRUCTION & INSTANCING
