@@ -16,7 +16,7 @@ GraphicsPipeline::GraphicsPipeline(ShaderModules& shaders, RenderPass& renderPas
 								   Customizer customize)
 	:	device(graphics.getLogical())
 {
-	create(shaders, pVertex, swapchain.getExtent(), renderPass.getVkRenderPass(), pDescriptors, customize);
+	create(shaders, pVertex, swapchain.getExtent(), renderPass, pDescriptors, customize);
 }
 
 GraphicsPipeline::~GraphicsPipeline()
@@ -31,7 +31,7 @@ void GraphicsPipeline::destroy()
 
 
 void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVertex,
-							  VkExtent2D swapchainExtent, VkRenderPass renderPass,
+							  VkExtent2D swapchainExtent, RenderPass& renderPass,
 							  Descriptors* pDescriptors, Customizer customize)
 {
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
@@ -103,6 +103,21 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.alphaToOneEnable		= VK_FALSE*/			//	If needed, reactivate them, or even add
 	};													//	passed-in parameter(s) to set them to.
 
+	VkPipelineDepthStencilStateCreateInfo depthStencil = {
+		.sType					= VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+		.pNext					= nullptr,
+		.flags					= 0,
+		.depthTestEnable		= VK_TRUE,
+		.depthWriteEnable		= VK_TRUE,
+		.depthCompareOp			= VK_COMPARE_OP_LESS,
+		.depthBoundsTestEnable	= VK_FALSE,
+		.stencilTestEnable		= VK_FALSE,
+		/*.front				= { },
+		.back					= { },
+		.minDepthBounds			= 0.0f,
+		.maxDepthBounds			= 1.0f*/
+	};
+
 	VkPipelineColorBlendAttachmentState colorBlendAttachment = {
 		.blendEnable		 = VK_FALSE,
 		/*.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
@@ -152,11 +167,11 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.pViewportState		 = &viewportState,
 		.pRasterizationState = &rasterizer,
 		.pMultisampleState	 = &multisampling,
-		.pDepthStencilState	 = nullptr,
+		.pDepthStencilState	 = renderPass.isDepthBufferUsed ? &depthStencil : nullptr,
 		.pColorBlendState	 = &colorBlending,
 		.pDynamicState		 = nullptr,
 		.layout				 = pipelineLayout,
-		.renderPass			 = renderPass,
+		.renderPass			 = renderPass.getVkRenderPass(),
 		.subpass			 = 0,
 		.basePipelineHandle	 = VK_NULL_HANDLE,
 		.basePipelineIndex	 = -1
@@ -172,7 +187,7 @@ void GraphicsPipeline::Recreate(ShaderModules& shaders, RenderPass& renderPass, 
 								VertexAbstract* pVertex, Descriptors* pDescriptors, Customizer customize)
 {
 	destroy();
-	create(shaders, pVertex, swapchain.getExtent(), renderPass.getVkRenderPass(), pDescriptors, customize);
+	create(shaders, pVertex, swapchain.getExtent(), renderPass, pDescriptors, customize);
 }
 
 

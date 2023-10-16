@@ -78,14 +78,19 @@ void CommandBufferSet::freeVkCommandBuffers()
 void CommandBufferSet::recordCommands(vector<iRenderable*> pBufferRenderables, VkFramebuffer& framebuffer,
 									  VkExtent2D& swapchainExtent, VkRenderPass& renderPass)
 {
+	VkClearValue clearValues[] = {
+		{ .color = { VulkanSingleton::instance().ClearColor } },
+		{ .depthStencil = { 1.0f, 0 } }		// far view plane 1.0 ≡ starting depth furthest possible
+	};
+
 	VkRenderPassBeginInfo renderPassInfo = {
 		.sType	= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
 		.pNext	= nullptr,
 		.renderPass		 = renderPass,
 		.framebuffer	 = framebuffer,
 		.renderArea		 = { { 0, 0 }, swapchainExtent },
-		.clearValueCount = 1,
-		.pClearValues	 = &VulkanSingleton::instance().ClearColor
+		.clearValueCount = N_ELEMENTS_IN_ARRAY(clearValues),
+		.pClearValues	 = clearValues
 	};
 
 	size_t numBufferSets = vkCommandBuffers.size();

@@ -20,9 +20,10 @@ VulkanSetup::VulkanSetup(iPlatform& platform)
 		debugReport(vulkan),
 		windowSurface(vulkan, platform),
 		device(windowSurface, vulkan, validation),
-		renderPass(device),
 		swapchain(device, windowSurface),
-		framebuffers(swapchain, renderPass, device),
+		depthBuffer(device, platform),
+		renderPass(device),
+		framebuffers(swapchain, depthBuffer, renderPass, device),
 		syncObjects(device),
 		command(* new CommandControl(framebuffers, device))		// initialize CommandPool
 {
@@ -42,7 +43,8 @@ void VulkanSetup::RecreateRenderingRudiments()
 	vkDeviceWaitIdle(device.getLogical());
 
 	swapchain.Recreate();
-	framebuffers.Recreate(swapchain, renderPass);
+	depthBuffer.Recreate(swapchain);
+	framebuffers.Recreate(swapchain, depthBuffer, renderPass);
 
 	// note, not needing re-creation: commandPool, syncObjs, renderPass, device, window
 

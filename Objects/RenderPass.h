@@ -29,11 +29,13 @@ private:
 
 		// METHODS
 private:
-	void	create(VkFormat imageFormat);
+	void	create(VkFormat imageFormat, VkFormat depthFormat);
 
 		// getters
 public:
 	VkRenderPass& getVkRenderPass()		{ return renderPass; }
-};
+
+	bool	isDepthBufferUsed = false;	// treated as read-only (i.e.
+};										//	set then not re-referenced)
 
 #endif // RenderPass_h

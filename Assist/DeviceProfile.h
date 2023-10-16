@@ -33,6 +33,7 @@ struct DeviceProfile
 	VkPhysicalDeviceProperties	properties;
 	VkSurfaceFormatKHR			selectedSurfaceFormat;
 	VkPresentModeKHR			selectedPresentMode;
+	VkFormat					selectedDepthFormat;
 	string			description;
 	// scoring:
 	uint64_t		totalScore;
@@ -45,6 +46,7 @@ struct DeviceProfile
 		selectedSurfaceFormat.format = VkFormat_UNSET;
 		selectedSurfaceFormat.colorSpace = VkColorSpaceKHR_UNSET;
 		selectedPresentMode = VkPresentModeKHR_UNSET;
+		selectedDepthFormat = VK_FORMAT_UNDEFINED;
 	}
 };
 
