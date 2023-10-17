@@ -49,7 +49,7 @@ struct TextureSpec	// Texture Specifier / Specification
 const bool NO_MIPMAP = false;
 
 
-class TextureImage : protected CommandBufferBase
+class TextureImage : protected BufferBase, CommandBufferBase
 {
 public:
 	TextureImage(TextureSpec& texSpec, VkCommandPool& pool, GraphicsDevice& graphicsDevice,

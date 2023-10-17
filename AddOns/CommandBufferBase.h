@@ -14,18 +14,20 @@
 #include "BufferBase.h"
 
 
-class CommandBufferBase : protected BufferBase
+class CommandBufferBase
 {
 protected:
-	CommandBufferBase(VkCommandPool& pool, GraphicsDevice& device)
-		:	BufferBase(device),
-			commandPool(pool),
-			graphicsQueue(device.Queues.getCurrent())
+	CommandBufferBase(VkCommandPool& pool, GraphicsDevice& graphics)
+		:	commandPool(pool),
+			graphicsQueue(graphics.Queues.getCurrent()),
+			graphicsDevice(graphics)
 	{ }
 
 		// MEMBERS
 	VkCommandPool&	commandPool;
 	VkQueue&		graphicsQueue;
+
+	GraphicsDevice	graphicsDevice;
 
 	const uint32_t	nCommandBuffers = 1;
 
@@ -41,7 +43,7 @@ protected:
 			.level				= VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 			.commandBufferCount	= nCommandBuffers
 		};
-		vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+		vkAllocateCommandBuffers(graphicsDevice.getLogical(), &allocInfo, &commandBuffer);
 
 		VkCommandBufferBeginInfo beginInfo = {
 			.sType	= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -74,7 +76,7 @@ protected:
 
 		vkQueueWaitIdle(graphicsQueue);		// wait until copy finishes! (*)
 
-		vkFreeCommandBuffers(device, commandPool, nCommandBuffers, &commandBuffer);
+		vkFreeCommandBuffers(graphicsDevice.getLogical(), commandPool, nCommandBuffers, &commandBuffer);
 	}
 };
 
