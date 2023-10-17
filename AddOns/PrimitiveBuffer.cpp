@@ -16,7 +16,10 @@
 
 
 PrimitiveBuffer::PrimitiveBuffer(VkCommandPool& pool, GraphicsDevice& device)
-	:	CommandBufferBase(pool, device)
+	:	BufferBase(device),
+		CommandBufferBase(pool, device),
+		bufferMemory(nullptr),
+		buffer(nullptr)
 { }
 
 PrimitiveBuffer::PrimitiveBuffer(MeshObject& meshObject, VkCommandPool& pool, GraphicsDevice& device)

@@ -17,7 +17,8 @@
 
 TextureImage::TextureImage(TextureSpec& texSpec, VkCommandPool& pool, GraphicsDevice& device,
 						   iPlatform& platform, VkSampler injectedSampler)
-	:	CommandBufferBase(pool, device),
+	:	BufferBase(device),
+		CommandBufferBase(pool, device),
 		specified(texSpec),
 		mipmaps(pool, device)
 {
@@ -39,7 +40,8 @@ TextureImage::TextureImage(TextureSpec& texSpec, VkCommandPool& pool, GraphicsDe
 }
 
 TextureImage::TextureImage(GraphicsDevice& device, iPlatform& platform)
-	:	CommandBufferBase(CommandControl::vkPool(), device),
+	:	BufferBase(device),
+		CommandBufferBase(CommandControl::vkPool(), device),
 		mipmaps(CommandControl::vkPool(), device)	// (even if unused must still initialize)
 {
 	wasSamplerInjected = true;	//TJ_TODO: temporary, staves-off crash in vkDestroySampler below.

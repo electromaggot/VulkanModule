@@ -40,7 +40,7 @@ public:
 			Log(WARN, "Using MIPMAPS, but Number of Levels is %d (should be > 1) or was not Calculate()d in VkImageCreateInfo.", numLevels);
 
 		VkFormatProperties formatProperties;
-		vkGetPhysicalDeviceFormatProperties(physicalDevice, imageFormat, &formatProperties);
+		vkGetPhysicalDeviceFormatProperties(graphicsDevice.getGPU(), imageFormat, &formatProperties);
 
 		if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
 			Fatal("Texture image format does not support linear blitting.");

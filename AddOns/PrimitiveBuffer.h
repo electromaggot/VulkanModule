@@ -21,7 +21,7 @@
 #include "MeshObject.h"
 
 
-class PrimitiveBuffer : CommandBufferBase
+class PrimitiveBuffer : BufferBase, CommandBufferBase
 {
 public:
 	PrimitiveBuffer(VkCommandPool& pool, GraphicsDevice& device);
