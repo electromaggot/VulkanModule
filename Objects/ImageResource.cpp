@@ -15,11 +15,17 @@ ImageResource::ImageResource(GraphicsDevice& graphicsDevice, Mipmaps* optionalMi
 		pMipmaps(optionalMipmaps)
 { }
 
-ImageResource::~ImageResource()
+ImageResource::~ImageResource()  { destroy(); }
+
+void ImageResource::destroy()
 {
-	vkDestroyImageView(device, imageView, nullptr);
-	vkDestroyImage(device, image, nullptr);
-	vkFreeMemory(device, deviceMemory, nullptr);
+	//TJ_TODO: MUST FIRST make sure creation of each of these actually succeeded.
+	//TJ_TODO:	and in a better more thorough manner than this test:
+	if (imageInfo.format != VK_FORMAT_UNDEFINED) {
+		vkDestroyImageView(device, imageView, nullptr);
+		vkDestroyImage(device, image, nullptr);
+		vkFreeMemory(device, deviceMemory, nullptr);
+	}
 }
 
 

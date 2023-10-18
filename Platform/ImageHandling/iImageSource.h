@@ -22,14 +22,14 @@
 
 struct ImageInfo {
 
-	void*	pPixels;
+	void*	pPixels		  = nullptr;
 
-	VkDeviceSize numBytes;
+	VkDeviceSize numBytes = 0;
 
-	VkFormat	 format;
+	VkFormat	 format	  = VK_FORMAT_UNDEFINED;
 
-	int		wide,
-			high;
+	int		wide		  = 0,
+			high		  = 0;
 };
 
 class iImageSource
