@@ -1,6 +1,6 @@
 //
 // DepthBuffer.cpp
-//	Vulkan Add-ons
+//	Vulkan Objects
 //
 // See header description.
 //
@@ -11,17 +11,14 @@
 
 
 DepthBuffer::DepthBuffer(GraphicsDevice& graphics, iPlatform& platform)
-	:	TextureImage(graphics, platform),
+	:	ImageResource(graphics),
 		graphicsDevice(graphics)
 {
-	device = graphicsDevice.getLogical();
-
 	imageInfo.wide = platform.pixelsWide;
 	imageInfo.high = platform.pixelsHigh;
 	
 	create();
 }
-
 
 DepthBuffer::~DepthBuffer()
 {

@@ -17,10 +17,10 @@
 
 TextureImage::TextureImage(TextureSpec& texSpec, VkCommandPool& pool, GraphicsDevice& device,
 						   iPlatform& platform, VkSampler injectedSampler)
-	:	BufferBase(device),
-		CommandBufferBase(pool, device),
+	:	CommandBufferBase(pool, device),
 		specified(texSpec),
-		mipmaps(pool, device)
+		mipmaps(pool, device),
+		ImageResource(device, &mipmaps)
 {
 	if (texSpec.fileName)
 		create(texSpec, device, platform);
@@ -37,14 +37,6 @@ TextureImage::TextureImage(TextureSpec& texSpec, VkCommandPool& pool, GraphicsDe
 	} else {
 		createSampler(texSpec);
 	}
-}
-
-TextureImage::TextureImage(GraphicsDevice& device, iPlatform& platform)
-	:	BufferBase(device),
-		CommandBufferBase(CommandControl::vkPool(), device),
-		mipmaps(CommandControl::vkPool(), device)	// (even if unused must still initialize)
-{
-	wasSamplerInjected = true;	//TJ_TODO: temporary, staves-off crash in vkDestroySampler below.
 }
 
 TextureImage::~TextureImage()
@@ -138,35 +130,6 @@ void TextureImage::createBlank(ImageInfo& params, GraphicsDevice& graphicsDevice
 							  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);					// <- to
 }
 
-// VkCreate a texture-specific ImageView, which is how the image data is accessed.
-// (some code here is identical to Swapchain::createImageViews, but not much, plus it's
-//	specialized and isolated in that class... so actually more minimal to repeat/separate)
-//
-void TextureImage::createImageView(VkImageAspectFlags aspectFlags/* = VK_IMAGE_ASPECT_COLOR_BIT*/)
-{
-	VkImageViewCreateInfo viewInfo = {
-		.sType	= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-		.pNext	= nullptr,
-		.flags	= 0,
-		.image		= image,
-		.viewType	= VK_IMAGE_VIEW_TYPE_2D,
-		.format		= imageInfo.format,
-		.components = { .r = VK_COMPONENT_SWIZZLE_IDENTITY, .g = VK_COMPONENT_SWIZZLE_IDENTITY,
-						.b = VK_COMPONENT_SWIZZLE_IDENTITY, .a = VK_COMPONENT_SWIZZLE_IDENTITY },
-		.subresourceRange = {
-			.aspectMask		= aspectFlags,
-			.baseMipLevel	= 0,
-			.levelCount		= mipmaps.NumLevels(),		// (note: will be 1 if mipmaps not used)
-			.baseArrayLayer = 0,
-			.layerCount		= 1
-		}
-	};
-
-	call = vkCreateImageView(device, &viewInfo, nullptr, &imageView);
-	if (call != VK_SUCCESS)
-		Fatal("Create Image View for texture FAILURE" + ErrStr(call));
-}
-
 // Note that filterMode MIPMAP will imply minFilter_LINEAR and mipmapMode_LINEAR,
 //	which already aligns with the general default of filterMode LINEAR.
 //		(it makes sense that minFilter applies to mipmapping, because mipmapping IS minifying)
@@ -206,51 +169,6 @@ void TextureImage::createSampler(TextureSpec& texSpec)
 	call = vkCreateSampler(device, &samplerInfo, nullptr, &sampler);
 	if (call != VK_SUCCESS)
 		Fatal("Create Sampler for texture FAILURE" + ErrStr(call));
-}
-
-// Note that certain formats, e.g. produce: VK_ERROR_FORMAT_NOT_SUPPORTED: VkFormat VK_FORMAT_R8G8B8_UNORM is not supported on this platform.
-//
-void TextureImage::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling,
-							   VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
-							   VkImage& image, VkDeviceMemory& imageMemory)
-{
-	VkImageCreateInfo imageInfo = {
-		.sType	= VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-		.pNext	= nullptr,
-		.flags	= 0,
-		.imageType	 = VK_IMAGE_TYPE_2D,
-		.format		 = format,
-		.extent		 = { width, height, 1 /* = depth, must be 1 */ },
-		.mipLevels	 = mipmaps.CalculateNumberOfLevels(width, height),
-		.arrayLayers = 1,
-		.samples	 = VK_SAMPLE_COUNT_1_BIT,
-		.tiling		 = tiling,
-		.usage		 = usage,
-		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-		.queueFamilyIndexCount	= 0,
-		.pQueueFamilyIndices	= nullptr,
-		.initialLayout			= VK_IMAGE_LAYOUT_UNDEFINED,
-	};
-
-	call = vkCreateImage(device, &imageInfo, nullptr, &image);
-	if (call != VK_SUCCESS)
-		Fatal("Create Image FAILURE" + ErrStr(call));
-
-	VkMemoryRequirements memRequirements;
-	vkGetImageMemoryRequirements(device, image, &memRequirements);
-
-	VkMemoryAllocateInfo allocInfo = {
-		.sType	= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-		.pNext	= nullptr,
-		.allocationSize	 = memRequirements.size,
-		.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties)
-	};
-
-	call = vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory);
-	if (call != VK_SUCCESS)
-		Fatal("Allocate Memory for image FAILURE" + ErrStr(call));
-
-	vkBindImageMemory(device, image, imageMemory, 0);
 }
 
 // Barrier between transferring image, and upon finish, reading it.
