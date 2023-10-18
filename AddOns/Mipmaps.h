@@ -7,6 +7,9 @@
 // Created 7/7/19 by Tadd Jensen
 //	© 0000 (uncopyrighted; use at will)
 //
+#ifndef Mipmaps_h
+#define Mipmaps_h
+
 #include "CommandBufferBase.h"
 #include <cmath>
 
@@ -139,3 +142,5 @@ public:
 		endAndSubmitCommands(commandBuffer);
 	}
 };
+
+#endif	// Mipmaps_h
