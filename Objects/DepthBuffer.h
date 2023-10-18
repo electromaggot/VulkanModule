@@ -1,6 +1,6 @@
 //
 // DepthBuffer.h
-//	Vulkan Add-ons
+//	Vulkan Objects
 //
 // Encapsulate Depth Buffer Resources: image, its memory and view.
 //
@@ -10,11 +10,11 @@
 #ifndef DepthBuffer_h
 #define DepthBuffer_h
 
-#include "TextureImage.h"
+#include "ImageResource.h"
 #include "Swapchain.h"
 
 
-class DepthBuffer : public TextureImage
+class DepthBuffer : public ImageResource
 {
 public:
 	DepthBuffer(GraphicsDevice& graphics, iPlatform& platform);

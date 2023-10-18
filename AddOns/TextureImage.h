@@ -20,6 +20,7 @@
 #ifndef TextureImage_h
 #define TextureImage_h
 
+#include "ImageResource.h"
 #include "CommandBufferBase.h"
 #include "Mipmaps.h"
 
@@ -49,25 +50,18 @@ struct TextureSpec	// Texture Specifier / Specification
 const bool NO_MIPMAP = false;
 
 
-class TextureImage : protected BufferBase, CommandBufferBase
+class TextureImage : ImageResource, CommandBufferBase
 {
 public:
 	TextureImage(TextureSpec& texSpec, VkCommandPool& pool, GraphicsDevice& graphicsDevice,
 				 iPlatform& platform, VkSampler sampler = VK_NULL_HANDLE);
-	TextureImage(GraphicsDevice& device, iPlatform& platform);
 	~TextureImage();
 
 		// MEMBERS
 protected:
-	VkImage			image;
-	VkDeviceMemory	deviceMemory;
-	VkImageView		imageView;
 	VkSampler		sampler;
-
 	Mipmaps			mipmaps;
-
 	TextureSpec		specified;
-	ImageInfo		imageInfo;
 
 	bool			wasSamplerInjected = false;
 
@@ -76,11 +70,7 @@ protected:
 	void create(TextureSpec& texSpec, GraphicsDevice& graphicsDevice, iPlatform& platform);
 	void createBlank(ImageInfo& parameters, GraphicsDevice& graphicsDevice, iPlatform& platform, bool mipmap = true);
 	void destroy();
-	void createImageView(VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT);
 	void createSampler(TextureSpec& texSpec);
-	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling,
-					 VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
-					 VkImage& image, VkDeviceMemory& imageMemory);
 	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout,
 							   VkImageLayout newLayout);
 	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
@@ -95,8 +85,6 @@ public:
 			.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 		};
 	}
-	VkImage&		getImage()		{ return image;				 }
-	ImageInfo&		getInfo()		{ return imageInfo;			 }
 	StrPtr			getName()		{ return specified.fileName; }
 
 
