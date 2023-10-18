@@ -10,26 +10,15 @@
 #include "DepthBuffer.h"
 
 
-DepthBuffer::DepthBuffer(GraphicsDevice& graphics, iPlatform& platform)
+DepthBuffer::DepthBuffer(GraphicsDevice& graphics, iPlatform& platform, bool enabled)
 	:	ImageResource(graphics),
 		graphicsDevice(graphics)
 {
+	if (! enabled) return;
+
 	imageInfo.wide = platform.pixelsWide;
 	imageInfo.high = platform.pixelsHigh;
-	
 	create();
-}
-
-DepthBuffer::~DepthBuffer()
-{
-	destroy();
-}
-
-void DepthBuffer::destroy()
-{
-	vkDestroyImageView(device, imageView, nullptr);
-	vkDestroyImage(device, image, nullptr);
-	vkFreeMemory(device, deviceMemory, nullptr);
 }
 
 
@@ -53,6 +42,7 @@ void DepthBuffer::selectBestDepthFormat() {
 	imageInfo.format = format;
 	graphicsDevice.getProfile().selectedDepthFormat = format;
 }
+
 VkFormat DepthBuffer::findSupportedFormat(VkFormat candidates[], int nCandidates,
 										  VkImageTiling tiling, VkFormatFeatureFlags features) {
 	for (int iFormat = 0; iFormat < nCandidates; ++iFormat) {
@@ -66,8 +56,9 @@ VkFormat DepthBuffer::findSupportedFormat(VkFormat candidates[], int nCandidates
 		}
 	}
 	Log(ERROR, "DepthBuffering not possible, failed to find any supported format!");
-	return VK_FORMAT_MAX_ENUM;
-}
+	return VK_FORMAT_UNDEFINED;	// log, but simply cause depth buffer to not be used
+}								// to force a more fatal error: return VK_FORMAT_MAX_ENUM;
+
 bool DepthBuffer::hasStencilComponent(VkFormat format) {
 	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }

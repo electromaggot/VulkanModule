@@ -2,7 +2,8 @@
 // DepthBuffer.h
 //	Vulkan Objects
 //
-// Encapsulate Depth Buffer Resources: image, its memory and view.
+// Encapsulate Depth Buffer and its Image Resources (i.e.
+//	a depth buffer incorporates an image, its memory and view).
 //
 // Created 10/12/22 by Tadd Jensen
 //	© 0000 (uncopyrighted; use at will)
@@ -14,11 +15,10 @@
 #include "Swapchain.h"
 
 
-class DepthBuffer : public ImageResource
+class DepthBuffer : protected ImageResource
 {
 public:
-	DepthBuffer(GraphicsDevice& graphics, iPlatform& platform);
-	~DepthBuffer();
+	DepthBuffer(GraphicsDevice& graphics, iPlatform& platform, bool enabled = false);
 
 		// MEMBERS
 private:
@@ -27,7 +27,6 @@ private:
 		// METHODS
 private:
 	void create();
-	void destroy();
 	void selectBestDepthFormat();
 	VkFormat findSupportedFormat(VkFormat candidates[], int nCandidates,
 								 VkImageTiling tiling, VkFormatFeatureFlags features);
