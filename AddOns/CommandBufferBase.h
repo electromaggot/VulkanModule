@@ -27,7 +27,7 @@ protected:
 	VkCommandPool&	commandPool;
 	VkQueue&		graphicsQueue;
 
-	GraphicsDevice	graphicsDevice;
+	GraphicsDevice&	graphicsDevice;
 
 	const uint32_t	nCommandBuffers = 1;
 
