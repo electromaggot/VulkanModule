@@ -10,14 +10,15 @@
 #include "DepthBuffer.h"
 
 
-DepthBuffer::DepthBuffer(GraphicsDevice& graphics, iPlatform& platform, bool enabled)
+DepthBuffer::DepthBuffer(Swapchain& swapchain, GraphicsDevice& graphics, bool enabled)
 	:	ImageResource(graphics),
 		graphicsDevice(graphics)
 {
 	if (! enabled) return;
 
-	imageInfo.wide = platform.pixelsWide;
-	imageInfo.high = platform.pixelsHigh;
+	VkExtent2D extent = swapchain.getExtent();
+	imageInfo.wide = extent.width;
+	imageInfo.high = extent.height;
 	create();
 }
 
