@@ -85,7 +85,7 @@ public:
 			.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 		};
 	}
-	StrPtr			getName()		{ return specified.fileName; }
+	StrPtr	getName()	{ return specified.fileName; }
 
 
 	class StagingBuffer

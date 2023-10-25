@@ -21,7 +21,7 @@ VulkanSetup::VulkanSetup(iPlatform& platform)
 		windowSurface(vulkan, platform),
 		device(windowSurface, vulkan, validation),
 		swapchain(device, windowSurface),
-		depthBuffer(device, platform),
+		depthBuffer(swapchain, device),
 		renderPass(device),
 		framebuffers(swapchain, depthBuffer, renderPass, device),
 		syncObjects(device),
