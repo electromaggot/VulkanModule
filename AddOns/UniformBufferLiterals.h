@@ -32,9 +32,9 @@ enum DestinationStage {
 // One for simplistic cases where only a single model matrix is needed...
 //
 struct UBO_MVP {
-	alignas(16)		mat4 model;
-	alignas(16)		mat4 view;
-	alignas(16)		mat4 proj;
+	alignas(16)		mat4 model	= mat4(1.0f);
+	alignas(16)		mat4 view	= mat4(1.0f);
+	alignas(16)		mat4 proj	= mat4(1.0f);
 };
 
 // ...and a more-refined form where View-Projection matrices for the camera are
@@ -42,8 +42,8 @@ struct UBO_MVP {
 //	"local" thus transferred per-Object3D, done via UBO(mat4& ...) seen below.
 //
 struct UBO_VP {
-	alignas(16)		mat4 view;
-	alignas(16)		mat4 proj;
+	alignas(16)		mat4 view	= mat4(1.0f);
+	alignas(16)		mat4 proj	= mat4(1.0f);
 };
 
 
