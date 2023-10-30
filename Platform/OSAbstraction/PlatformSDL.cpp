@@ -18,6 +18,8 @@
 
 #include "AppConstants.h"
 
+#include <climits>
+
 
 PlatformSDL::PlatformSDL()
 {
@@ -57,7 +59,7 @@ void PlatformSDL::initializeSDL()
 //
 void PlatformSDL::createVulkanCompatibleWindow()
 {
-	#if TARGET_OS_IPHONE || TARGET_OS_IPHONESIMULATOR	// TODO: Add ANDROID support
+	#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR		// TODO: Add ANDROID support
 		bool isMobilePlatform = true;
 	#else
 		bool isMobilePlatform = false;
