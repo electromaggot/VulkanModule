@@ -120,10 +120,7 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexType* pVertex,
 		.logicOp			= VK_LOGIC_OP_COPY,
 		.attachmentCount	= 1,
 		.pAttachments		= &colorBlendAttachment,
-		.blendConstants[0]	= 0.0f,
-		.blendConstants[1]	= 0.0f,
-		.blendConstants[2]	= 0.0f,
-		.blendConstants[3]	= 0.0f
+		.blendConstants		= { 0.0f, 0.0f, 0.0f, 0.0f }
 	};
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
