@@ -12,9 +12,10 @@
 // Created 1/29/19 by Tadd Jensen
 //	© 2019 Megaphone Studios
 //
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan_to_string.hpp>
 
-typedef struct {
+/*typedef struct {
 	VkResult		eNum;
 	const char*		string;
 } VkErrorMessage;
@@ -49,26 +50,27 @@ VkErrorMessage VkErrorMessages[] = {
 	{ VK_ERROR_INVALID_SHADER_NV,		"VK_ERROR_INVALID_SHADER_NV"		},	// -1000012000
 	{ VK_ERROR_FRAGMENTATION_EXT,		"VK_ERROR_FRAGMENTATION_EXT"		},	// -1000161000
 	{ VK_ERROR_NOT_PERMITTED_EXT,		"VK_ERROR_NOT_PERMITTED_EXT"		},	// -1000174001
-	/*
+	/ *
 	  VK_ERROR_OUT_OF_POOL_MEMORY_KHR = VK_ERROR_OUT_OF_POOL_MEMORY,
 	  VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR = VK_ERROR_INVALID_EXTERNAL_HANDLE,
 
 	  VK_RESULT_BEGIN_RANGE = VK_ERROR_FRAGMENTED_POOL,
 	  VK_RESULT_END_RANGE = VK_INCOMPLETE,
-	  VK_RESULT_RANGE_SIZE = (VK_INCOMPLETE - VK_ERROR_FRAGMENTED_POOL + 1),	*/
+	  VK_RESULT_RANGE_SIZE = (VK_INCOMPLETE - VK_ERROR_FRAGMENTED_POOL + 1),	* /
 };
 
-const int nVkErrorMessages = sizeof(VkErrorMessages) / sizeof(VkErrorMessage);
+const int nVkErrorMessages = sizeof(VkErrorMessages) / sizeof(VkErrorMessage);*/
 
 
-const char* VkErrorString(VkResult eres)
+std::string VkErrorString(VkResult eres)
 {
-	if (eres >= VK_RESULT_BEGIN_RANGE && eres <= VK_RESULT_END_RANGE)
+	return std::to_string((int) eres);
+	/*if (eres >= VK_RESULT_BEGIN_RANGE && eres <= VK_RESULT_END_RANGE)
 		return VkErrorMessages[eres - VK_RESULT_BEGIN_RANGE].string;
 	for (int iMsg = VK_RESULT_RANGE_SIZE; iMsg < nVkErrorMessages; ++iMsg)
 		if (VkErrorMessages[iMsg].eNum == eres)
 			return VkErrorMessages[iMsg].string;
-	return "unknown error";
+	return "unknown error";*/
 }
 
 
