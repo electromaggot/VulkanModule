@@ -103,14 +103,15 @@ private:
 	{
 		Log(NOTE, "Vulkan reports Extensions Supported: %d", nAllExtensions);
 
-		char prefix[8];
+		const int MAXLEN_PREFIX = 8;
+		char prefix[MAXLEN_PREFIX];
 		for (Index iExtension = 0; iExtension < nAllExtensions; ) {
 			StrPtr eachExtensionName = allExtensions[iExtension++].extensionName;
-			snprintf(prefix, 8, " %2u. ", iExtension);
+			snprintf(prefix, MAXLEN_PREFIX, " %2u. ", iExtension);
 			const char* postfix = "";
 			for (StrPtr requestedName : grantedExtensionNames) {
 				if (strcmp(requestedName, eachExtensionName) == 0) {
-					sprintf(prefix, " --> ");
+					snprintf(prefix, MAXLEN_PREFIX, " --> ");
 					postfix = " <-- requested";
 					break;
 				}

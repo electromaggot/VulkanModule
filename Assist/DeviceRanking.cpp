@@ -124,27 +124,27 @@ string DeviceRanking::RankDevices(VkPhysicalDevice devices[], int nDevices, int 
 }
 
 RawScore DeviceRanking::quantifyDeviceType(VkPhysicalDevice& device, DeviceProfile& assay) {
-	const uint64_t MAX_SCORE = 5;
+	const uint64_t MAX_DEVICE_TYPES = 5;
 	static struct deviceTypeScores {		// Constructing this table compile-time makes for efficient run-time lookup.
 		deviceTypeScores() {
-			score[VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU]	  = MAX_SCORE;		name[VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU]	 = "DISCRETE GPU  ";
-			score[VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU] = MAX_SCORE - 1;	name[VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU] = "INTEGRATED GPU";
-			score[VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU]	  = MAX_SCORE - 2;	name[VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU]	 = "VIRTUAL GPU   ";
-			score[VK_PHYSICAL_DEVICE_TYPE_CPU]			  = MAX_SCORE - 3;	name[VK_PHYSICAL_DEVICE_TYPE_CPU]			 = "CPU           ";
-			score[VK_PHYSICAL_DEVICE_TYPE_OTHER]		  = MAX_SCORE - 4;	name[VK_PHYSICAL_DEVICE_TYPE_OTHER]			 = "OTHER device  ";
+			score[VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU]	  = MAX_DEVICE_TYPES;		name[VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU]	 = "DISCRETE GPU  ";
+			score[VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU] = MAX_DEVICE_TYPES - 1;	name[VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU] = "INTEGRATED GPU";
+			score[VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU]	  = MAX_DEVICE_TYPES - 2;	name[VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU]	 = "VIRTUAL GPU   ";
+			score[VK_PHYSICAL_DEVICE_TYPE_CPU]			  = MAX_DEVICE_TYPES - 3;	name[VK_PHYSICAL_DEVICE_TYPE_CPU]			 = "CPU           ";
+			score[VK_PHYSICAL_DEVICE_TYPE_OTHER]		  = MAX_DEVICE_TYPES - 4;	name[VK_PHYSICAL_DEVICE_TYPE_OTHER]			 = "OTHER device  ";
 		}
-		uint64_t score[VK_PHYSICAL_DEVICE_TYPE_RANGE_SIZE];
-		const char* name[VK_PHYSICAL_DEVICE_TYPE_RANGE_SIZE];
+		uint64_t score[MAX_DEVICE_TYPES];
+		const char* name[MAX_DEVICE_TYPES];
 	} deviceTable;
 
 	VkPhysicalDeviceType deviceType = assay.properties.deviceType;
-	if (deviceType < 0 || deviceType >= VK_PHYSICAL_DEVICE_TYPE_RANGE_SIZE)
+	if (deviceType < 0 || deviceType >= MAX_DEVICE_TYPES)
 	{
 		assay.description += "ERRONEOUS deviceType";
 		return 0;
 	}
 	uint64_t score = deviceTable.score[deviceType];
-	assay.description += deviceTable.name[deviceType] + string(" (rank #") + to_string(MAX_SCORE - score + 1) + ")";
+	assay.description += deviceTable.name[deviceType] + string(" (rank #") + to_string(MAX_DEVICE_TYPES - score + 1) + ")";
 	return score;
 }
 
