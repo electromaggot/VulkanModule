@@ -16,7 +16,7 @@
 // Originally, apparently, the Vulkan SDK's "vulkan.hpp" file provided
 //	a to_string override for VkResult.  However, it seemed to stop working.
 //	Therefore, return to this:		(until I can grok some final resolution)
-extern const char* VkErrorString(VkResult);
+extern std::string VkErrorString(VkResult);
 
 string ErrStr(VkResult num)
 {
