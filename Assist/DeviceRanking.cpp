@@ -64,8 +64,7 @@ string DeviceRanking::RankDevices(VkPhysicalDevice devices[], int nDevices, int 
 	};
 	// (unfortunately, still can't figure out how to get GPU frequency/performance)
 
-	const char* delimit = "";
-	for (int iPass = 0; iPass < N_ELEMENTS_IN_ARRAY(passOrder); ++iPass, delimit = ", ")
+	for (int iPass = 0; iPass < N_ELEMENTS_IN_ARRAY(passOrder); ++iPass)
 	{
 		uint64_t greatestScore = 0;
 		for (int iDevice = 0; iDevice < nDevices; ++iDevice)
@@ -75,7 +74,8 @@ string DeviceRanking::RankDevices(VkPhysicalDevice devices[], int nDevices, int 
 				continue;
 			}
 
-			deviceProfiles[iDevice].description += delimit;
+			if (iPass)
+				deviceProfiles[iDevice].description += ", ";
 
 			uint64_t eachScore = passOrder[iPass](devices[iDevice], deviceProfiles[iDevice]);
 			deviceProfiles[iDevice].rawPerPassScore = eachScore;
