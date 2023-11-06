@@ -45,10 +45,10 @@ struct AddOns
 protected:
 	vector<DescribEd>	described;
 
-	PrimitiveBuffer*	pVertexBuffer	= nullptr;
-	PrimitiveBuffer*	pIndexBuffer	= nullptr;
+	PrimitiveBuffer*	pVertexBuffer		= nullptr;
+	PrimitiveBuffer*	pIndexBuffer		= nullptr;
 
-	UniformBuffer*		  pUniformBuffer;
+	UniformBuffer*		  pUniformBuffer	= nullptr;
 	vector<TextureImage*> pTextureImages;
 
 	UBO					ubo;			// Store local copies of these,
@@ -62,14 +62,16 @@ protected:
 	void createVertexAndOrIndexBuffers(VertexBasedObject& vertexObject);
 	void destroyVertexAndOrIndexBuffers();
 
-	void createDescribedItems(UBO* pUBO, TextureSpec textureSpecs[], iPlatform& platform);	// IMPORTANT:
-												  // ^^^^^^^^^^^^^^ This "array" is really just a pointer, and is expected to either be null (nullptr) or point
-												  //				to an array of TextureSpec structures TERMINATED by one that is null or having: .fileName == nullptr
+	void createDescribedItems(UBO* pUBO, vector<TextureSpec>& textureSpecs, iPlatform& platform);
 
 	void Recreate(VertexBasedObject& vertexObject);
 	void RecreateDescribables();
 private:
 	vector<DescribEd> reDescribe();
+
+		// getters
+public:
+	vector<TextureImage*>&	textureImages()	 { return pTextureImages; }
 };
 
 #endif	// AddOns_h
