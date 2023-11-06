@@ -30,8 +30,6 @@ struct ImageInfo {
 
 	int		wide,
 			high;
-
-	string	name;
 };
 
 class iImageSource

@@ -48,7 +48,6 @@ protected:
 			Fatal("SDL failed to IMG Load texture image: " + string(filePath));
 
 		ImageInfo info = validatedImageInfo();
-		info.name = filePath;
 		return info;
 	}
 
