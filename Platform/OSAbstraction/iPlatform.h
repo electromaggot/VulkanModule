@@ -68,6 +68,8 @@ public:
 
 	virtual iImageSource& ImageSource() = 0;
 
+	virtual void ShowSoftKeyboard(bool show = true) { /* if platform doesn't have/need
+														 "soft" keyboard, that's okay */ }
 	virtual void InitGUISystem()	 { }
 	virtual void GUISystemNewFrame() { }
 
