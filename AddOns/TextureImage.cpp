@@ -17,16 +17,34 @@
 TextureImage::TextureImage(TextureSpec& texSpec, VkCommandPool& pool, GraphicsDevice& device,
 						   iPlatform& platform, VkSampler injectedSampler)
 	:	CommandBufferBase(pool, device),
+		specified(texSpec),
 		mipmaps(pool, device)
 {
-	create(texSpec, device, platform);
-	createImageView();
-	if (injectedSampler == VK_NULL_HANDLE)
-		createSampler(texSpec);
+	if (texSpec.fileName)
+		create(texSpec, device, platform);
+	else if (texSpec.pImageInfo)
+		createBlank(*texSpec.pImageInfo, device, platform);
 	else {
+		Log(ERROR, "Cannot create TextureImage blank (no fileName) without ImageInfo specified size/format.");
+		return;
+	}
+	createImageView();
+	if (injectedSampler != VK_NULL_HANDLE) {
 		sampler = injectedSampler;
 		wasSamplerInjected = true;
+	} else {
+		createSampler(texSpec);
 	}
+}
+
+// Alternatively construct a Blank Texture (writable) with size/format of given ImageInfo and a default Texture Specifier.
+TextureImage::TextureImage(ImageInfo& info, VkCommandPool& pool, GraphicsDevice& device, iPlatform& platform)
+	:	CommandBufferBase(pool, device), mipmaps(pool, device)
+{
+	createBlank(info, device, platform);
+	createImageView();
+	TextureSpec defaultTexSpec;
+	createSampler( defaultTexSpec );
 }
 
 TextureImage::~TextureImage()
@@ -45,7 +63,9 @@ TextureImage::~TextureImage()
 void TextureImage::ReGenerateMipmaps()
 {
 	if (pStagingBuffer)	// i.e. wantMutable && texSpec.filterMode == MIPMAP)
+	{
 		mipmaps.Generate(image, imageInfo.format, imageInfo.wide, imageInfo.high);
+	}
 }
 
 
@@ -78,7 +98,7 @@ void TextureImage::create(TextureSpec& texSpec, GraphicsDevice& graphicsDevice, 
 	transitionImageLayout(image, format, VK_IMAGE_LAYOUT_UNDEFINED,					// from
 						  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);					// <- to
 
-	pStagingBuffer->CopyOutToParentImage();
+	pStagingBuffer->CopyOutToTextureImage();
 
 	if (texSpec.filterMode == MIPMAP)
 		mipmaps.Generate(image, format, width, height);
@@ -90,6 +110,32 @@ void TextureImage::create(TextureSpec& texSpec, GraphicsDevice& graphicsDevice, 
 		delete pStagingBuffer;
 		pStagingBuffer = nullptr;
 	}
+}
+
+void TextureImage::createBlank(ImageInfo& params, GraphicsDevice& graphicsDevice, iPlatform& platform, bool mipmap)
+{
+	imageInfo = params;
+
+	pStagingBuffer	= new class StagingBuffer(*this);
+
+	pStagingBuffer->CreateAndMapBuffer(params.numBytes);
+
+	pStagingBuffer->Clear();
+
+	createImage(params.wide, params.high, params.format, VK_IMAGE_TILING_OPTIMAL,
+				VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, deviceMemory);
+
+	transitionImageLayout(image, params.format, VK_IMAGE_LAYOUT_UNDEFINED,					// from
+						  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);							// <- to
+
+	pStagingBuffer->CopyOutToTextureImage();
+
+	if (mipmap)
+		mipmaps.Generate(image, params.format, params.wide, params.high);
+	else
+		transitionImageLayout(image, params.format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,	// from
+							  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);					// <- to
 }
 
 // VkCreate a texture-specific ImageView, which is how the image data is accessed.
@@ -303,28 +349,35 @@ void TextureImage::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t wi
 TextureImage::StagingBuffer::StagingBuffer(TextureImage& image)
 	:	texture(image)
 { }
-#define DEREFERENCE(textureImage)	ImageInfo&	  imageData = textureImage.imageInfo;	\
-									VkDeviceSize& nBytes	= imageData.numBytes;		\
-									int&		  width		= imageData.wide;			\
-									int&		  height	= imageData.high;
+
+#define DEREFERENCE(textureImage)						\
+	ImageInfo&	  imageData = textureImage.imageInfo;	\
+	VkDeviceSize& nBytes	= imageData.numBytes;		\
+	int&		  width		= imageData.wide;			\
+	int&		  height	= imageData.high;
+
+void TextureImage::StagingBuffer::CreateAndMapBuffer(VkDeviceSize& nBytes)
+{
+	texture.createGeneralBuffer(nBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+								VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+								vkBuffer, deviceMemory);
+	vkMapMemory(texture.device, deviceMemory, 0, nBytes, 0, (void**) &pBytesStaged);
+}
+
 // Copy into the StagingBuffer the just-loaded image.
 void TextureImage::StagingBuffer::CopyInImageData(TextureSpec& spec)
 {
 	DEREFERENCE(texture)
 	char* pPixels = (char*) imageData.pPixels;
 
-	texture.createGeneralBuffer(nBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-								VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-								vkBuffer, deviceMemory);
-
-	vkMapMemory(texture.device, deviceMemory, 0, nBytes, 0, (void**) &pBytes);
+	CreateAndMapBuffer(nBytes);
 
 	if (! spec.flipVertical)
-		memcpy(pBytes, pPixels, static_cast<size_t>(nBytes));
+		memcpy(pBytesStaged, pPixels, static_cast<size_t>(nBytes));
 	else {
 		size_t bytesPerRow = nBytes / width;	// (imageSize was calculated using pitch)
 		char* pSource = pPixels;
-		char* pDestination = pBytes + nBytes;
+		char* pDestination = pBytesStaged + nBytes;
 		for (uint32_t iRow = height; iRow > 0; --iRow) {
 			pDestination -= bytesPerRow;
 			memcpy(pDestination, pSource, bytesPerRow);
@@ -336,6 +389,7 @@ void TextureImage::StagingBuffer::CopyInImageData(TextureSpec& spec)
 	else
 		vkUnmapMemory(texture.device, deviceMemory);
 }
+
 TextureImage::StagingBuffer::~StagingBuffer()
 {
 	if (keepMemoryMapped)
@@ -344,24 +398,27 @@ TextureImage::StagingBuffer::~StagingBuffer()
 	vkFreeMemory(texture.device, deviceMemory, nullptr);
 }
 
-void TextureImage::StagingBuffer::CopyOutToParentImage()
+
+void TextureImage::StagingBuffer::CopyOutToTextureImage()
 {
-	texture.copyBufferToImage(vkBuffer, texture.image, texture.imageInfo.wide, texture.imageInfo.high);
+	ImageInfo& img = texture.imageInfo;
+	texture.copyBufferToImage(vkBuffer, texture.image, img.wide, img.high);
 }
 
 // For test/debug: diagonal line of black pixels across image.
 //	Note that for mipmaps, this may only write to the max-resolution map (and "blend
 //	away" into the next-lower map shown) unless you re-generate the mipmaps post-mutate.
-void TextureImage::StagingBuffer::ExperimentalWrite() {
+void TextureImage::StagingBuffer::experimentalWrite() {
 	DEREFERENCE(texture)
 	size_t bytesPerRow = nBytes / height;
 	size_t bytesPerPixel = nBytes / (width * height);
-	char* pDestination = pBytes;
+	char* pDestination = pBytesStaged;
 	char* pEnd = pDestination + nBytes;
 	while (pDestination < pEnd) {
 		memset(pDestination, 0, bytesPerPixel);
 		pDestination += bytesPerRow + bytesPerPixel;
 	}
+	CopyOutToTextureImage();	// (i.e. change won't show up unless copied OUT of staging buffer!)
 }
 
 
