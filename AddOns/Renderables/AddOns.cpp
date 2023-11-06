@@ -20,7 +20,7 @@ AddOns::AddOns(Renderable& renderable, VulkanSetup& setup, iPlatform& abstractPl
 		platform(abstractPlatform)
 {
 	createVertexAndOrIndexBuffers(renderable.vertexSpec);
-	createDescribedItems(renderable.pUBOs.data(), renderable.textureSpecs.data(), abstractPlatform);
+	createDescribedItems(renderable.pUBOs.data(), renderable.textureSpecs, abstractPlatform);
 }
 
 AddOns::~AddOns()
@@ -68,7 +68,7 @@ void AddOns::Recreate(VertexBasedObject& vertexObject)
 // Assemble a collection of Descriptors to be "added on."  Ordering is critical:
 //	make sure each INDEX matches its "layout(binding = <INDEX>)" in your Shader...
 //																					// e.g. :
-void AddOns::createDescribedItems(UBO* pUBO, TextureSpec textureSpecs[],
+void AddOns::createDescribedItems(UBO* pUBO, vector<TextureSpec>& textureSpecs,
 								  iPlatform& platform)
 {
 	// Uniform Buffer Objects first (explicitly: the MVP UBO)
@@ -80,16 +80,18 @@ void AddOns::createDescribedItems(UBO* pUBO, TextureSpec textureSpecs[],
 	}
 
 	// Textures next (may be more than one)... order is important here too == binding index
-	for (TextureSpec* pTextureSpec = textureSpecs; pTextureSpec && pTextureSpec->fileName; ++pTextureSpec) {
-		texspecs.push_back(*pTextureSpec);
-		TextureImage* pTexture = new TextureImage(texspecs.back(), vulkan.command.vkPool(), vulkan.device, platform);
-		if (pTexture) {
-			pTextureImages.emplace_back(pTexture);
-			described.emplace_back( pTexture->getDescriptorImageInfo(),				// layout(binding = 1) ... 2) ... 3)...
-									VK_SHADER_STAGE_FRAGMENT_BIT);
-									// ^^^^^^ TODO: ^^^^^^^^ We don't have a mechanism (YET!) allowing an image to
-		}							//		be specified for the VERTEX STAGE, which could be helpful for something
-	}								//		like offseting vertices based on a depth map.
+	for (TextureSpec& textureSpec : textureSpecs) {
+		if (textureSpec.fileName || textureSpec.pImageInfo) {
+			texspecs.push_back(textureSpec);
+			TextureImage* pTexture = new TextureImage(texspecs.back(), vulkan.command.vkPool(), vulkan.device, platform);
+			if (pTexture) {
+				pTextureImages.emplace_back(pTexture);
+				described.emplace_back( pTexture->getDescriptorImageInfo(),				// layout(binding = 1) ... 2) ... 3)...
+										VK_SHADER_STAGE_FRAGMENT_BIT);
+										// ^^^^^^ TODO: ^^^^^^^^ We don't have a mechanism (YET!) allowing an image to
+			}							//		be specified for the VERTEX STAGE, which could be helpful for something
+		}								//		like offseting vertices based on a depth map.
+	}
 }
 
 
