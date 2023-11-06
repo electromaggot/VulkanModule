@@ -18,6 +18,8 @@ const StrPtr SHADER_SUBDIRECTORY  = "compiledShaders/";
 
 const StrPtr TEXTURE_SUBDIRECTORY = "textures/";
 
+const StrPtr FONT_SUBDIRECTORY = "fonts/";
+
 
 // Directory hierarchy project-specific conventions
 
@@ -29,6 +31,11 @@ string FileSystem::ShaderFileFullPath(StrPtr fileName)
 string FileSystem::TextureFileFullPath(StrPtr fileName)
 {
 	return ExeAccompaniedFullPath(fileName, TEXTURE_SUBDIRECTORY);
+}
+
+string FileSystem::FontFileFullPath(StrPtr fileName)
+{
+	return ExeAccompaniedFullPath(fileName, FONT_SUBDIRECTORY);
 }
 
 

@@ -48,6 +48,7 @@ public:
 		// asset-specific file operations
 	static string ShaderFileFullPath(StrPtr fileName);
 	static string TextureFileFullPath(StrPtr fileName);
+	static string FontFileFullPath(StrPtr fileName);
 
 	vector<char> ReadShaderFile(const string& shaderFilename);
 	vector<char> ReadTextureFile(const string& imageFilename);
