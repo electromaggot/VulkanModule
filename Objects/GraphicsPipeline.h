@@ -16,6 +16,7 @@
 #include "RenderPass.h"
 #include "VertexType.h"
 #include "Descriptors.h"
+#include "Customizer.h"
 
 
 class GraphicsPipeline
@@ -23,7 +24,8 @@ class GraphicsPipeline
 public:
 	GraphicsPipeline(ShaderModules& shaders, RenderPass& renderPass,
 					 Swapchain& swapchain, GraphicsDevice& graphics,
-					 VertexType* pVertex = nullptr, Descriptors* pDescriptors = nullptr);
+					 VertexType* pVertex = nullptr, Descriptors* pDescriptors = nullptr,
+					 Customizer customize = NONE);
 	~GraphicsPipeline();
 
 		// MEMBERS
@@ -35,13 +37,13 @@ private:
 
 		// METHODS
 private:
-	void create(ShaderModules& shaderModules, VertexType* pVertex,
-				VkExtent2D swapchainExtent, VkRenderPass renderPass, Descriptors* pDescriptors);
+	void create(ShaderModules& shaderModules, VertexType* pVertex, VkExtent2D swapchainExtent,
+				VkRenderPass renderPass, Descriptors* pDescriptors, Customizer customize);
 	void destroy();
 public:
-	void Recreate(ShaderModules& shaderModules, RenderPass& renderPass,
-				  Swapchain& swapchain, VertexType* pVertex = nullptr,
-								  Descriptors* pDescriptors = nullptr);
+	void Recreate(ShaderModules& shaderModules, RenderPass& renderPass, Swapchain& swapchain,
+				  VertexType* pVertex = nullptr, Descriptors* pDescriptors = nullptr,
+				  Customizer customize = NONE);
 		// getters
 	VkPipeline&  getVkPipeline()			{ return graphicsPipeline;	}
 	VkPipelineLayout&  getPipelineLayout()	{ return pipelineLayout;	}

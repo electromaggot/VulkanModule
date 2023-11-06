@@ -12,10 +12,11 @@
 
 GraphicsPipeline::GraphicsPipeline(ShaderModules& shaders, RenderPass& renderPass,
 								   Swapchain& swapchain, GraphicsDevice& graphics,
-								   VertexType* pVertex, Descriptors* pDescriptors)
+								   VertexType* pVertex, Descriptors* pDescriptors,
+								   Customizer customize)
 	:	device(graphics.getLogical())
 {
-	create(shaders, pVertex, swapchain.getExtent(), renderPass.getVkRenderPass(), pDescriptors);
+	create(shaders, pVertex, swapchain.getExtent(), renderPass.getVkRenderPass(), pDescriptors, customize);
 }
 
 GraphicsPipeline::~GraphicsPipeline()
@@ -31,7 +32,7 @@ void GraphicsPipeline::destroy()
 
 void GraphicsPipeline::create(ShaderModules& shaderModules, VertexType* pVertex,
 							  VkExtent2D swapchainExtent, VkRenderPass renderPass,
-							  Descriptors* pDescriptors)
+							  Descriptors* pDescriptors, Customizer customize)
 {
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
 		.sType	= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -79,7 +80,7 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexType* pVertex,
 		.flags	= 0,
 		.depthClampEnable		 = VK_FALSE,
 		.rasterizerDiscardEnable = VK_FALSE,
-		.polygonMode			 = VK_POLYGON_MODE_FILL,
+		.polygonMode			 = customize & WIREFRAME ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL,
 		.cullMode				 = VK_CULL_MODE_BACK_BIT,
 		.frontFace				 = VK_FRONT_FACE_COUNTER_CLOCKWISE,	// (*) note below
 		.depthBiasEnable		 = VK_FALSE,
@@ -166,11 +167,11 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexType* pVertex,
 		Fatal("Create Graphics Pipeline FAILURE" + ErrStr(call));
 }
 
-void GraphicsPipeline::Recreate(ShaderModules& shaders, RenderPass& renderPass,
-								Swapchain& swapchain, VertexType* pVertex, Descriptors* pDescriptors)
+void GraphicsPipeline::Recreate(ShaderModules& shaders, RenderPass& renderPass, Swapchain& swapchain,
+								VertexType* pVertex, Descriptors* pDescriptors, Customizer customize)
 {
 	destroy();
-	create(shaders, pVertex, swapchain.getExtent(), renderPass.getVkRenderPass(), pDescriptors);
+	create(shaders, pVertex, swapchain.getExtent(), renderPass.getVkRenderPass(), pDescriptors, customize);
 }
 
 
