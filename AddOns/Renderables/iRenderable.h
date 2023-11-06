@@ -30,6 +30,7 @@
 #include "UniformBufferLiterals.h"
 #include "UniformBuffer.h"
 #include "TextureImage.h"
+#include "Customizer.h"
 
 
 struct Renderable {
@@ -37,6 +38,7 @@ struct Renderable {
 	VertexBasedObject&	vertexSpec;
 	vector<UBO>			pUBOs;
 	vector<TextureSpec>	textureSpecs;
+	Customizer			customize;
 };
 
 
@@ -73,8 +75,9 @@ struct iRenderable : iRenderableBase
 			addOns(			* new AddOns(renderable, vulkan, platform)),
 			descriptors(	* new Descriptors(addOns.described, vulkan.swapchain, vulkan.device)),
 			pipeline(		* new GraphicsPipeline(shaderModules, vulkan.renderPass, vulkan.swapchain, vulkan.device,
-												   &renderable.vertexSpec.vertexType, &descriptors)),
-			vertexObject(	renderable.vertexSpec)
+												   &renderable.vertexSpec.vertexType, &descriptors, renderable.customize)),
+			vertexObject(	renderable.vertexSpec),
+			customizer(		renderable.customize)
 	{
 		isSelfManaged = false;
 	}
@@ -97,6 +100,7 @@ struct iRenderable : iRenderableBase
 	GraphicsPipeline&	pipeline;
 
 	VertexBasedObject&	vertexObject;	// (retain for Recreate)
+	Customizer			customizer;
 
 
 	virtual iRenderable* newConcretion(CommandRecording* pRecordingMode) const = 0;
@@ -114,7 +118,7 @@ struct iRenderable : iRenderableBase
 			descriptors.Recreate(addOns.reDescribe(), vulkan.swapchain);
 		}
 
-		pipeline.Recreate(shaderModules, vulkan.renderPass, vulkan.swapchain, &vertexObject.vertexType, &descriptors);
+		pipeline.Recreate(shaderModules, vulkan.renderPass, vulkan.swapchain, &vertexObject.vertexType, &descriptors, customizer);
 	}
 };
 
@@ -175,8 +179,8 @@ public:
 
 	void Update(float deltaTime)
 	{
-		for (auto& recordable : recordables)
-			for (auto& pRenderable : recordable.pRenderables)
+		for (CommandRecordable& recordable : recordables)
+			for (iRenderable* pRenderable : recordable.pRenderables)
 				pRenderable->Update(deltaTime);
 	}
 
@@ -186,7 +190,7 @@ public:
 			for (auto& pRenderable : recordable.pRenderables) {
 				if (!pRenderable->isSelfManaged) {
 					AddOns& addOns = pRenderable->addOns;
-					if (addOns.described.size() > 0) {
+					if (addOns.described.size() > 0 && addOns.pUniformBuffer) {
 						UniformBuffer& unibuf = *addOns.pUniformBuffer;
 						void* pUboData = addOns.ubo.pBytes;
 						size_t numBytes = addOns.ubo.byteSize;
