@@ -55,6 +55,7 @@ public:
 	bool IsEventQUIT();
 	void AwaitEvent();
 	void ClearEvents();
+	void ShowSoftKeyboard(bool show = true);
 
 	iImageSource& ImageSource()	 { return static_cast<iImageSource&>(image); }
 	void InitGUISystem()		 { ImGui_ImplSDL2_InitForVulkan(pWindow); }

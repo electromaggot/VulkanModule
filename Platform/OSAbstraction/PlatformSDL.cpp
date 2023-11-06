@@ -32,6 +32,8 @@ PlatformSDL::PlatformSDL()
 	querySupportedVulkanExtensions();
 
 	displayFoundVulkanExtensions();
+
+	SDL_StartTextInput();
 }
 
 PlatformSDL::~PlatformSDL()
@@ -366,6 +368,19 @@ printf("RESIZE %d x %d\n", event.window.data1, event.window.data2);
 				mouseX = event.motion.x;
 				mouseY = event.motion.y;
 				break;
+			case SDL_KEYUP: {
+				#if TARGET_OS_IOS
+					// iOS soft keyboard seems to immediately follow KEYDOWN with KEYUP, which
+					//	confuses ImGui's attempt to track KeysDownDuration between those events.
+					//	Result: BACKSPACE doesn't seem to work on iOS.  This tries to hack it:
+					ImGuiIO& io = ImGui::GetIO();
+					int keyMapBackspace = io.KeyMap[ImGuiKey_Backspace];
+					io.KeysDown[keyMapBackspace] = (event.key.keysym.scancode == SDL_SCANCODE_BACKSPACE);
+					//	...same seems to apply to RETURN key as well.
+					io.KeysDown[io.KeyMap[ImGuiKey_Enter]] = (event.key.keysym.scancode == SDL_SCANCODE_RETURN);
+					// Refer to sister code in main project GUI/Reusables: MayNeedSoftKeyboard()
+				#endif
+				} break;
 			default:
 				break;
 		}
@@ -393,6 +408,18 @@ void PlatformSDL::AwaitEvent()
 void PlatformSDL::ClearEvents()		// This seems good to do prior to main loop for SDL, especially
 {									//	since it may unnecessarily start with SDL_WINDOWEVENT_RESIZED.
 	while (SDL_PollEvent(&event));
+}
+
+
+void PlatformSDL::ShowSoftKeyboard(bool show)
+{
+	if (show) {
+		if (! SDL_IsTextInputActive())
+			SDL_StartTextInput();
+	} else {
+		if (SDL_IsTextInputActive())
+			SDL_StopTextInput();
+	}
 }
 
 
