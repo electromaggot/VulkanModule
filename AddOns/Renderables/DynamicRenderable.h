@@ -28,6 +28,8 @@ public:
 	}
 
 	void IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex);
+
+	virtual void Update(float deltaSeconds) { }
 };
 
 #endif	// DynamicRenderable_h

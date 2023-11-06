@@ -51,6 +51,9 @@ protected:
 		VkMemoryRequirements memReqs;
 		vkGetBufferMemoryRequirements(device, buffer, &memReqs);
 
+		if (memReqs.size == 0)
+			Fatal("vkAllocateMemory size ZERO crash-avoid calling createGeneralBuffer with VkDeviceSize %d", size);
+
 		VkMemoryAllocateInfo allocInfo = {
 			.sType	= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
 			.pNext	= nullptr,
