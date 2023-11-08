@@ -20,7 +20,7 @@
 #else
 	// (Make sure glm's base directory is in your project's header paths!)
 
-	#define GLM_FORCE_LEFT_HANDED		// for Vulkan, opposed to OpenGL!
+	//#define GLM_FORCE_LEFT_HANDED		// for Vulkan, opposed to OpenGL!
 	#define GLM_FORCE_RADIANS
 	#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
 	#include <glm/glm.hpp>
