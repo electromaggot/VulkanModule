@@ -33,18 +33,24 @@
 #include "Customizer.h"
 
 
-class Renderable {
+struct RenderableSpec {
 public:
-	Shaders				shaders;
 	VertexBasedObject&	vertexSpec;
+	Shaders				shaders;
 	vector<UBO>			pUBOs;
 	vector<TextureSpec>	textureSpecs;
-	Customizer			customize;
+	Customizer			customize = NONE;
+};
 
+class Renderable : public RenderableSpec {
+public:
 	Renderable(VertexBasedObject& refVtxObj)
-		:	vertexSpec(refVtxObj),
-			customize(NONE)
+		:	RenderableSpec { refVtxObj }
 	{ }		// other members, all vectors, should automatically construct empty
+
+	Renderable(RenderableSpec& refSpec)
+		:	RenderableSpec { refSpec }
+	{ }
 };
 
 
