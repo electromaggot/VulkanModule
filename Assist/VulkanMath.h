@@ -13,6 +13,12 @@
 #define VulkanMath_h
 
 
+enum CoordinateSystem {
+	OPENGL_RIGHT_HANDED,
+	VULKAN_LEFT_HANDED
+};
+
+
 #if NO_GLM		// (if your needs are ultra simple...)
 	typedef float vec2[2];
 	typedef float vec3[3];	// Note that these floats match SFLOAT in VK_FORMAT.
@@ -23,7 +29,7 @@
 	//#define GLM_FORCE_LEFT_HANDED		// for Vulkan, opposed to OpenGL!
 	#define GLM_FORCE_RADIANS
 	#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
-	#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+	#define GLM_FORCE_DEPTH_ZERO_TO_ONE		//TJ_TODO: TBD: for Vulkan only?
 	#include <glm/glm.hpp>
 	#include <glm/gtc/matrix_transform.hpp>
 

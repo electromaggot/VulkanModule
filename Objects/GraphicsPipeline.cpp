@@ -81,8 +81,9 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexType* pVertex,
 		.depthClampEnable		 = VK_FALSE,
 		.rasterizerDiscardEnable = VK_FALSE,
 		.polygonMode			 = customize & WIREFRAME ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL,
-		.cullMode				 = VK_CULL_MODE_BACK_BIT,
-		.frontFace				 = VK_FRONT_FACE_COUNTER_CLOCKWISE,	// (*) note below
+		.cullMode			  	 = customize & SHOW_BACKFACES ? VK_CULL_MODE_NONE : VK_CULL_MODE_BACK_BIT,
+		.frontFace				 = customize & FRONT_CLOCKWISE ? VK_FRONT_FACE_CLOCKWISE
+														: VK_FRONT_FACE_COUNTER_CLOCKWISE,	// (*) note below
 		.depthBiasEnable		 = VK_FALSE,
 		/*.depthBiasConstantFactor = 0.0f,
 		.depthBiasClamp			 = 0.0f,
