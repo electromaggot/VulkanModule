@@ -28,6 +28,6 @@ VertexTypeNull				VertexNull;
 
 
 MeshObject ShaderSets3Vertices = {	// Initializing this structure is necessary when
-	VertexNull, nullptr,					//	using Shaders that define their own vertices,
-	3, 0, 1, 0								//	here, THREE of them, so the Drawing code can
-};											//	tell Vulkan how many vertices there are.
+	VertexNull, nullptr,			//	using Shaders that define their own vertices,
+	3								//	here, THREE of them, so the Drawing code can
+};									//	tell Vulkan how many vertices there are.
