@@ -10,7 +10,7 @@
 #ifndef Vertex2DColored_h
 #define Vertex2DColored_h
 
-#include "VertexType.h"
+#include "VertexAbstract.h"
 
 
 struct Vertex2DColored		// (Note: must not inherit, but be plain-old-data
@@ -19,7 +19,7 @@ struct Vertex2DColored		// (Note: must not inherit, but be plain-old-data
 	vec3 color;				//	and fixed, compiler-independent size/layout.)
 };
 
-struct VertexType2DColored : VertexType
+struct VertexType2DColored : VertexAbstract
 {
 	const VkVertexInputAttributeDescription attributeDescriptions[2] = {
 		{

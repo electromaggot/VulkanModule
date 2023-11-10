@@ -11,13 +11,13 @@
 #ifndef Vertex2D_h
 #define Vertex2D_h
 
-#include "VertexType.h"
+#include "VertexAbstract.h"
 
 
 typedef	vec2	Vertex2D;
 
 
-struct VertexType2D : VertexType
+struct VertexType2D : VertexAbstract
 {
 	const VkVertexInputAttributeDescription attributeDescription = {
 		.location	= 0,
