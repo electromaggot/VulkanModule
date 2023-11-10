@@ -11,16 +11,15 @@
 
 #include "CommandObjects.h"
 
-#include "iRenderable.h"
 #include "PrimitiveBuffer.h"
 
 
-AddOns::AddOns(Renderable& renderable, VulkanSetup& setup, iPlatform& abstractPlatform)
+AddOns::AddOns(DrawableSpecifier& drawable, VulkanSetup& setup, iPlatform& abstractPlatform)
 	:	vulkan(setup),
 		platform(abstractPlatform)
 {
-	createVertexAndOrIndexBuffers(renderable.vertexSpec);
-	createDescribedItems(renderable.pUBOs, renderable.textureSpecs, abstractPlatform);
+	createVertexAndOrIndexBuffers(drawable.mesh);
+	createDescribedItems(drawable.pUBOs, drawable.textures, abstractPlatform);
 }
 
 AddOns::~AddOns()

@@ -27,7 +27,7 @@
 #include "UniformBuffer.h"
 #include "TextureImage.h"
 
-struct Renderable;		// skirt circular reference including iRenderable.h
+struct DrawableSpecifier;	// skirt circular reference including iRenderable.h
 
 
 struct AddOns
@@ -38,7 +38,7 @@ struct AddOns
 	friend class  Renderables;
 
 
-	AddOns(Renderable& renderable, VulkanSetup& setup, iPlatform& platform);
+	AddOns(DrawableSpecifier& drawable, VulkanSetup& setup, iPlatform& platform);
 	~AddOns();
 
 		// MEMBERS
