@@ -10,7 +10,7 @@
 #ifndef Vertex2DTextured_h
 #define Vertex2DTextured_h
 
-#include "VertexType.h"
+#include "VertexAbstract.h"
 
 
 struct Vertex2DTextured		// (Note: must not inherit, but be plain-old-data
@@ -19,7 +19,7 @@ struct Vertex2DTextured		// (Note: must not inherit, but be plain-old-data
 	vec2 texCoord;			//	and fixed, compiler-independent size/layout.)
 };
 
-struct VertexType2DTextured : VertexType
+struct VertexType2DTextured : VertexAbstract
 {
 	const VkVertexInputAttributeDescription attributeDescriptions[2] = {
 		{

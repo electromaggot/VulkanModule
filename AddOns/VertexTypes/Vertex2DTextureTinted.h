@@ -11,7 +11,7 @@
 #ifndef Vertex2DTextureTinted_h
 #define Vertex2DTextureTinted_h
 
-#include "VertexType.h"
+#include "VertexAbstract.h"
 
 
 struct Vertex2DTextureTinted	// (Note: must not inherit, but be plain-old-data
@@ -21,7 +21,7 @@ struct Vertex2DTextureTinted	// (Note: must not inherit, but be plain-old-data
 	vec2 texCoord;
 };
 
-struct VertexType2DTextureTinted : VertexType
+struct VertexType2DTextureTinted : VertexAbstract
 {
 	const VkVertexInputAttributeDescription attributeDescriptions[3] = {
 		{
