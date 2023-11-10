@@ -36,10 +36,15 @@ void AddOns::createVertexAndOrIndexBuffers(MeshObject& meshObject)
 	if (meshObject.vertices) {
 		VkCommandPool commandPool = vulkan.command.vkPool();
 		pVertexBuffer = new PrimitiveBuffer(meshObject, commandPool, vulkan.device);
-		if (meshObject.indices)
-			pIndexBuffer = new PrimitiveBuffer((IndexBufferIndexType*) meshObject.indices,
-																	   meshObject.indexCount,
-											   commandPool, vulkan.device);
+		if (meshObject.indices) {
+			if (meshObject.indexType == MeshDefaultIndexType) {
+				pIndexBuffer = new PrimitiveBuffer((IndexBufferDefaultIndexType*) meshObject.indices, meshObject.indexCount,
+												   commandPool, vulkan.device);
+			} else {
+				pIndexBuffer = new PrimitiveBuffer(meshObject.indexType, meshObject.indices, meshObject.indexCount,
+												   commandPool, vulkan.device);
+			}
+		}
 	}
 }
 
