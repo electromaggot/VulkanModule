@@ -20,7 +20,7 @@
 struct FixedRenderable : public iRenderable
 {
 public:
-	FixedRenderable(Renderable& renderable, VulkanSetup& vulkan, iPlatform& platform);
+	FixedRenderable(DrawableSpecifier& drawable, VulkanSetup& vulkan, iPlatform& platform);
 
 	iRenderable* newConcretion(CommandRecording* pRecordingMode) const
 	{

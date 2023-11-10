@@ -11,8 +11,8 @@
 #include "PrimitiveBuffer.h"
 
 
-FixedRenderable::FixedRenderable(Renderable& renderable, VulkanSetup& vulkan, iPlatform& platform)
-	:	iRenderable(renderable, vulkan, platform)
+FixedRenderable::FixedRenderable(DrawableSpecifier& drawable, VulkanSetup& vulkan, iPlatform& platform)
+	:	iRenderable(drawable, vulkan, platform)
 { }
 
 

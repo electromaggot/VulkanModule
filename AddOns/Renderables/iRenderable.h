@@ -26,7 +26,7 @@
 #include "GraphicsPipeline.h"
 
 #include "AddOns.h"
-#include "DrawableSpec.h"
+#include "DrawableSpecifier.h"
 
 
 enum CommandRecording {		// i.e. Request this CommandBuffer to be recorded:
@@ -57,14 +57,14 @@ struct iRenderableBase
 //
 struct iRenderable : iRenderableBase
 {
-	iRenderable(Renderable& renderable, VulkanSetup& vulkan, iPlatform& platform)
-		:	shaderModules(	* new ShaderModules(renderable.shaders, vulkan.device)),
-			addOns(			* new AddOns(renderable, vulkan, platform)),
+	iRenderable(DrawableSpecifier& drawable, VulkanSetup& vulkan, iPlatform& platform)
+		:	shaderModules(	* new ShaderModules(drawable.shaders, vulkan.device)),
+			addOns(			* new AddOns(drawable, vulkan, platform)),
 			descriptors(	* new Descriptors(addOns.described, vulkan.swapchain, vulkan.device)),
 			pipeline(		* new GraphicsPipeline(shaderModules, vulkan.renderPass, vulkan.swapchain, vulkan.device,
-												   &renderable.vertexSpec.vertexType, &descriptors, renderable.customize)),
-			vertexObject(	renderable.vertexSpec),
-			customizer(		renderable.customize)
+												   &drawable.mesh.vertexType, &descriptors, drawable.customize)),
+			vertexObject(	drawable.mesh),
+			customizer(		drawable.customize)
 	{
 		isSelfManaged = false;
 	}
