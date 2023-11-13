@@ -81,3 +81,9 @@ protected:
 };
 
 #endif // CommandBufferBase_h
+
+
+/* DEV NOTE
+	(*) - Using vkWaitForFences(), instead of vkQueueWaitIdle() here, could be
+	optimizable and allow multiple copies to complete in parallel, possibly.
+*/

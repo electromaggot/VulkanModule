@@ -18,8 +18,8 @@
 PrimitiveBuffer::PrimitiveBuffer(VkCommandPool& pool, GraphicsDevice& device)
 	:	BufferBase(device),
 		CommandBufferBase(pool, device),
-		bufferMemory(nullptr),
-		buffer(nullptr)
+		bufferMemory(0),
+		buffer(0)	// these are opaque, but assume 0 may indicate "uninitialized"
 { }
 
 PrimitiveBuffer::PrimitiveBuffer(MeshObject& meshObject, VkCommandPool& pool, GraphicsDevice& device)
@@ -48,8 +48,14 @@ PrimitiveBuffer::PrimitiveBuffer(MeshIndexType indexType, void* pIndices, uint32
 
 PrimitiveBuffer::~PrimitiveBuffer()
 {
-	vkDestroyBuffer(device, buffer,  nullALLOC);
-	vkFreeMemory(device, bufferMemory, nullALLOC);
+	if (buffer) {
+		vkDestroyBuffer(device, buffer,  nullALLOC);
+		buffer = 0;
+	}
+	if (bufferMemory) {
+		vkFreeMemory(device, bufferMemory, nullALLOC);
+		bufferMemory = 0;
+	}
 }
 
 
@@ -81,7 +87,10 @@ void PrimitiveBuffer::createDeviceLocalBuffer(void* pSourceData, VkDeviceSize si
 						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 						cpuSideBuffer, cpuSideBufferMemory);
 	void* pData;
-	vkMapMemory(device, cpuSideBufferMemory, 0, size, 0, &pData);
+	call = vkMapMemory(device, cpuSideBufferMemory, 0, size, 0, &pData);
+	if (call != VK_SUCCESS)												// seems unusual for this to fail since create()
+		Fatal("Primitive Buffer Map Memory FAILURE" + ErrStr(call));	//	succeeded; see (**) Dev Note in BufferBase.h
+
 	memcpy(pData, pSourceData, (size_t) size);						// fill the main RAM block
 	vkUnmapMemory(device, cpuSideBufferMemory);						//	that Vulkan provided
 
@@ -110,9 +119,3 @@ void PrimitiveBuffer::copyBufferViaVulkan(VkBuffer srcBuffer, VkBuffer dstBuffer
 
 	endAndSubmitCommands(commands);
 }
-
-
-/* DEV NOTE
-	(*) - Using vkWaitForFences(), instead of vkQueueWaitIdle() here, could be
-	optimizable and allow multiple copies to complete in parallel, possibly.
-*/

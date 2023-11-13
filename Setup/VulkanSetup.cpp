@@ -17,7 +17,7 @@
 VulkanSetup::VulkanSetup(iPlatform& platform)
 	:	validation(),							// Initializer list: instantiate components
 		vulkan(validation, platform),			//	in ascending order of explicit dependencies.
-		debugReport(vulkan),
+		debugReport(vulkan),					//	See PROGRAMMER NOTE below.
 		windowSurface(vulkan, platform),
 		device(windowSurface, vulkan, validation),
 		swapchain(device, windowSurface),
@@ -50,3 +50,16 @@ void VulkanSetup::RecreateRenderingRudiments()
 
 	command.RecreateRenderables(*this);
 }
+
+
+/* PROGRAMMER NOTE
+The Initializer List of Vulkan Objects passes along REFERENCES to previously made objects.
+ Always make sure those are received as REFERENCES, and be careful if they are stored for
+ access later, that they are STORED AS REFERENCES and that those target objects persist.
+ If you make a mistake or forget to mark your Reference& with an &mpersand, note that an
+ instance of the object may be (shallow) copied instead, and once your containing object
+ destroys, that Vulkan Object may be destroyed too.  So if you ever see an error like:
+	libc++abi: terminating with uncaught exception of type
+							std::__1::system_error: mutex lock failed: Invalid argument
+ that may just be the reason.
+*/

@@ -52,6 +52,9 @@ void UniformBuffer::Update(int indexCurrentImage, void* pUBO, size_t nbytesUBO)
 {
 	void* data;
 	vkMapMemory(device, uniformBuffersMemory[indexCurrentImage], 0, nbytesUBO, 0, &data);
+	if (call != VK_SUCCESS)
+		Fatal("Uniform Buffer Map Memory FAILURE" + ErrStr(call));	// as for this being fatal, see (**) Dev Note in BufferBase.h
+
 	memcpy(data, pUBO, nbytesUBO);
 	vkUnmapMemory(device, uniformBuffersMemory[indexCurrentImage]);
 }

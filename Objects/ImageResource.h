@@ -30,8 +30,8 @@ protected:
 	VkDeviceMemory	deviceMemory;
 	VkImageView		imageView;
 
-	Mipmaps*		pMipmaps;
 	ImageInfo		imageInfo;
+	Mipmaps*		pMipmaps;
 
 		// METHODS
 protected:

@@ -59,11 +59,11 @@ public:
 
 		// MEMBERS
 protected:
-	VkSampler		sampler;
-	Mipmaps			mipmaps;
-	TextureSpec		specified;
+	VkSampler	sampler;
+	Mipmaps		mipmaps;
+	TextureSpec	specified;
 
-	bool			wasSamplerInjected = false;
+	bool		wasSamplerInjected = false;
 
 		// METHODS
 protected:
@@ -118,7 +118,7 @@ public:
 			// getter
 		char*	pBytes()	{ return pBytesStaged; }
 
-	}* pStagingBuffer;
+	}* pStagingBuffer = nullptr;
 public:
 	StagingBuffer&	refStagingBuffer() {
 		if (! pStagingBuffer)
