@@ -51,8 +51,14 @@ protected:
 		VkMemoryRequirements memReqs;
 		vkGetBufferMemoryRequirements(device, buffer, &memReqs);
 
-		if (memReqs.size == 0)
-			Fatal("vkAllocateMemory size ZERO crash-avoid calling createGeneralBuffer with VkDeviceSize %d", size);
+		if (memReqs.size == 0) {
+			vkDestroyBuffer(device, buffer,  nullALLOC);
+			buffer = nullptr;
+			Log(ERROR, "vkAllocateMemory size ZERO would have crashed.");
+			Log(ERROR, " (createGeneralBuffer called with VkDeviceSize %d)", size);
+			Log(WARN,  " Crash avoided. Allocate skipped, buffer freed. Continuing...");
+			return;
+		}
 
 		VkMemoryAllocateInfo allocInfo = {
 			.sType	= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,

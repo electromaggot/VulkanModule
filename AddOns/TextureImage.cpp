@@ -24,7 +24,7 @@ TextureImage::TextureImage(TextureSpec& texSpec, VkCommandPool& pool, GraphicsDe
 {
 	if (texSpec.fileName)
 		create(texSpec, device, platform);
-	else if (texSpec.pImageInfo)
+	else if (texSpec.pImageInfo)// && texSpec.pImageInfo->numBytes)
 		createBlank(*texSpec.pImageInfo, device, platform);
 	else {
 		Log(ERROR, "Cannot create TextureImage blank (no fileName) without ImageInfo specified size/format.");
