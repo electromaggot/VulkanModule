@@ -67,7 +67,11 @@ void GraphicsDevice::createLogicalDevice(ValidationLayers& validation)
 {
 	queueFamilies.InitializeQueueCreateInfos();
 
-	VkPhysicalDeviceFeatures deviceFeatures = {};
+	VkPhysicalDeviceFeatures deviceFeatures = {	// Notes on requesting device-level features:
+		//	.samplerAnisotropy	= VK_TRUE,		// Anisotropic filtering may make sense to enable at the device level,
+												//	thus affect everything on-screen equally, a feature that is as-expected.
+		//	.fillModeNonSolid	= VK_TRUE		// This renders EVERYTHING on-screen as wireframe, which may be better done per-object at
+	};											//	pipeline level via .polygonMode = VK_POLYGON_MODE_LINE (search: Customizer.WIREFRAME).
 
 	VkDeviceCreateInfo createInfo = {
 		.sType	= VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
