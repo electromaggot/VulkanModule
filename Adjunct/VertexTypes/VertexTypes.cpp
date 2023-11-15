@@ -9,8 +9,9 @@
 //
 #include "VulkanPlatform.h"
 
+#include "Vertex2DTypes.h"
 #include "Vertex2D.h"
-#include "Vertex2DTextured.h"
+//#include "Vertex2DTextured.h"		// replaced with automated descriptor, will obsolete all these soon
 #include "Vertex2DTextureTinted.h"
 #include "Vertex2DColored.h"
 #include "VertexNull.h"
@@ -18,7 +19,8 @@
 
 VertexType2D				VertexDescriptor2D;
 
-VertexType2DTextured		VertexDescriptor2DTextured;
+//VertexType2DTextured		VertexDescriptor2DTextured;
+VertexDescription<Vertex2DTexture>	VertexDescriptor2DTextured;
 
 VertexType2DTextureTinted	VertexDescriptor2DTextureTinted;
 
