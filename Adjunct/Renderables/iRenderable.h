@@ -57,14 +57,14 @@ struct iRenderableBase
 //
 struct iRenderable : iRenderableBase
 {
-	iRenderable(DrawableSpecifier& drawable, VulkanSetup& vulkan, iPlatform& platform)
-		:	shaderModules(	* new ShaderModules(drawable.shaders, vulkan.device)),
-			addOns(			* new AddOns(drawable, vulkan, platform)),
+	iRenderable(DrawableSpecifier& specified, VulkanSetup& vulkan, iPlatform& platform)
+		:	shaderModules(	* new ShaderModules(specified.shaders, vulkan.device)),
+			addOns(			* new AddOns(specified, vulkan, platform)),
 			descriptors(	* new Descriptors(addOns.described, vulkan.swapchain, vulkan.device)),
 			pipeline(		* new GraphicsPipeline(shaderModules, vulkan.renderPass, vulkan.swapchain, vulkan.device,
-												   &drawable.mesh.vertexType, &descriptors, drawable.customize)),
-			vertexObject(	drawable.mesh),
-			customizer(		drawable.customize)
+												   &specified.mesh.vertexType, &descriptors, specified.customize)),
+			vertexObject(	specified.mesh),
+			customizer(		specified.customize)
 	{
 		isSelfManaged = false;
 	}

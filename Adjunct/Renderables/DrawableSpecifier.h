@@ -1,5 +1,5 @@
 //
-// DrawableSpec.h
+// DrawableSpecifier.h
 //	VulkanModule AddOns
 //
 // Specify a Drawable
@@ -9,8 +9,8 @@
 // 3/26/20 Tadd Jensen
 //	© 0000 (uncopyrighted; use at will)
 //
-#ifndef DrawableSpec_h
-#define DrawableSpec_h
+#ifndef DrawableSpecifier_h
+#define DrawableSpecifier_h
 
 #include "ShaderModules.h"
 #include "MeshObject.h"
@@ -40,7 +40,7 @@ public:
 };
 
 
-#endif	// DrawableSpec_h
+#endif	// DrawableSpecifier_h
 
 
 // NOMENCLATURE NOTE
