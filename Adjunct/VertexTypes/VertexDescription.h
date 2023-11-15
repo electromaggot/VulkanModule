@@ -156,35 +156,35 @@ public:
 //	manually looks something like this example, and you'll need to do this for
 //	each and every VertexAbstract type you may need.  This is just an example.
 //
-struct VertexType3DNormalTexture : Vertex3DNormalTexture, VertexAbstract
+struct VertexType2DTextureColor : Vertex2DTextureColor, VertexAbstract
 {
 	const VkVertexInputAttributeDescription attributeDescriptions[3] = {
 		{
 			.location	= 0,
 			.binding	= 0,
-			.format		= VK_FORMAT_R32G32B32_SFLOAT,
-			.offset		= offsetof(Vertex3DNormalTexture, position)
+			.format		= VK_FORMAT_R32G32_SFLOAT,
+			.offset		= offsetof(Vertex2DTextureColor, position)
 		}, {
 			.location	= 1,
 			.binding	= 0,
-			.format		= VK_FORMAT_R32G32B32_SFLOAT,
-			.offset		= offsetof(Vertex3DNormalTexture, normal)
+			.format		= VK_FORMAT_R32G32_SFLOAT,
+			.offset		= offsetof(Vertex2DTextureColor, texCoord)
 		}, {
 			.location	= 2,
 			.binding	= 0,
-			.format		= VK_FORMAT_R32G32_SFLOAT,
-			.offset		= offsetof(Vertex3DNormalTexture, texCoord)
+			.format		= VK_FORMAT_R32G32B32A32_SFLOAT,
+			.offset		= offsetof(Vertex2DTextureColor, color)
 		}
 	};
 
 	const VkVertexInputBindingDescription bindingDescription = {
 		.binding	= 0,
-		.stride		= sizeof(Vertex3DNormalTexture),
+		.stride		= sizeof(Vertex2DTextureColor),
 		.inputRate	= VK_VERTEX_INPUT_RATE_VERTEX
 	};
 
 public:
-	size_t	 byteSize()				  { return sizeof(Vertex3DNormalTexture); }
+	size_t	 byteSize()				  { return sizeof(Vertex2DTextureColor); }
 
 	uint32_t nBindingDescriptions()	  { return 1; }
 	uint32_t nAttributeDescriptions() { return N_ELEMENTS_IN_ARRAY(attributeDescriptions); }

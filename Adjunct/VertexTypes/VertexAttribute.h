@@ -19,22 +19,25 @@
 typedef uint16_t  AttributeBits;
 
 enum VertexAttribute {
-	POSITION = 0,		// ←- will always be present
-	NORMAL	 = 1,
-	TEXCOORD = 2,
-	COLOR	 = 3
+	POSITION	= 0,		// ←- will always be present
+	NORMAL		= 1,
+	TEXCOORD	= 2,
+	COLOR		= 3,
+	POSITION_2D = 4			//	(special case)
 };	// ↑ ≡ ↓
 const VkFormat AttributeFormats[] {
 	VK_FORMAT_R32G32B32_SFLOAT,		// POSITION
 	VK_FORMAT_R32G32B32_SFLOAT,		// NORMAL
 	VK_FORMAT_R32G32_SFLOAT,		// TEXCOORD
-	VK_FORMAT_R32G32B32A32_SFLOAT	// COLOR
+	VK_FORMAT_R32G32B32A32_SFLOAT,	// COLOR
+	VK_FORMAT_R32G32_SFLOAT
 };	// ↑ ≡ ↓
 const int AttributeByteSizes[] {
 	sizeof(vec3),					// POSITION
 	sizeof(vec3),					// NORMAL
 	sizeof(vec2),					// TEXCOORD
-	sizeof(vec4)					// COLOR
+	sizeof(vec4),					// COLOR
+	sizeof(vec2)
 };	// ↑ ≡ ↓
 enum AttributeBit {
 	POSITION_BIT =	0b00000001,
