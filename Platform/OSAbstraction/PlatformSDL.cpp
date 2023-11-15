@@ -17,8 +17,7 @@
 #include "PlatformSDL.h"
 
 #include "AppConstants.h"
-
-#include <climits>
+#include <climits>	// (to build on Linux side)
 
 
 PlatformSDL::PlatformSDL()

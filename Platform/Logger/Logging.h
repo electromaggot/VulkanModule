@@ -12,7 +12,7 @@
 
 #include "Universal.h"
 #include <stdarg.h>
-#include <cstring>
+#include <cstring>	// (to build on Linux side)
 
 #undef ERROR // since on Windows, wingdi.h #defines ERROR
 
