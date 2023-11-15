@@ -15,6 +15,7 @@
 #include "vulkan/vulkan.h"	// for VkFormat (see vulkan_core.h)
 #include "Universal.h"		// for N_ELEMENTS_IN_ARRAY
 #include "VertexAbstract.h"
+#include <bitset>			// (to build on Linux side)
 
 
 struct VertexDescriptionDynamic : VertexAbstract
