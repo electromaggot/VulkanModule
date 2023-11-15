@@ -46,6 +46,13 @@ PlatformSDL::~PlatformSDL()
 
 // INITIALIZATION ----------------------------------------------------------------------------------
 
+enum HomeIndicatorAppearance : char {	// The indicator bar is:
+	Hidden = '1',	// - only visible for short while when screen is tapped or device is rotated.
+	Dimmed = '2'	// - dark, first swipe makes it visible, second swipe performs the "home" action (default for fullscreen applications)
+};					//		(although not seeing this behavior as default! despite FULLSCREEN).
+const char DEFAULT_HOME_INDICATOR_APPEARANCE = Hidden;
+
+
 // Start SDL.
 //
 void PlatformSDL::initializeSDL()
@@ -53,8 +60,9 @@ void PlatformSDL::initializeSDL()
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0)
 		Fatal("Fail to Initialize SDL: " + string(SDL_GetError()));
 
-	SDL_SetHint(SDL_HINT_IOS_HIDE_HOME_INDICATOR, "2");	// (not seeing this behavior as default! despite FULLSCREEN)
-}												// ^ The indicator bar is dim and the first swipe makes it visible and the second swipe performs the "home" action (default for fullscreen applications)
+	char hintHomeIndicator[2] = { DEFAULT_HOME_INDICATOR_APPEARANCE, '\0' };
+	SDL_SetHint(SDL_HINT_IOS_HIDE_HOME_INDICATOR, hintHomeIndicator);
+}
 
 // Create a vulkan window; fatal throw on failure.
 //
@@ -83,7 +91,9 @@ void PlatformSDL::createVulkanCompatibleWindow()
 	if (winY < -winHigh || winY > AppConstants.MaxSaneScreenHeight)		//	…off-screen.
 		winY = SDL_WINDOWPOS_CENTERED;
 
-	int windowFlags = SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN | (isMobilePlatform ? SDL_WINDOW_FULLSCREEN : SDL_WINDOW_RESIZABLE);
+	int windowFlags = SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN
+					| SDL_WINDOW_RESIZABLE	// not just for desktop windows, also applies to mobile device orientation changes
+					| (isMobilePlatform ? SDL_WINDOW_FULLSCREEN : 0);
 
 	pWindow = SDL_CreateWindow(AppConstants.WindowTitle, winX, winY, winWide, winHigh, windowFlags);
 	if (!pWindow)
