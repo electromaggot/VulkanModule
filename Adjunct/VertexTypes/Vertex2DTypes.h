@@ -26,13 +26,13 @@
 #include "VertexAttribute.h"
 
 
-struct _Vertex2D 					// #1
+struct Vertex2D 					// #1
 {
 	vec2 position;
 			   // ↖ these must match, obviously ↘
 	static constexpr VertexAttribute layout[] = { POSITION_2D };
 
-	bool operator == (const _Vertex2D& other) const {
+	bool operator == (const Vertex2D& other) const {
 		return position == other.position;
 	}
 };
