@@ -20,7 +20,7 @@
 VertexType2D				VertexDescriptor2D;
 
 //VertexType2DTextured		VertexDescriptor2DTextured;
-VertexDescription<Vertex2DTexture>	VertexDescriptor2DTextured;
+VertexDescription<Vertex2DTexture>	VertexDescriptor2DTexture;
 
 VertexType2DTextureTinted	VertexDescriptor2DTextureTinted;
 
