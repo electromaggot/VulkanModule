@@ -1,32 +1,17 @@
 //
-// VertexTypes.cpp
+// VertexNull.cpp
 //	Vulkan Vertex-based Add-ons
 //
-// Instantiate Vertex Descriptors.
+// Instantiate "empty" type and mesh descriptor when no vertex is needed.
 //
 // Created 6/14/19 by Tadd Jensen
 //	© 2112 (uncopyrighted; use at will)
 //
-#include "VulkanPlatform.h"
-
-#include "Vertex2DTypes.h"
-#include "Vertex2D.h"
-//#include "Vertex2DTextured.h"		// replaced with automated descriptor, will obsolete all these soon
-#include "Vertex2DTextureTinted.h"
-#include "Vertex2DColored.h"
+#include "MeshObject.h"
 #include "VertexNull.h"
 
 
-VertexType2D				VertexDescriptor2D;
-
-//VertexType2DTextured		VertexDescriptor2DTextured;
-VertexDescription<Vertex2DTexture>	VertexDescriptor2DTexture;
-
-VertexType2DTextureTinted	VertexDescriptor2DTextureTinted;
-
-VertexType2DColored 		VertexDescriptor2DColored;
-
-VertexTypeNull				VertexNull;
+VertexTypeNull	VertexNull;
 
 
 MeshObject ShaderSets3Vertices = {	// Initializing this structure is necessary when
