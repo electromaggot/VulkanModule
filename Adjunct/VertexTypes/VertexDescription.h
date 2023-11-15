@@ -105,7 +105,7 @@ public:
 };
 
 
-// Create procedurally.
+// Create procedurally via template.
 //
 template <typename T>
 struct VertexDescription : VertexAbstract
@@ -153,39 +153,84 @@ public:
 };
 
 
-// If not done procedurally, creating the VkVertexInput<> data structures
-//	manually looks something like this example, and you'll need to do this for
-//	each and every VertexAbstract type you may need.  This is just an example.
+// ACADEMIC/INSTRUCTIONAL EXAMPLES
+
+// Here are a couple of example vertex descriptions, done "long-hand," to demonstrate
+//	what the above methods construct procedurally.  Structs-to-follow depend on these:
+#include "Vertex3DTypes.h"
+#include "Vertex2DTypes.h"
+
+// If not done procedurally, creating the VkVertexInput<> data structures manually looks
+//	something like this, and you would need to repeat for each and every VertexAbstract
+//	type you may need.  That stuff is already done, but the following is just an example.
 //
-struct VertexType2DTextureColor : Vertex2DTextureColor, VertexAbstract
+struct VertexType3DNormalTexture : Vertex3DNormalTexture, VertexAbstract
 {
 	const VkVertexInputAttributeDescription attributeDescriptions[3] = {
 		{
 			.location	= 0,
 			.binding	= 0,
-			.format		= VK_FORMAT_R32G32_SFLOAT,
-			.offset		= offsetof(Vertex2DTextureColor, position)
+			.format		= VK_FORMAT_R32G32B32_SFLOAT,
+			.offset		= offsetof(Vertex3DNormalTexture, position)
 		}, {
 			.location	= 1,
 			.binding	= 0,
-			.format		= VK_FORMAT_R32G32_SFLOAT,
-			.offset		= offsetof(Vertex2DTextureColor, texCoord)
+			.format		= VK_FORMAT_R32G32B32_SFLOAT,
+			.offset		= offsetof(Vertex3DNormalTexture, normal)
 		}, {
 			.location	= 2,
 			.binding	= 0,
-			.format		= VK_FORMAT_R32G32B32A32_SFLOAT,
-			.offset		= offsetof(Vertex2DTextureColor, color)
+			.format		= VK_FORMAT_R32G32_SFLOAT,
+			.offset		= offsetof(Vertex3DNormalTexture, texCoord)
 		}
 	};
 
 	const VkVertexInputBindingDescription bindingDescription = {
 		.binding	= 0,
-		.stride		= sizeof(Vertex2DTextureColor),
+		.stride		= sizeof(Vertex3DNormalTexture),
 		.inputRate	= VK_VERTEX_INPUT_RATE_VERTEX
 	};
 
 public:
-	size_t	 byteSize()				  { return sizeof(Vertex2DTextureColor); }
+	size_t	 byteSize()				  { return sizeof(Vertex3DNormalTexture); }
+
+	uint32_t nBindingDescriptions()	  { return 1; }
+	uint32_t nAttributeDescriptions() { return N_ELEMENTS_IN_ARRAY(attributeDescriptions); }
+
+	const VkVertexInputAttributeDescription* pAttributeDescriptions() {
+		return attributeDescriptions;
+	}
+	const VkVertexInputBindingDescription* pBindingDescriptions() {
+		return &bindingDescription;
+	}
+};
+
+// 2D example of similar.  This is actually used by Triangle2DColored! ...for demonstration purposes.
+//
+struct VertexType2DColor : Vertex2DColor, VertexAbstract
+{
+	const VkVertexInputAttributeDescription attributeDescriptions[2] = {
+		{
+			.location	= 0,
+			.binding	= 0,
+			.format		= VK_FORMAT_R32G32_SFLOAT,
+			.offset		= offsetof(Vertex2DColor, position)
+		}, {
+			.location	= 1,
+			.binding	= 0,
+			.format		= VK_FORMAT_R32G32B32A32_SFLOAT,
+			.offset		= offsetof(Vertex2DColor, color)
+		}
+	};
+
+	const VkVertexInputBindingDescription bindingDescription = {
+		.binding	= 0,
+		.stride		= sizeof(Vertex2DColor),
+		.inputRate	= VK_VERTEX_INPUT_RATE_VERTEX
+	};
+
+public:
+	size_t	 byteSize()				  { return sizeof(Vertex2DColor); }
 
 	uint32_t nBindingDescriptions()	  { return 1; }
 	uint32_t nAttributeDescriptions() { return N_ELEMENTS_IN_ARRAY(attributeDescriptions); }
