@@ -36,18 +36,24 @@ public:
 
 		// MEMBERS
 private:
-	SDL_Window*  pWindow;	// Note: only supports a single window, hence single monitor.
+	SDL_Window*	pWindow;	// Note: only supports a single window, hence single monitor.
 
-	SDL_Event	 event;
+	SDL_Event	event;
 
-	ImageSDL	 image;
+	ImageSDL	image;
 
 	typedef void (*PFNResizeForceRender)(void* pObject);
 	PFNResizeForceRender pfnResizeForceRender = nullptr;
 	void* pRenderingObject = nullptr;
 
-	int	lastSavedPixelsWide = 0;
+	int lastSavedPixelsWide = 0;
 	int	lastSavedPixelsHigh = 0;
+
+	#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR		// TODO: Add ANDROID support
+		const bool isMobilePlatform = true;
+	#else
+		const bool isMobilePlatform = false;
+	#endif
 
 		// METHODS
 public:
