@@ -87,14 +87,14 @@ void PlatformSDL::createVulkanCompatibleWindow()
 
 	int windowFlags = SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN
 					| SDL_WINDOW_RESIZABLE	// not just for desktop windows, also applies to mobile device orientation changes
-					| (isMobilePlatform ? SDL_WINDOW_FULLSCREEN : 0);
+					| (IsMobile ? SDL_WINDOW_FULLSCREEN : 0);
 
 	pWindow = SDL_CreateWindow(AppConstants.WindowTitle, winX, winY, winWide, winHigh, windowFlags);
 	if (!pWindow)
 		Fatal("Fail to Create Vulkan-compatible Window with SDL: " + string(SDL_GetError()));
 
-	pixelsWide = lastSavedPixelsWide = winWide;
-	pixelsHigh = lastSavedPixelsHigh = winHigh;
+	pixelsWide = LastSavedPixelsWide = winWide;
+	pixelsHigh = LastSavedPixelsHigh = winHigh;
 	windowX = winX;
 	windowY = winY;
 
@@ -263,12 +263,13 @@ void PlatformSDL::recordWindowGeometry() // (with logging too)
 	settings.startingWindowY = windowY;
 	settings.Save();
 }
-void PlatformSDL::recordWindowSize(int wide, int high)
+void PlatformSDL::rememberWindowSize(int wide, int high)
 {
-	if (lastSavedPixelsWide != wide || lastSavedPixelsHigh != high) {
-		lastSavedPixelsWide = wide;
-		lastSavedPixelsHigh = high;
-		recordWindowGeometry();
+	if (LastSavedPixelsWide != wide || LastSavedPixelsHigh != high) {
+		LastSavedPixelsWide = wide;
+		LastSavedPixelsHigh = high;
+		if (! IsMobile)					// On desktop, (doesn't make sense on mobile),
+			recordWindowGeometry();		//	want this to save resized window size to Settings file.
 	}
 }
 void PlatformSDL::recordWindowPosition(int x, int y)
@@ -408,8 +409,7 @@ void PlatformSDL::process(SDL_WindowEvent& windowEvent)
 
 	switch (windowEvent.event) {
 		case SDL_WINDOWEVENT_SIZE_CHANGED:	// (and ignoring SDL_WINDOWEVENT_RESIZED, see DEV NOTE at bottom)
-			if (! isMobilePlatform)											// On desktop, (doesn't make sense on mobile),
-				recordWindowSize(event.window.data1, event.window.data2);	//	want this to save resized window size to Settings file.
+			rememberWindowSize(event.window.data1, event.window.data2);
 			isWindowResized = true;			// (note this remains set until retrieved, whence one-shot resets it)
 			Log(LOW, "      Window Resized %d x %d", pixelsWide, pixelsHigh);	// show resize is finished
 			break;

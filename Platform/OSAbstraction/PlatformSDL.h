@@ -46,17 +46,17 @@ private:
 	PFNResizeForceRender pfnResizeForceRender = nullptr;
 	void* pRenderingObject = nullptr;
 
-	int lastSavedPixelsWide = 0;
-	int	lastSavedPixelsHigh = 0;
+public:
+	int LastSavedPixelsWide = 0;
+	int	LastSavedPixelsHigh = 0;
 
 	#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR		// TODO: Add ANDROID support
-		const bool isMobilePlatform = true;
+		const bool IsMobile = true;
 	#else
-		const bool isMobilePlatform = false;
+		const bool IsMobile = false;
 	#endif
 
 		// METHODS
-public:
 	void CreateVulkanSurface(VkInstance instance, VkSurfaceKHR& surface);
 	bool GetWindowSize(int& pixelWidth, int& pixelHeight);
 	void DialogBox(const char* message, const char* title = "ERROR", AlertLevel level = FAILURE);
@@ -80,7 +80,7 @@ private:
 	void createVulkanCompatibleWindow();
 	void querySupportedVulkanExtensions();
 	void recordWindowGeometry();
-	void recordWindowSize(int wide, int high);
+	void rememberWindowSize(int wide, int high);
 	void recordWindowPosition(int x, int y);
 	float getDisplayScaling();
 	float getDisplayDPI(int iDisplay = 0);
