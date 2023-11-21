@@ -38,7 +38,7 @@ VulkanSetup::~VulkanSetup()
 }
 
 
-void VulkanSetup::RecreateRenderingRudiments()
+void VulkanSetup::RecreateRenderingResources()
 {
 	vkDeviceWaitIdle(device.getLogical());
 

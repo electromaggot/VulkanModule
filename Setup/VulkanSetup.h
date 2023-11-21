@@ -49,7 +49,7 @@ public:
 	CommandControl&		command;
 
 
-	void RecreateRenderingRudiments();
+	void RecreateRenderingResources();
 };
 
 #endif	// VulkanSetup_h
