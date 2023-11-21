@@ -68,12 +68,6 @@ void PlatformSDL::initializeSDL()
 //
 void PlatformSDL::createVulkanCompatibleWindow()
 {
-	#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR		// TODO: Add ANDROID support
-		bool isMobilePlatform = true;
-	#else
-		bool isMobilePlatform = false;
-	#endif
-
 	AppSettings& settings = AppConstants.Settings;
 	int winWide = 0, winHigh = 0, winX = INT_MIN, winY = INT_MIN;
 	if (settings.isInitialized) {
@@ -414,7 +408,8 @@ void PlatformSDL::process(SDL_WindowEvent& windowEvent)
 
 	switch (windowEvent.event) {
 		case SDL_WINDOWEVENT_SIZE_CHANGED:	// (and ignoring SDL_WINDOWEVENT_RESIZED, see DEV NOTE at bottom)
-			recordWindowSize(event.window.data1, event.window.data2);	// want this to save resized window size to Settings file
+			if (! isMobilePlatform)											// On desktop, (doesn't make sense on mobile),
+				recordWindowSize(event.window.data1, event.window.data2);	//	want this to save resized window size to Settings file.
 			isWindowResized = true;			// (note this remains set until retrieved, whence one-shot resets it)
 			Log(LOW, "      Window Resized %d x %d", pixelsWide, pixelsHigh);	// show resize is finished
 			break;
