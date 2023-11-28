@@ -76,6 +76,8 @@ string DeviceRanking::RankDevices(VkPhysicalDevice devices[], int nDevices, int 
 
 			if (iPass)
 				deviceProfiles[iDevice].description += ", ";
+			else
+				deviceProfiles[iDevice].description.clear();
 
 			uint64_t eachScore = passOrder[iPass](devices[iDevice], deviceProfiles[iDevice]);
 			deviceProfiles[iDevice].rawPerPassScore = eachScore;
