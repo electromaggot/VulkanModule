@@ -47,6 +47,7 @@ struct DeviceProfile
 		selectedSurfaceFormat.colorSpace = VkColorSpaceKHR_UNSET;
 		selectedPresentMode = VkPresentModeKHR_UNSET;
 		selectedDepthFormat = VK_FORMAT_UNDEFINED;
+		description = "unset";
 	}
 };
 
