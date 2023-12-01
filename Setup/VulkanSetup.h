@@ -27,10 +27,16 @@
 class CommandControl;
 
 
+enum SteerSetup {	// minor tailoring of the setup process
+	BASIC			= 0,
+	NO_DEPTH_BUFFER = 0b00000001
+};
+
+
 class VulkanSetup
 {
 public:
-	VulkanSetup(iPlatform& platform);
+	VulkanSetup(iPlatform& platform, SteerSetup setup = BASIC);
 	~VulkanSetup();
 
 	// Also public, as owner should have access to these:
