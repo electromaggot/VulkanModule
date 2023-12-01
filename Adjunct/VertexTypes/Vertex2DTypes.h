@@ -14,6 +14,9 @@
 //
 // Pretty much exclusively uses 32-bit floats (aka signed _SFLOAT).
 //
+// These types may be convenient even in 3D, because if a mesh is entirely
+//	flat but huge, its vertex buffer requires less RAM and GPU bandwidth.
+//
 // Created 9/17/23 by Tadd Jensen
 //	© 0000 (uncopyrighted; use at will)
 //

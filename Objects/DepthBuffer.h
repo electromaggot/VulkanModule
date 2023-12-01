@@ -18,7 +18,7 @@
 class DepthBuffer : protected ImageResource
 {
 public:
-	DepthBuffer(Swapchain& swapchain, GraphicsDevice& graphics, bool enabled = false);
+	DepthBuffer(Swapchain& swapchain, GraphicsDevice& graphics, bool enabled = true);
 
 		// MEMBERS
 private:
