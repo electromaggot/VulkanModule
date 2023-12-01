@@ -18,6 +18,8 @@ const StrPtr SHADER_SUBDIRECTORY  = "compiledShaders/";
 
 const StrPtr TEXTURE_SUBDIRECTORY = "textures/";
 
+const StrPtr MODEL_SUBDIRECTORY = "models/";
+
 const StrPtr FONT_SUBDIRECTORY = "fonts/";
 
 
@@ -32,6 +34,16 @@ string FileSystem::TextureFileFullPath(StrPtr fileName)
 {
 	return ExeAccompaniedFullPath(fileName, TEXTURE_SUBDIRECTORY);
 }
+
+string FileSystem::ModelFileFullPath(const char* fileName)
+{
+	return ExeAccompaniedFullPath(fileName, MODEL_SUBDIRECTORY);
+}
+string FileSystem::ModelFileFullPath(const string& fileName)
+{
+	return ExeAccompaniedFullPath(fileName.c_str(), MODEL_SUBDIRECTORY);
+}
+
 
 string FileSystem::FontFileFullPath(StrPtr fileName)
 {
