@@ -14,14 +14,15 @@
 #include "CommandObjects.h"
 
 
-VulkanSetup::VulkanSetup(iPlatform& platform)
+VulkanSetup::VulkanSetup(iPlatform& platform,
+						 SteerSetup directive)
 	:	validation(),							// Initializer list: instantiate components
 		vulkan(validation, platform),			//	in ascending order of explicit dependencies.
 		debugReport(vulkan),					//	See PROGRAMMER NOTE below.
 		windowSurface(vulkan, platform),
 		device(windowSurface, vulkan, validation),
 		swapchain(device, windowSurface),
-		depthBuffer(swapchain, device),
+		depthBuffer(swapchain, device, !(directive & NO_DEPTH_BUFFER)),
 		renderPass(device),
 		framebuffers(swapchain, depthBuffer, renderPass, device),
 		syncObjects(device),
