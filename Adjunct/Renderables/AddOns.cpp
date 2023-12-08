@@ -80,10 +80,10 @@ void AddOns::createDescribedItems(vector<UBO>& UBOs, vector<TextureSpec>& textur
 		ubos.push_back(eachUBO);
 		UniformBuffer* pUniformBuffer = new UniformBuffer(eachUBO.byteSize, vulkan.swapchain, vulkan.device);
 		pUniformBuffers.push_back(pUniformBuffer);
-		described.emplace_back( pUniformBuffer->getDescriptorBufferInfo(),			// layout(binding = 0)
+		described.emplace_back( pUniformBuffer->getDescriptorBufferInfo(),			// layout(binding = 0)	<-- appears in Vertex Shader
 								eachUBO.getShaderStageFlags());
-	}
-
+	}																				// If there's > 1 UBO above, adjust the layout
+																					//	number below, (binding = N + 1) accordingly!
 	// Textures next (may be more than one)... order is important here too == binding index
 	for (TextureSpec& textureSpec : textureSpecs) {
 		if (textureSpec.fileName || textureSpec.pImageInfo) {
@@ -91,7 +91,7 @@ void AddOns::createDescribedItems(vector<UBO>& UBOs, vector<TextureSpec>& textur
 			TextureImage* pTexture = new TextureImage(texspecs.back(), vulkan.command.vkPool(), vulkan.device, platform);
 			if (pTexture) {
 				pTextureImages.emplace_back(pTexture);
-				described.emplace_back( pTexture->getDescriptorImageInfo(),			// layout(binding = 1) ... 2) ... 3)...
+				described.emplace_back( pTexture->getDescriptorImageInfo(),			// layout(binding = 1) ... 2) ... 3)...	 <-- in Fragment Shader
 										VK_SHADER_STAGE_FRAGMENT_BIT);
 										// ^^^^^^ TODO: ^^^^^^^^ We don't have a mechanism (YET!) allowing an image to
 			}							//		be specified for the VERTEX STAGE, which could be helpful for something
