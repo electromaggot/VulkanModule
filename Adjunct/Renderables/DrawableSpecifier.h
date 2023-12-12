@@ -26,6 +26,7 @@ public:
 	vector<UBO>			pUBOs;
 	vector<TextureSpec>	textures;
 	Customizer			customize = NONE;
+	string				name;
 };
 
 class DrawableSpecifier : public DrawableProperties {
