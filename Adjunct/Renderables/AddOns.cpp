@@ -37,7 +37,8 @@ void AddOns::createVertexAndOrIndexBuffers(MeshObject& meshObject)
 		pVertexBuffer = new PrimitiveBuffer(meshObject, commandPool, vulkan.device);
 		if (meshObject.indices) {
 			if (meshObject.indexType == MeshDefaultIndexType) {
-				pIndexBuffer = new PrimitiveBuffer((IndexBufferDefaultIndexType*) meshObject.indices, meshObject.indexCount,
+				pIndexBuffer = new PrimitiveBuffer((IndexBufferDefaultIndexType*) meshObject.indices,
+												   meshObject.indexCount,
 												   commandPool, vulkan.device);
 			} else {
 				pIndexBuffer = new PrimitiveBuffer(meshObject.indexType, meshObject.indices, meshObject.indexCount,
