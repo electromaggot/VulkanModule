@@ -71,7 +71,7 @@ protected:
 		{
 			Log(WARN, "Unable to match %s to a VK_FORMAT_ equivalent.", SDL_GetPixelFormatName(sdlPixelFormat));
 			vkFormat = ARGUABLY_MOST_GENERAL_VK_FORMAT;
-			Log(WARN, "    Using fallback 'general' VkFormat: %s", VkFormatString(vkFormat));
+			Log(WARN, "    Using fallback 'general' VkFormat: %s", AltVkFormatString(vkFormat));
 			Log(NOTE, "    If Image Coloring is wrong, add or adjust the Format in ImageSDL's Equivalency Table.");
 		} else {
 			// SDL format's bits/bytes may not agree (e.g. RGB888 is 24-bit but 4-byte).  While the EquivalencyTable
@@ -79,7 +79,7 @@ protected:
 			if (bitsPerPixel / 8 != computedBytesPerPixel || formatBytesPerPixel != computedBytesPerPixel)
 				Log(RAW, "   Warning: SDL indicates a %d-bit but %d-byte pixel format (or separately BytesPerPixel = %d)",
 					bitsPerPixel, formatBytesPerPixel, computedBytesPerPixel);
-			Log(RAW, "      Vulkan equivalent VkFormat: %s", VkFormatString(vkFormat));
+			Log(RAW, "      Vulkan equivalent VkFormat: %s", AltVkFormatString(vkFormat));
 		}
 
 		return { pPixels, imageSize, vkFormat, texWidth, texHeight };
@@ -106,7 +106,7 @@ protected:
 		SDL_PixelFormatEnum equivalentSDLFormat = findSDLFormatEquivalentTo(toFormat);
 
 		if (equivalentSDLFormat == SDL_PIXELFORMAT_UNKNOWN && fallbackOnFailure) {
-			Log(WARN, "Cannot find SDL Format equivalent to %s, so CONVERTing to %s", VkFormatString(toFormat),
+			Log(WARN, "Cannot find SDL Format equivalent to %s, so CONVERTing to %s", AltVkFormatString(toFormat),
 													  SDL_GetPixelFormatName(ARGUABLY_MOST_COMMON_SDL_FORMAT));
 			equivalentSDLFormat = ARGUABLY_MOST_COMMON_SDL_FORMAT;
 		}

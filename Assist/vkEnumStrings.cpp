@@ -1,5 +1,5 @@
 //
-// vkEnumStrings.cpp
+// altVkEnumStrings.cpp
 //	axEngine	Vulkan support
 //
 //TJ_LATER_NOTE: deprecate this; redundant to the SDK's vulkan.hpp  std::string to_string(Result)
@@ -15,12 +15,12 @@
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_to_string.hpp>
 
-/*typedef struct {
+typedef struct {
 	VkResult		eNum;
 	const char*		string;
-} VkErrorMessage;
+} AltVkErrorMessage;
 
-VkErrorMessage VkErrorMessages[] = {
+AltVkErrorMessage AltVkErrorMessages[] = {
 	{ VK_ERROR_FRAGMENTED_POOL,			"VK_ERROR_FRAGMENTED_POOL"			},	// -12		// 0
 	{ VK_ERROR_FORMAT_NOT_SUPPORTED,	"VK_ERROR_FORMAT_NOT_SUPPORTED"		},	// -11		// 1
 	{ VK_ERROR_TOO_MANY_OBJECTS,		"VK_ERROR_TOO_MANY_OBJECTS"			},	// -10		// 2
@@ -50,27 +50,25 @@ VkErrorMessage VkErrorMessages[] = {
 	{ VK_ERROR_INVALID_SHADER_NV,		"VK_ERROR_INVALID_SHADER_NV"		},	// -1000012000
 	{ VK_ERROR_FRAGMENTATION_EXT,		"VK_ERROR_FRAGMENTATION_EXT"		},	// -1000161000
 	{ VK_ERROR_NOT_PERMITTED_EXT,		"VK_ERROR_NOT_PERMITTED_EXT"		},	// -1000174001
-	/ *
-	  VK_ERROR_OUT_OF_POOL_MEMORY_KHR = VK_ERROR_OUT_OF_POOL_MEMORY,
-	  VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR = VK_ERROR_INVALID_EXTERNAL_HANDLE,
-
-	  VK_RESULT_BEGIN_RANGE = VK_ERROR_FRAGMENTED_POOL,
-	  VK_RESULT_END_RANGE = VK_INCOMPLETE,
-	  VK_RESULT_RANGE_SIZE = (VK_INCOMPLETE - VK_ERROR_FRAGMENTED_POOL + 1),	* /
+																					// special cases, equivalent to:
+	{ VK_ERROR_OUT_OF_POOL_MEMORY_KHR,		"VK_ERROR_OUT_OF_POOL_MEMORY_KHR"		},	// VK_ERROR_OUT_OF_POOL_MEMORY
+	{ VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR, "VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR"	}	// VK_ERROR_INVALID_EXTERNAL_HANDLE
 };
+const VkResult CONTIGUOUS_VK_RESULT_BEGIN_RANGE = VK_ERROR_FRAGMENTED_POOL;
+const VkResult CONTIGUOUS_VK_RESULT_END_RANGE = VK_INCOMPLETE;
+const int CONTIGUOUS_VK_RESULT_RANGE_SIZE = CONTIGUOUS_VK_RESULT_END_RANGE - CONTIGUOUS_VK_RESULT_BEGIN_RANGE;
 
-const int nVkErrorMessages = sizeof(VkErrorMessages) / sizeof(VkErrorMessage);*/
+const int nVkErrorMessages = sizeof(AltVkErrorMessages) / sizeof(AltVkErrorMessage);
 
 
 std::string VkErrorString(VkResult eres)
 {
-	return std::to_string((int) eres);
-	/*if (eres >= VK_RESULT_BEGIN_RANGE && eres <= VK_RESULT_END_RANGE)
-		return VkErrorMessages[eres - VK_RESULT_BEGIN_RANGE].string;
-	for (int iMsg = VK_RESULT_RANGE_SIZE; iMsg < nVkErrorMessages; ++iMsg)
-		if (VkErrorMessages[iMsg].eNum == eres)
-			return VkErrorMessages[iMsg].string;
-	return "unknown error";*/
+	if (eres >= CONTIGUOUS_VK_RESULT_BEGIN_RANGE && eres <= CONTIGUOUS_VK_RESULT_END_RANGE)
+		return AltVkErrorMessages[eres - CONTIGUOUS_VK_RESULT_BEGIN_RANGE].string;
+	for (int iMsg = CONTIGUOUS_VK_RESULT_RANGE_SIZE; iMsg < nVkErrorMessages; ++iMsg)
+		if (AltVkErrorMessages[iMsg].eNum == eres)
+			return AltVkErrorMessages[iMsg].string;
+	return "unknown error " + std::to_string(eres);
 }
 
 
@@ -83,7 +81,7 @@ std::string VkErrorString(VkResult eres)
 //							(but in the meantime, it's better than nothing)
 //									(...if it helps you, "you're welcome!")
 
-const char* VkFormatStrings[] = {
+const char* AltVkFormatStrings[] = {
 	"VK_FORMAT_UNDEFINED",					// 0
 	"VK_FORMAT_R4G4_UNORM_PACK8",			// 1
 	"VK_FORMAT_R4G4B4A4_UNORM_PACK16",		// 2
@@ -271,14 +269,21 @@ const char* VkFormatStrings[] = {
 	"VK_FORMAT_ASTC_12x12_SRGB_BLOCK"		// 184
 };
 
-const int nVkFormatStrings = sizeof(VkFormatStrings) / sizeof(const char*);
+const int nVkFormatStrings = sizeof(AltVkFormatStrings) / sizeof(const char*);
+
+char stringUnknown[] = "unknown format 000";
+
+const int nTrailingDigits = 3;		// ^^^
 
 
-const char* VkFormatString(VkFormat efmt)
+const char* AltVkFormatString(VkFormat efmt)
 {
 	if (efmt >= 0 && efmt < nVkFormatStrings)
-		return VkFormatStrings[efmt];
-	return "unknown format";
+		return AltVkFormatStrings[efmt];
+
+	size_t indexTrailingDigits = strlen(stringUnknown) - nTrailingDigits;
+	snprintf(&stringUnknown[indexTrailingDigits], nTrailingDigits, "%d", efmt);
+	return stringUnknown;
 }
 
 
