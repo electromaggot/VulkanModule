@@ -52,7 +52,7 @@ typedef unsigned int	Index;			// Abstract general means of indexing into array.
 
 extern string ErrStr(VkResult);
 
-extern const char* VkFormatString(VkFormat);
+extern const char* AltVkFormatString(VkFormat);
 
 
 extern void DumpStringVector(StrPtr label, vector<StrPtr> strray);

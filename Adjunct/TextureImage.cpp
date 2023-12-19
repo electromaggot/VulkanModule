@@ -71,8 +71,8 @@ void TextureImage::create(TextureSpec& texSpec, GraphicsDevice& graphicsDevice, 
 
 	if (!graphicsDevice.IsImageFormatSupported(imageInfo.format, tiling)) {
 		VkFormat BEST_FORMAT = VK_FORMAT_A8B8G8R8_UNORM_PACK32;
-		Log(WARN, "Vulkan says selected device does not support: %s", VkFormatString(imageInfo.format));
-		Log(WARN, "    Converting to: %s", VkFormatString(BEST_FORMAT));
+		Log(WARN, "Vulkan says selected device does not support: %s", AltVkFormatString(imageInfo.format));
+		Log(WARN, "    Converting to: %s", AltVkFormatString(BEST_FORMAT));
 		imageInfo = platform.ImageSource().ConvertTo(BEST_FORMAT);
 	}
 	uint32_t width	= imageInfo.wide;
