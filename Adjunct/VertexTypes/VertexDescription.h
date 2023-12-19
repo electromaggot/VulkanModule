@@ -15,6 +15,7 @@
 #include "vulkan/vulkan.h"	// for VkFormat (see vulkan_core.h)
 #include "Universal.h"		// for N_ELEMENTS_IN_ARRAY
 #include "VertexAbstract.h"
+#include "Logging.h"
 #include <bitset>			// (to build on Linux side)
 
 
@@ -101,6 +102,14 @@ public:
 		bindingDescription.binding =	0;
 		bindingDescription.stride =		numBytesPerVertex;
 		bindingDescription.inputRate =	VK_VERTEX_INPUT_RATE_VERTEX;
+	}
+
+	bool vetIsValid() override {
+		bool isValid = VertexAbstract::vetIsValid() && numAttributes && numBytesPerVertex && pLayout;
+		if (! isValid)
+			Log(ERROR, "Vertex Description INVALID, all should be non-ZERO: %d Attributes, %d BytesPerVertex, %p Layout",
+																			numAttributes, numBytesPerVertex, pLayout);
+		return isValid;
 	}
 };
 
