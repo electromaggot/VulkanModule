@@ -43,13 +43,11 @@ TextureImage::~TextureImage()
 {
 	if (! wasSamplerInjected)
 		vkDestroySampler(device, sampler, nullptr);
-	vkDestroyImageView(device, imageView, nullptr);
 	if (pStagingBuffer) {
 		delete pStagingBuffer;
 		pStagingBuffer = nullptr;
 	}
-	vkDestroyImage(device, image, nullptr);
-	vkFreeMemory(device, deviceMemory, nullptr);
+	// ~ImageResource() will thus vkDestroyImageView(imageView), vkDestroyImage(image), vkFreeMemory(deviceMemory);
 }
 
 void TextureImage::ReGenerateMipmaps()
@@ -85,7 +83,7 @@ void TextureImage::create(TextureSpec& texSpec, GraphicsDevice& graphicsDevice, 
 
 	createImage(width, height, format, tiling,
 				VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, deviceMemory);
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	transitionImageLayout(image, format, VK_IMAGE_LAYOUT_UNDEFINED,					// from
 						  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);					// <- to
@@ -116,7 +114,7 @@ void TextureImage::createBlank(ImageInfo& params, GraphicsDevice& graphicsDevice
 
 	createImage(params.wide, params.high, params.format, VK_IMAGE_TILING_OPTIMAL,
 				VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, deviceMemory);
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	transitionImageLayout(image, params.format, VK_IMAGE_LAYOUT_UNDEFINED,					// from
 						  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);							// <- to
@@ -278,8 +276,8 @@ void TextureImage::StagingBuffer::CreateAndMapBuffer(VkDeviceSize& nBytes)
 {
 	texture.createGeneralBuffer(nBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 								VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-								vkBuffer, deviceMemory);
-	vkMapMemory(texture.device, deviceMemory, 0, nBytes, 0, (void**) &pBytesStaged);
+								vkBuffer, stagedDeviceMemory);
+	vkMapMemory(texture.device, stagedDeviceMemory, 0, nBytes, 0, (void**) &pBytesStaged);
 }
 
 // Copy into the StagingBuffer the just-loaded image.
@@ -305,15 +303,15 @@ void TextureImage::StagingBuffer::CopyInImageData(TextureSpec& spec)
 	if (spec.wantMutable)
 		keepMemoryMapped = true;
 	else
-		vkUnmapMemory(texture.device, deviceMemory);
+		vkUnmapMemory(texture.device, stagedDeviceMemory);
 }
 
 TextureImage::StagingBuffer::~StagingBuffer()
 {
 	if (keepMemoryMapped)
-		vkUnmapMemory(texture.device, deviceMemory);
+		vkUnmapMemory(texture.device, stagedDeviceMemory);
 	vkDestroyBuffer(texture.device, vkBuffer, nullptr);
-	vkFreeMemory(texture.device, deviceMemory, nullptr);
+	vkFreeMemory(texture.device, stagedDeviceMemory, nullptr);
 }
 
 
