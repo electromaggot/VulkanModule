@@ -45,8 +45,8 @@ struct AddOns
 protected:
 	vector<DescribEd>	described;
 
-	PrimitiveBuffer*	pVertexBuffer		= nullptr;
-	PrimitiveBuffer*	pIndexBuffer		= nullptr;
+	PrimitiveBuffer*	pVertexBuffer	= nullptr;
+	PrimitiveBuffer*	pIndexBuffer	= nullptr;
 
 	vector<UniformBuffer*>	pUniformBuffers;
 	vector<TextureImage*>	pTextureImages;
