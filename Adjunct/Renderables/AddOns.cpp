@@ -25,6 +25,7 @@ AddOns::AddOns(DrawableSpecifier& drawable, VulkanSetup& setup, iPlatform& abstr
 AddOns::~AddOns()
 {
 	destroyVertexAndOrIndexBuffers();
+	destroyDescribedItems();
 }
 
 
@@ -98,6 +99,16 @@ void AddOns::createDescribedItems(vector<UBO>& UBOs, vector<TextureSpec>& textur
 			}							//		be specified for the VERTEX STAGE, which could be helpful for something
 		}								//		like offseting vertices based on a depth map.
 	}
+}
+
+void AddOns::destroyDescribedItems()
+{
+	for (auto& pUniformBuffer : pUniformBuffers)
+		delete pUniformBuffer;
+	pUniformBuffers.clear();
+	for (auto& pTextureImage : pTextureImages)
+		delete pTextureImage;
+	pTextureImages.clear();
 }
 
 

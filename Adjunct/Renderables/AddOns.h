@@ -63,6 +63,7 @@ protected:
 	void destroyVertexAndOrIndexBuffers();
 
 	void createDescribedItems(vector<UBO>& UBO, vector<TextureSpec>& textureSpecs, iPlatform& platform);
+	void destroyDescribedItems();
 
 	void Recreate(MeshObject& meshObject);
 	void RecreateDescribables();
