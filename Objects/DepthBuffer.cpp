@@ -22,13 +22,17 @@ DepthBuffer::DepthBuffer(Swapchain& swapchain, GraphicsDevice& graphics, bool en
 	create();
 }
 
+DepthBuffer::~DepthBuffer()
+{
+	destroy();
+}
+
 
 void DepthBuffer::create()
 {
 	selectBestDepthFormat();
 	createImage(imageInfo.wide, imageInfo.high, imageInfo.format, VK_IMAGE_TILING_OPTIMAL,
-				VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-				image, deviceMemory);
+				VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	createImageView(VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
