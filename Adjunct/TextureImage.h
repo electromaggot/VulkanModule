@@ -97,7 +97,7 @@ public:
 	private:
 			// MEMBERS
 		VkBuffer		vkBuffer;
-		VkDeviceMemory	deviceMemory;
+		VkDeviceMemory	stagedDeviceMemory;
 
 		TextureImage&	texture;
 
