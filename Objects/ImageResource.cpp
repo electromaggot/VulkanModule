@@ -19,12 +19,19 @@ ImageResource::~ImageResource()  { destroy(); }
 
 void ImageResource::destroy()
 {
-	//TJ_TODO: MUST FIRST make sure creation of each of these actually succeeded.
-	//TJ_TODO:	and in a better more thorough manner than this test:
 	if (imageInfo.format != VK_FORMAT_UNDEFINED) {
-		vkDestroyImageView(device, imageView, nullptr);
-		vkDestroyImage(device, image, nullptr);
-		vkFreeMemory(device, deviceMemory, nullptr);
+		if (existsImageView) {
+			vkDestroyImageView(device, imageView, nullptr);
+			existsImageView = false;
+		}
+		if (existsImage) {
+			vkDestroyImage(device, image, nullptr);
+			existsImage = false;
+		}
+		if (existsDeviceMemory) {
+			vkFreeMemory(device, imageDeviceMemory, nullptr);
+			existsDeviceMemory = false;
+		}
 	}
 }
 
@@ -56,13 +63,13 @@ void ImageResource::createImageView(VkImageAspectFlags aspectFlags/* = VK_IMAGE_
 	call = vkCreateImageView(device, &viewInfo, nullptr, &imageView);
 	if (call != VK_SUCCESS)
 		Fatal("Create Image View for texture FAILURE" + ErrStr(call));
+	existsImageView = true;
 }
 
 // Note that certain formats, e.g. produce: VK_ERROR_FORMAT_NOT_SUPPORTED: VkFormat VK_FORMAT_R8G8B8_UNORM is not supported on this platform.
 //
 void ImageResource::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling,
-								VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
-								VkImage& image, VkDeviceMemory& imageMemory)
+								VkImageUsageFlags usage, VkMemoryPropertyFlags properties)
 {
 	VkImageCreateInfo imageInfo = {
 		.sType	= VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -85,6 +92,7 @@ void ImageResource::createImage(uint32_t width, uint32_t height, VkFormat format
 	call = vkCreateImage(device, &imageInfo, nullptr, &image);
 	if (call != VK_SUCCESS)
 		Fatal("Create Image FAILURE" + ErrStr(call));
+	existsImage = true;
 
 	VkMemoryRequirements memRequirements;
 	vkGetImageMemoryRequirements(device, image, &memRequirements);
@@ -96,9 +104,10 @@ void ImageResource::createImage(uint32_t width, uint32_t height, VkFormat format
 		.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties)
 	};
 
-	call = vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory);
+	call = vkAllocateMemory(device, &allocInfo, nullptr, &imageDeviceMemory);
 	if (call != VK_SUCCESS)
 		Fatal("Allocate Memory for image FAILURE" + ErrStr(call));
+	existsDeviceMemory = true;
 
-	vkBindImageMemory(device, image, imageMemory, 0);
+	vkBindImageMemory(device, image, imageDeviceMemory, 0);
 }

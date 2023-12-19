@@ -27,19 +27,22 @@ public:
 		// MEMBERS
 protected:
 	VkImage			image;
-	VkDeviceMemory	deviceMemory;
+	VkDeviceMemory	imageDeviceMemory;
 	VkImageView		imageView;
 
 	ImageInfo		imageInfo;
 	Mipmaps*		pMipmaps;
+
+	bool			existsImage = false,
+					existsDeviceMemory = false,
+					existsImageView = false;
 
 		// METHODS
 protected:
 	void destroy();
 	void createImageView(VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT);
 	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling,
-					 VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
-					 VkImage& image, VkDeviceMemory& imageMemory);
+					 VkImageUsageFlags usage, VkMemoryPropertyFlags properties);
 		// getters
 public:
 	VkImage&	getImage()	{ return image;		}
