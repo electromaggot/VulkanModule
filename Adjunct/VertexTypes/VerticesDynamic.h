@@ -68,8 +68,8 @@ struct VerticesDynamic {
 
 	size_t size()		{ return sizeVertices; }
 
-	uint32_t count()	{ return (uint32_t) sizeVertices / sizeVertex; }
-
+	uint32_t count()	{ return (uint32_t) sizeVertices / (sizeVertex ? sizeVertex : -1); }
+															 //  avert divide by zero ^^ offloading error to caller
 	AttributeBits attributeBits()	{ return attribits; }
 
 	void* operator [] (const int index) {
