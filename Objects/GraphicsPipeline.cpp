@@ -16,6 +16,8 @@ GraphicsPipeline::GraphicsPipeline(ShaderModules& shaders, RenderPass& renderPas
 								   Customizer customize)
 	:	device(graphics.getLogical())
 {
+	pVertex->vetIsValid();
+
 	create(shaders, pVertex, swapchain.getExtent(), renderPass, pDescriptors, customize);
 }
 
@@ -180,7 +182,7 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 	call = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, // number of pipelines
 									 &pipelineInfo, nullALLOC, &graphicsPipeline);
 	if (call != VK_SUCCESS)
-		Fatal("Create Graphics Pipeline FAILURE" + ErrStr(call));
+		Fatal("FAIL on Create Graphics Pipeline" + ErrStr(call));
 }
 
 void GraphicsPipeline::Recreate(ShaderModules& shaders, RenderPass& renderPass, Swapchain& swapchain,

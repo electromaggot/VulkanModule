@@ -29,6 +29,9 @@ public:
 
 	virtual void initialize(VertexAttribute* pAttrs, int nAttrs, int nBytesVertex) { }
 	virtual void initialize(AttributeBits bits) { }
+
+	virtual bool vetIsValid() { return byteSize() && nBindingDescriptions() && nAttributeDescriptions()
+										&& pBindingDescriptions() && pAttributeDescriptions(); }
 };
 
 
