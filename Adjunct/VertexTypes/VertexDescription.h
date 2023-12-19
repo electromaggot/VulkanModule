@@ -105,11 +105,11 @@ public:
 	}
 
 	bool vetIsValid() override {
-		bool isValid = VertexAbstract::vetIsValid() && numAttributes && numBytesPerVertex && pLayout;
+		bool isValid = VertexAbstract::vetIsValid() && numAttributes && numBytesPerVertex;
 		if (! isValid)
-			Log(ERROR, "Vertex Description INVALID, all should be non-ZERO: %d Attributes, %d BytesPerVertex, %p Layout",
-																			numAttributes, numBytesPerVertex, pLayout);
-		return isValid;
+			Log(ERROR, "Vertex Description INVALID, all should be non-ZERO: %d Attributes, %d BytesPerVertex",
+																			numAttributes, numBytesPerVertex);
+		return isValid;		// (note: pLayout is non-critical, may be null)
 	}
 };
 
