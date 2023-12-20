@@ -23,6 +23,8 @@ public:
 	SyncObjects(GraphicsDevice& graphics);
 	~SyncObjects();
 
+	void Recreate();
+
 		// MEMBERS
 public:
 	const int MaxFramesInFlight = MAX_FRAMES_IN_FLIGHT;
@@ -38,6 +40,7 @@ private:
 		// METHODS
 private:
 	void createSyncObjects();
+	void destroySyncObjects();
 };
 
 #endif // SyncObjects_h
