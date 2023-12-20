@@ -18,11 +18,7 @@ SyncObjects::SyncObjects(GraphicsDevice& graphics)
 
 SyncObjects::~SyncObjects()
 {
-	for (size_t iFrame = 0; iFrame < MaxFramesInFlight; ++iFrame) {
-		vkDestroyFence(device, inFlightFences[iFrame], nullALLOC);
-		vkDestroySemaphore(device, renderFinishedSemaphores[iFrame], nullALLOC);
-		vkDestroySemaphore(device, imageAvailableSemaphores[iFrame], nullALLOC);
-	}
+	destroySyncObjects();
 }
 
 
@@ -53,4 +49,20 @@ void SyncObjects::createSyncObjects()
 		}
 		Fatal("Create synchronization object for frame " + to_string(iFrame) + " FAILURE" + ErrStr(call));
 	}
+}
+
+void SyncObjects::destroySyncObjects()
+{
+	for (size_t iFrame = 0; iFrame < MaxFramesInFlight; ++iFrame) {
+		vkDestroyFence(device, inFlightFences[iFrame], nullALLOC);
+		vkDestroySemaphore(device, renderFinishedSemaphores[iFrame], nullALLOC);
+		vkDestroySemaphore(device, imageAvailableSemaphores[iFrame], nullALLOC);
+	}
+}
+
+
+void SyncObjects::Recreate()
+{
+	destroySyncObjects();
+	createSyncObjects();
 }
