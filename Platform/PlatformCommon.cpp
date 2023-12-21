@@ -21,7 +21,7 @@ extern std::string VkErrorString(VkResult);
 string ErrStr(VkResult num)
 {
 	//return to_string(num);
-	return " result: " + string(VkErrorString(num));
+	return " - result: " + string(VkErrorString(num));
 }
 
 //--------------------------------------------------------
