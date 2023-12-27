@@ -14,8 +14,8 @@
 // Created 6/14/19 by Tadd Jensen
 //	© 2112 (uncopyrighted; use at will)
 //
-#ifndef VertexObject_h
-#define VertexObject_h
+#ifndef MeshObject_h
+#define MeshObject_h
 
 #include "VulkanPlatform.h"
 
@@ -61,4 +61,4 @@ struct MeshObject
 	}
 };
 
-#endif // VertexObject_h
+#endif // MeshObject_h
