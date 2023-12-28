@@ -30,8 +30,15 @@ struct VerticesDynamic {
 
 
 	~VerticesDynamic() {
+		clear();
+	}
+
+	void clear() {
 		if (pBytes)
 			free(pBytes);
+		sizeLastAlloc = 0;
+		sizeVertices = 0;
+		pBytes = nullptr;
 	}
 
 

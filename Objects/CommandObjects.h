@@ -120,6 +120,9 @@ private:
 	void recordCommands(int iFrame, vector<iRenderable*> pRenderables, VulkanSetup& vulkan);
 
 public:
+	void Create(Framebuffers& framebuffers);
+	void Destroy();
+
 	void PostInitPrepBuffers(VulkanSetup& vulkan);
 	void RecordRenderablesUponEachFrame(VulkanSetup& vulkan);
 	void RecordRenderablesForNextFrame(VulkanSetup& vulkan, int iNextFrame);
@@ -129,6 +132,7 @@ public:
 		return buffersByFrame[iFrame].vkCommandBuffers;
 	}
 
+	void RecreateBuffers(Framebuffers& framebuffers);
 	void RecreateRenderables(VulkanSetup& vulkan);
 
 		// getters
