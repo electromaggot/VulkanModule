@@ -164,6 +164,21 @@ public:
 		recordables[iRecordable].pRenderables.push_back(pRenderable);
 	}
 
+	void Remove(DrawableSpecifier* pObjSpec)
+	{
+		for (auto& recordable : recordables) {
+			auto& renderables = recordable.pRenderables;
+			for (auto ppRenderable = renderables.begin(); ppRenderable < renderables.end(); ++ppRenderable) {
+				iRenderable& renderable = **ppRenderable;
+				if (&renderable.vertexObject == &pObjSpec->mesh) {
+					renderable.deleteConcretion();
+					renderables.erase(ppRenderable);
+				}
+			}
+		}
+	}
+
+
 	//TJ_TODO: this is where all Renderables get their Update() methods called.
 	//
 	void Update(float deltaTime)

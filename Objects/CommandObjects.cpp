@@ -73,6 +73,7 @@ void CommandBufferSet::freeVkCommandBuffers()
 {
 	vkFreeCommandBuffers(CommandControl::device().getLogical(), CommandControl::vkPool(),
 						 (uint32_t) vkCommandBuffers.size(), vkCommandBuffers.data());
+	vkCommandBuffers.clear();
 }
 
 void CommandBufferSet::recordCommands(vector<iRenderable*> pBufferRenderables, VkFramebuffer& framebuffer,
@@ -129,13 +130,24 @@ CommandControl::CommandControl(Framebuffers& framebuffers, GraphicsDevice& graph
 	:	commandPool(CommandPool(graphics))
 {
 	pSingleton	= this;
-	numFrames	= (uint32_t) framebuffers.getVkFramebuffers().size();
-	buffersByFrame = new CommandBufferSet[numFrames];
+	Create(framebuffers);
 }
 
 CommandControl*	CommandControl::pSingleton = nullptr;
 
 CommandControl::~CommandControl()
+{
+	Destroy();
+}
+
+
+void CommandControl::Create(Framebuffers& framebuffers)
+{
+	numFrames	= (uint32_t) framebuffers.getVkFramebuffers().size();
+	buffersByFrame = new CommandBufferSet[numFrames];
+}
+
+void CommandControl::Destroy()
 {
 	delete[] buffersByFrame;
 	// (also no need to vkFreeCommandBuffers, as vkDestroyCommandPool will)
@@ -177,6 +189,14 @@ void CommandControl::RecordRenderablesForNextFrame(VulkanSetup& vulkan, int iNex
 }
 
 
+// Clear-out VkCommandBuffers; commandPool can stay as-is.
+//
+void CommandControl::RecreateBuffers(Framebuffers& framebuffers)
+{
+	Destroy();
+	Create(framebuffers);
+}
+
 // If pVertexObject null, the Vertex/Index Buffers will not be reloaded, but the same ones
 //	reused when CommandBuffers recreate.  Otherwise, pass a pointer to one to reload with,
 //	or a VertexBaseObject with .vertices = nullptr to eliminate the Vertex Buffer altogether
@@ -187,11 +207,7 @@ void CommandControl::RecordRenderablesForNextFrame(VulkanSetup& vulkan, int iNex
 //
 void CommandControl::RecreateRenderables(VulkanSetup& vulkan)
 {
-	delete[] buffersByFrame;
-	numFrames = (uint32_t) vulkan.framebuffers.getVkFramebuffers().size();
-	buffersByFrame = new CommandBufferSet[numFrames];
-
+	RecreateBuffers(vulkan.framebuffers);
 	renderables.Recreate(vulkan);
-
 	PostInitPrepBuffers(vulkan);
 }
