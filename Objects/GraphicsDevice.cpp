@@ -105,8 +105,10 @@ VkPhysicalDevice GraphicsDevice::selectGPU(VkInstance& instance, VkSurfaceKHR& s
 										   DeviceSelectionMethod choice) {
 	uint32_t nPhysicalDevices = 0;
 	vkEnumeratePhysicalDevices(instance, &nPhysicalDevices, nullptr);
-	if (nPhysicalDevices == 0)
+	if (nPhysicalDevices == 0) {
 		Fatal("No Physical Devices found with Vulkan support.");
+		exit(1); // (satisfy the Analyzer, which blind to Fatal above, fears below array may init with 0 size)
+	}
 
 	VkPhysicalDevice physicalDevices[nPhysicalDevices];
 	vkEnumeratePhysicalDevices(instance, &nPhysicalDevices, physicalDevices);
