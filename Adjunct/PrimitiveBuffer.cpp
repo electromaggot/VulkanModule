@@ -82,7 +82,7 @@ void PrimitiveBuffer::createDeviceLocalBuffer(void* pSourceData, VkDeviceSize si
 											  VkBuffer& deviceBuffer, VkDeviceMemory& specificMemory)
 {
 	VkBuffer cpuSideBuffer;
-	VkDeviceMemory cpuSideBufferMemory;
+	VkDeviceMemory cpuSideBufferMemory = 0;
 	createGeneralBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 						cpuSideBuffer, cpuSideBufferMemory);
