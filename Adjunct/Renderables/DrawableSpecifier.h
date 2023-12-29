@@ -22,22 +22,32 @@
 struct DrawableProperties {
 public:
 	MeshObject&			mesh;
+	string				name;
 	Shaders				shaders;
 	vector<UBO>			pUBOs;
 	vector<TextureSpec>	textures;
 	Customizer			customize = NONE;
-	string				name;
 };
+
+
+#define	DrawableObjectName	inline static const char*
+
 
 class DrawableSpecifier : public DrawableProperties {
 public:
-	DrawableSpecifier(MeshObject& refVtxObj)
-		:	DrawableProperties { refVtxObj }
-	{ }		// other members, all vectors, should automatically construct empty
+	DrawableSpecifier(MeshObject& refVtxObj, const char* drawbjectName)
+		:	DrawableProperties { refVtxObj, drawbjectName }
+	{		// other members, all vectors, should automatically construct empty
+		Log(RAW, "SPAWN %s...", drawbjectName);
+	}
 
 	DrawableSpecifier(DrawableProperties& refProps)
 		:	DrawableProperties { refProps }
 	{ }
+
+	~DrawableSpecifier() {
+		Log(RAW, "NUKED %s.", name.c_str());
+	}
 };
 
 

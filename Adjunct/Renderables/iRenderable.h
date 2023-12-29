@@ -64,7 +64,8 @@ struct iRenderable : iRenderableBase
 			pipeline(		* new GraphicsPipeline(shaderModules, vulkan.renderPass, vulkan.swapchain, vulkan.device,
 												   &specified.mesh.vertexType, &descriptors, specified.customize)),
 			vertexObject(	specified.mesh),
-			customizer(		specified.customize)
+			customizer(		specified.customize),
+			name(			specified.name)
 	{
 		isSelfManaged = false;
 	}
@@ -88,6 +89,7 @@ struct iRenderable : iRenderableBase
 
 	MeshObject&			vertexObject;	// (retain for Recreate)
 	Customizer			customizer;
+	string&				name;
 
 
 	virtual iRenderable* newConcretion(CommandRecording* pRecordingMode) const = 0;
@@ -162,6 +164,7 @@ public:
 				 && recordingMode != ON_CHANGE_FLAGGED);  // <-- always gets its own exclusive CommandBuffer
 
 		recordables[iRecordable].pRenderables.push_back(pRenderable);
+		Log(RAW, "done: %s SPAWNED.", pRenderable->name.c_str());
 	}
 
 	void Remove(DrawableSpecifier* pObjSpec)
