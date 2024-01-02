@@ -31,7 +31,7 @@ using std::cout; using std::endl; using std::flush;
 #include <assert.h>
 
 
-#define N_ELEMENTS_IN_ARRAY(ELEMENTS)	sizeof(ELEMENTS) / sizeof(ELEMENTS[0])
+#define N_ELEMENTS_IN_ARRAY(ELEMENTS)	(sizeof(ELEMENTS) / sizeof(ELEMENTS[0]))
 
 
 #endif	// Universal_h
