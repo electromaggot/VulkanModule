@@ -120,7 +120,7 @@ struct iRenderable : iRenderableBase
 };
 
 
-// A CommandBuffer needs an array of Renderables that go into recording its VkCommandBuffer.
+// A CommandBuffer object needs an array of Renderables that go into recording its VkCommandBuffer.
 //	Also an indicator as to how often it gets (re)recorded.
 //	Note that because one Buffer may share contributions from multiple Renderables, those must be
 //	tracked until all their initializations complete, before the VkCommandBuffer can be recorded.
@@ -138,13 +138,31 @@ class Renderables
 public:
 	~Renderables()
 	{
-		for (auto& recordable : recordables)
-			for (auto& pRenderable : recordable.pRenderables) {
-				if (!pRenderable->isSelfManaged) {
-					pRenderable->deleteConcretion();
-					delete pRenderable;
+		Clear();	// (in case one or more objects are self-managed, don't blanket: delete[] pRenderable;)
+	}
+
+	DrawableSpecifier* ALL = nullptr;
+
+	void Clear() {
+		Remove(ALL);
+	}
+
+	void Remove(DrawableSpecifier* pObjSpec)
+	{
+		bool removeALL = pObjSpec == ALL;
+		for (auto& recordable : recordables) {
+			auto& renderables = recordable.pRenderables;
+			for (auto ppRenderable = renderables.begin();
+					  ppRenderable < renderables.end(); ++ppRenderable) {		// Must ITERATE over vector...
+				iRenderable& renderable = **ppRenderable;
+				if ((!removeALL && &renderable.vertexObject == &pObjSpec->mesh)
+				  || (removeALL && !renderable.isSelfManaged)) {
+					renderable.deleteConcretion();
+					renderables.erase(ppRenderable);							//	...in order to .erase().
+					delete *ppRenderable;
 				}
 			}
+		}
 	}
 
 	void Add(const iRenderableBase& renderable)
@@ -173,20 +191,6 @@ public:
 
 		recordables[iRecordable].pRenderables.push_back(pRenderable);
 		Log(RAW, "done: %s SPAWNED.", pRenderable->name.c_str());
-	}
-
-	void Remove(DrawableSpecifier* pObjSpec)
-	{
-		for (auto& recordable : recordables) {
-			auto& renderables = recordable.pRenderables;
-			for (auto ppRenderable = renderables.begin(); ppRenderable < renderables.end(); ++ppRenderable) {
-				iRenderable& renderable = **ppRenderable;
-				if (&renderable.vertexObject == &pObjSpec->mesh) {
-					renderable.deleteConcretion();
-					renderables.erase(ppRenderable);
-				}
-			}
-		}
 	}
 
 
