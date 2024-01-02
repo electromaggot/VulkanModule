@@ -17,6 +17,7 @@
 #include "UniformBufferLiterals.h"
 #include "TextureImage.h"
 #include "Customizer.h"
+#include "GameClock.h"
 
 
 struct DrawableProperties {
@@ -27,6 +28,7 @@ public:
 	vector<UBO>			pUBOs;
 	vector<TextureSpec>	textures;
 	Customizer			customize = NONE;
+	bool				(*updateMethod)(GameClock&) = nullptr;
 };
 
 
