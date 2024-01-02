@@ -45,7 +45,7 @@ struct iRenderableBase
 
 	virtual iRenderableBase* newConcretion(CommandRecording* pRecordingMode) const = 0;
 
-	virtual void Update(float deltaSeconds) { }		// Be sure to override if re-recording command buffers each frame!
+	virtual bool Update(GameClock& time) { return false; }	// Be sure to override if re-recording command buffers each frame!
 
 	virtual void IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex = 0) = 0;
 
@@ -65,7 +65,8 @@ struct iRenderable : iRenderableBase
 												   &specified.mesh.vertexType, &descriptors, specified.customize)),
 			vertexObject(	specified.mesh),
 			customizer(		specified.customize),
-			name(			specified.name)
+			name(			specified.name),
+			updateMethod(	specified.updateMethod)
 	{
 		isSelfManaged = false;
 	}
@@ -90,11 +91,18 @@ struct iRenderable : iRenderableBase
 	MeshObject&			vertexObject;	// (retain for Recreate)
 	Customizer			customizer;
 	string&				name;
+	bool				(*updateMethod)(GameClock&);
 
 
 	virtual iRenderable* newConcretion(CommandRecording* pRecordingMode) const = 0;
-	virtual void Update(float deltaSeconds) { }
 	virtual void IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex = 0) = 0;
+
+	virtual bool Update(GameClock& time)
+	{
+		if (updateMethod)
+			return updateMethod(time);	// (see Renderables.Update() below)
+		return false;
+	}
 
 	virtual void Recreate(VulkanSetup& vulkan, bool reloadMesh = false)
 	{
@@ -182,13 +190,21 @@ public:
 	}
 
 
-	//TJ_TODO: this is where all Renderables get their Update() methods called.
+	// This is where all Renderables get their Update() methods called.  It is optional, if a Renderable doesn't
+	//	move, animate, or otherwise change.  This is custom-set per Renderable and is separate from any gxActions
+	//	that may have also been applied to the Renderable.
+	//	Returning true indicates overall Update "succeeded" and requests caller to refresh, because
+	//	at least one Renderable's Update() requested the refresh.
 	//
-	void Update(float deltaTime)
+	bool Update(GameClock& time)
 	{
+		bool result, requestRefresh = false;
 		for (CommandRecordable& recordable : recordables)
-			for (iRenderable* pRenderable : recordable.pRenderables)
-				pRenderable->Update(deltaTime);
+			for (iRenderable* pRenderable : recordable.pRenderables) {
+				result = pRenderable->Update(time);
+				requestRefresh = result || requestRefresh;
+			}
+		return requestRefresh;
 	}
 
 	void UpdateUniformBuffers(int iNextImage)
