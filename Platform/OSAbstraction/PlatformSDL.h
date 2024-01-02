@@ -46,6 +46,8 @@ private:
 	PFNResizeForceRender pfnResizeForceRender = nullptr;
 	void* pRenderingObject = nullptr;
 
+	int simplePress = 0;
+
 public:
 	int LastSavedPixelsWide = 0;
 	int	LastSavedPixelsHigh = 0;
@@ -65,6 +67,7 @@ public:
 	void AwaitEvent();
 	void ClearEvents();
 	void ShowSoftKeyboard(bool show = true);
+	int  WasSimplePress();
 
 	iImageSource& ImageSource()	 { return static_cast<iImageSource&>(image); }
 	void InitGUISystem()		 { ImGui_ImplSDL2_InitForVulkan(pWindow); }

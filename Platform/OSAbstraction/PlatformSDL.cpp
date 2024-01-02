@@ -368,6 +368,8 @@ bool PlatformSDL::PollEvent(iControlScheme* pController)
 						pController->handleSecondaryPressUp(event.button.x, event.button.y);
 						break;
 					}
+				else
+					simplePress = event.button.button;
 				break;
 			case SDL_MOUSEWHEEL:
 				if (pController)
@@ -453,6 +455,13 @@ void PlatformSDL::AwaitEvent()
 void PlatformSDL::ClearEvents()		// This seems good to do prior to main loop for SDL, especially
 {									//	since it may unnecessarily start with SDL_WINDOWEVENT_RESIZED.
 	while (SDL_PollEvent(&event));
+}
+
+int PlatformSDL::WasSimplePress()								// See SDL_mouse.h for return values, e.g.:
+{									// Upon read,								// SDL_BUTTON_LEFT		1
+	bool press = simplePress;		//	actas as "one shot,"					// SDL_BUTTON_MIDDLE	2
+	simplePress = 0;				//	resetting value.						// SDL_BUTTON_RIGHT		3
+	return press;
 }
 
 
