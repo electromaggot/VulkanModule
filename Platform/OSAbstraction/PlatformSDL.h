@@ -46,7 +46,9 @@ private:
 	PFNResizeForceRender pfnResizeForceRender = nullptr;
 	void* pRenderingObject = nullptr;
 
-	int simplePress = 0;
+	int		conveyPress	= 0;
+	Uint32	timePress	= 0;
+	const Uint32 MILLISECONDS_LONG_PRESS = 300;		// about 1/3rd second, arbitrary
 
 public:
 	int LastSavedPixelsWide = 0;

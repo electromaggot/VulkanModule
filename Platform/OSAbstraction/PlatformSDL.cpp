@@ -356,6 +356,8 @@ bool PlatformSDL::PollEvent(iControlScheme* pController)
 						pController->handleSecondaryPressDown(event.button.x, event.button.y);
 						break;
 					}
+				else
+					timePress = event.button.timestamp;
 				break;
 			case SDL_MOUSEBUTTONUP:
 				if (pController)
@@ -368,8 +370,8 @@ bool PlatformSDL::PollEvent(iControlScheme* pController)
 						pController->handleSecondaryPressUp(event.button.x, event.button.y);
 						break;
 					}
-				else
-					simplePress = event.button.button;
+				else if (event.button.timestamp - timePress < MILLISECONDS_LONG_PRESS)
+					conveyPress = event.button.button;
 				break;
 			case SDL_MOUSEWHEEL:
 				if (pController)
@@ -457,10 +459,12 @@ void PlatformSDL::ClearEvents()		// This seems good to do prior to main loop for
 	while (SDL_PollEvent(&event));
 }
 
+// Most-basic tap/click, not requiring ControlScheme, convenient for imprecise, light interaction, e.g. a demo.
+//
 int PlatformSDL::WasSimplePress()								// See SDL_mouse.h for return values, e.g.:
 {									// Upon read,								// SDL_BUTTON_LEFT		1
-	bool press = simplePress;		//	actas as "one shot,"					// SDL_BUTTON_MIDDLE	2
-	simplePress = 0;				//	resetting value.						// SDL_BUTTON_RIGHT		3
+	bool press = conveyPress;		//	actas as "one shot,"					// SDL_BUTTON_MIDDLE	2
+	conveyPress = 0;				//	resetting value.						// SDL_BUTTON_RIGHT		3
 	return press;
 }
 
