@@ -27,7 +27,7 @@
 #include "UniformBuffer.h"
 #include "TextureImage.h"
 
-struct DrawableSpecifier;	// skirt circular reference including iRenderable.h
+class DrawableSpecifier;	// skirt circular reference including iRenderable.h
 
 
 struct AddOns

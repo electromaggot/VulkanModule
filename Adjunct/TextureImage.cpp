@@ -260,7 +260,7 @@ void TextureImage::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t wi
 	endAndSubmitCommands(commands);
 }
 
-//\\//\\  STAGING BUFFER nested class   //\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\
+//\\//\\  STAGING BUFFER nested class   //\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//
 
 TextureImage::StagingBuffer::StagingBuffer(TextureImage& image)
 	:	texture(image)
