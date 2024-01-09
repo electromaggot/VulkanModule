@@ -23,8 +23,10 @@ void ValidationLayers::getVulkanInstanceLayers()
 {
 	uint32_t nLayerProperties = 0;	// get number of layers:
 	call = vkEnumerateInstanceLayerProperties(&nLayerProperties, nullptr);
-	if (call != VK_SUCCESS || nLayerProperties == 0)
+	if (call != VK_SUCCESS)
 		Fatal("Enumerate Instance nLayerProperties " + to_string(nLayerProperties) + ErrStr(call));
+	if (nLayerProperties == 0)
+		Log(WARN, "ZERO Enumerated Instance Layer Properties");	 // (continuing should be okay)
 
 	VkLayerProperties instanceLayerProperties[nLayerProperties];  // get data themselves:
 	call = vkEnumerateInstanceLayerProperties(&nLayerProperties, instanceLayerProperties);
