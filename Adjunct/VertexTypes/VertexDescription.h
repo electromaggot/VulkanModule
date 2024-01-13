@@ -19,6 +19,14 @@
 #include <bitset>			// (to build on Linux side)
 
 
+// Replace built-in assert() with something more informative, optionally less fatal.
+//	Specifically, ensures the size of a data structure is fully understood as expected.
+#define ASSERT_EQUAL(lhs, rhs)												\
+	if (lhs != rhs)															\
+		Log(ERROR, "VertexDescription - "#lhs" %d != %d "#rhs, lhs, rhs);	\
+	//assert(lhs == rhs); // Uncomment line to instead treat as fatal, not continue.
+
+
 struct VertexDescriptionDynamic : VertexAbstract
 {
 	int		numAttributes = 0;
@@ -80,7 +88,7 @@ public:
 			attributeDescriptions[iAttr].offset =	byteCount;
 			byteCount += AttributeByteSizes[iLayout];
 		}
-		assert(byteCount == numBytesPerVertex);
+		ASSERT_EQUAL(byteCount, numBytesPerVertex);
 	}
 	void createAttributeDescriptions(AttributeBits attrbits) {
 		int iAttr = 0, iDesc = 0, byteCount = 0;
@@ -95,7 +103,7 @@ public:
 			}
 			++iAttr;
 		}
-		assert(byteCount == numBytesPerVertex);
+		ASSERT_EQUAL(byteCount, numBytesPerVertex);
 	}
 
 	void createBindingDescription() {
@@ -151,7 +159,7 @@ public:
 			attributeDescriptions[iAttr].offset =	byteCount;
 			byteCount += AttributeByteSizes[iLayout];
 		}
-		assert(byteCount == sizeof(T));
+		ASSERT_EQUAL(byteCount, sizeof(T));
 	}
 
 	void createBindingDescription() {
