@@ -159,9 +159,9 @@ public:
 				  || (removeALL && !renderable.isSelfManaged)) {
 					renderable.deleteConcretion();
 					renderables.erase(ppRenderable);							//	...in order to .erase().
-					delete *ppRenderable;
-				}
-			}
+					return;//on 1st match. To never iterate past .end().
+				}			// Also, don't:  delete *ppRenderable;
+			}				//	since it came in as a reference.
 		}
 	}
 
