@@ -88,7 +88,7 @@ public:
 			attributeDescriptions[iAttr].offset =	byteCount;
 			byteCount += AttributeByteSizes[iLayout];
 		}
-		ASSERT_EQUAL(byteCount, numBytesPerVertex);
+		ASSERT_EQUAL(byteCount, numBytesPerVertex)
 	}
 	void createAttributeDescriptions(AttributeBits attrbits) {
 		int iAttr = 0, iDesc = 0, byteCount = 0;
@@ -103,7 +103,7 @@ public:
 			}
 			++iAttr;
 		}
-		ASSERT_EQUAL(byteCount, numBytesPerVertex);
+		ASSERT_EQUAL(byteCount, numBytesPerVertex)
 	}
 
 	void createBindingDescription() {
@@ -159,7 +159,7 @@ public:
 			attributeDescriptions[iAttr].offset =	byteCount;
 			byteCount += AttributeByteSizes[iLayout];
 		}
-		ASSERT_EQUAL(byteCount, sizeof(T));
+		ASSERT_EQUAL(byteCount, sizeof(T))
 	}
 
 	void createBindingDescription() {
