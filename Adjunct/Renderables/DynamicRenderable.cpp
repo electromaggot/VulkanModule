@@ -11,7 +11,7 @@
 #include "PrimitiveBuffer.h"
 
 
-DynamicRenderable::DynamicRenderable(Renderable& renderable, VulkanSetup& vulkan, iPlatform& platform)
+DynamicRenderable::DynamicRenderable(DrawableSpecifier& renderable, VulkanSetup& vulkan, iPlatform& platform)
 	:	iRenderable(renderable, vulkan, platform)
 { }
 
@@ -33,7 +33,7 @@ void DynamicRenderable::IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer,
 	}
 	if (addOns.pIndexBuffer) {
 		vkCmdBindIndexBuffer(commandBuffer, addOns.pIndexBuffer->getVk(),
-							 0, IndexBufferIndexTypeEnum);
+							 0, VkIndexTypes[vertexObject.indexType]);
 
 		vkCmdDrawIndexed(commandBuffer, vertexObject.indexCount, vertexObject.instanceCount,
 										vertexObject.firstIndex, vertexObject.vertexOffset,
