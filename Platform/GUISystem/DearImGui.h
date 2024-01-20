@@ -31,7 +31,7 @@ public:
 
 	void IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex = 0);
 
-	void Update(float deltaSeconds);
+	bool Update(GameClock& time);
 
 private:
 	void preRender(void (*pfnLayOutGui)(DearImGui&), iPlatform& platform);

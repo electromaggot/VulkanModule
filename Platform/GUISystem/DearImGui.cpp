@@ -108,9 +108,10 @@ DearImGui::~DearImGui()					// (CommandBuffer should get destroyed when commandP
 }
 
 
-void DearImGui::Update(float deltaSeconds)
-{		// (Don't really need deltaSeconds, as Dear ImGui tracks its own time.)
+bool DearImGui::Update(GameClock& time)
+{		// (Don't really need time or deltaSeconds, as Dear ImGui tracks its own time.)
 	preRender(MainGUI, platform);
+	return true;
 }
 
 // Start the Dear ImGui frame ...and Rendering.
@@ -131,7 +132,9 @@ void DearImGui::preRender(void (*pfnLayOutGui)(DearImGui&), iPlatform& platform)
 //
 void DearImGui::IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex)
 {
-    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+	auto drawData = ImGui::GetDrawData();
+	if (drawData)
+		ImGui_ImplVulkan_RenderDrawData(drawData, commandBuffer);
 }
 
 
