@@ -18,7 +18,7 @@
 struct DynamicRenderable : public iRenderable
 {
 public:
-	DynamicRenderable(Renderable& renderable, VulkanSetup& vulkan, iPlatform& platform);
+	DynamicRenderable(DrawableSpecifier& renderable, VulkanSetup& vulkan, iPlatform& platform);
 
 	iRenderable* newConcretion(CommandRecording* pRecordingMode) const
 	{
