@@ -1,0 +1,57 @@
+# Any build directory
+build
+
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+#*.obj <-- no, archaic, now refers to 3D model.OBJ files
+*.spv
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Apple-specific
+.DS_Store
+xcuserdata
+xcshareddata
+*.xcworkspace
+*.xcframework
+# and specific-to-this-specific-project
+# (these symlinks, which gitignore sees as files)
+**/iOSFrameworksMaker/SDL
+**/iOSFrameworksMaker/SDL_image
+
+# CMake(Linux/RaspberryPi)-specific
+CMakeCache.txt
+CMakeFiles
+Makefile
+cmake_install.cmake
+
+# Windows-specific
+.vs/
+*.vcxproj.user
+UpgradeLog.htm
+
+# Miscellaneous or specific-to-this-specific-project
+external
