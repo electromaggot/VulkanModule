@@ -40,7 +40,7 @@ ________________________________
 
 # Technical Details and Insights
 
-**VulkanModule** provides a comprehensive, object-oriented foundation for building Vulkan graphics applications and games. It abstracts away Vulkan's notoriously complex initialization process into manageable, reusable components.
+**VulkanModule** is a comprehensive, object-oriented foundation for building Vulkan graphics applications. It abstracts away Vulkan's notoriously complex initialization process into manageable, reusable components.
 
 ## Architecture Philosophy
 
@@ -51,17 +51,17 @@ Vulkan requires extensive boilerplate code and careful orchestration of dependen
 ### 1. **Objects/** - Vulkan Resource Encapsulation
 Low-level Vulkan objects wrapped in RAII classes with intelligent lifecycle management:
 
-- **`VulkanInstance`** - Vulkan instance creation with validation layers and debug reporting
-- **`GraphicsDevice`** - Physical/logical device selection with queue family management and device ranking
-- **`WindowSurface`** - Cross-platform surface creation (SDL2, GLFW, XCB support)
-- **`Swapchain`** - Swapchain management with automatic recreation on window events
-- **`RenderPass`** - Render pass configuration with depth/stencil support
-- **`GraphicsPipeline`** - Pipeline state objects with shader module integration
-- **`Framebuffers`** - Framebuffer creation tied to swapchain lifecycle
-- **`SyncObjects`** - Semaphores, fences, and GPU/CPU synchronization primitives
-- **`CommandObjects`** - Command pool and buffer allocation strategies
-- **`DepthBuffer`** - Depth testing support with format selection
-- **`ImageResource`** - Flexible image resource management
+- **`VulkanInstance`** - Vulkan instance creation with validation layers and debug reporting.
+- **`GraphicsDevice`** - Physical/logical device selection with queue family management and device ranking.
+- **`WindowSurface`** - Cross-platform surface creation (SDL2, GLFW, XCB support).
+- **`Swapchain`** - Swapchain management with automatic recreation on window events.
+- **`RenderPass`** - Render pass configuration with depth/stencil support.
+- **`GraphicsPipeline`** - Pipeline state objects with shader module integration.
+- **`Framebuffers`** - Framebuffer creation tied to swapchain lifecycle.
+- **`SyncObjects`** - Semaphores, fences, and GPU/CPU synchronization primitives.
+- **`CommandObjects`** - Command pool and buffer allocation strategies.
+- **`DepthBuffer`** - Depth testing support with format selection.
+- **`ImageResource`** - Flexible image resource management.
 
 **Key Innovation**: Each object implements a `Recreate()` pattern enabling seamless handling of window resize, minimize, display changes, and device rotation while maintaining rendering continuity.
 
@@ -78,53 +78,53 @@ High-level composition layer that manages dependency order and configuration:
   7. Framebuffer creation
   8. Synchronization object setup
 
-- **`VulkanConfigure`** - Centralized configuration management
-- **`Shader`** - Shader module loading with SPIR-V support
-- **`RenderSettings`** - Render pipeline configuration
-- **`VulkanSingleton`** - Global state management
+- **`VulkanConfigure`** - Centralized configuration management.
+- **`Shader`** - Shader module loading with SPIR-V support.
+- **`RenderSettings`** - Render pipeline configuration.
+- **`VulkanSingleton`** - Global state management.
 
 ### 3. **Adjunct/** - High-Level Abstractions
 Application-focused components for content creation:
 
 #### Renderables System
-- **`iRenderable`** - Base interface for drawable objects
-- **`FixedRenderable`** - Static geometry with optimized vertex buffers
-- **`DynamicRenderable`** - Mutable geometry supporting real-time updates
-- **`MeshObject`** - 3D model representation with material support
-- **`DrawableSpecifier`** - Rendering configuration and state
+- **`iRenderable`** - Base interface for drawable objects.
+- **`FixedRenderable`** - Static geometry with optimized vertex buffers.
+- **`DynamicRenderable`** - Mutable geometry supporting real-time updates.
+- **`MeshObject`** - 3D model representation with material support.
+- **`DrawableSpecifier`** - Rendering configuration and state.
 
 #### Vertex Pipeline
-- **`VertexAbstract`** - Base vertex interface with attribute binding
-- **`Vertex2DTypes`** - 2D rendering vertex formats (sprites, UI)
-- **`Vertex3DTypes`** - 3D rendering with normals, textures, lighting
-- **`VertexDescription`** - Vulkan pipeline vertex input configuration
-- **`VerticesDynamic`** - Runtime vertex buffer management
+- **`VertexAbstract`** - Base vertex interface with attribute binding.
+- **`Vertex2DTypes`** - 2D rendering vertex formats (sprites, UI).
+- **`Vertex3DTypes`** - 3D rendering with normals, textures, lighting.
+- **`VertexDescription`** - Vulkan pipeline vertex input configuration.
+- **`VerticesDynamic`** - Runtime vertex buffer management.
 
 #### Resource Management
-- **`TextureImage`** - Texture loading with mipmap generation
-- **`UniformBuffer`** - Shader uniform data with automatic layout
-- **`BufferBase`** - Memory allocation strategies and buffer utilities
-- **`CommandBufferBase`** - Command recording abstractions
+- **`TextureImage`** - Texture loading with mipmap generation.
+- **`UniformBuffer`** - Shader uniform data with automatic layout.
+- **`BufferBase`** - Memory allocation strategies and buffer utilities.
+- **`CommandBufferBase`** - Command recording abstractions.
 
 ### 4. **Platform/** - Abstraction Layer
 Cross-platform compatibility and I/O systems:
 
 #### OS Abstraction
-- **`iPlatform`** - Platform interface for window/input management
-- **`PlatformSDL`** - SDL2 implementation (primary platform)
-- **`PlatformGLFW`** - GLFW alternative implementation
-- **`PlatformXCB`** - Direct X11/XCB support
+- **`iPlatform`** - Platform interface for window/input management.
+- **`PlatformSDL`** - SDL2 implementation (primary platform).
+- **`PlatformGLFW`** - GLFW alternative implementation.
+- **`PlatformXCB`** - Direct X11/XCB support.
 
 #### Subsystems
-- **`FileSystem`** - Resource path management with conventions for shaders/textures/models
-- **`ImageHandling`** - Image I/O via SDL_image and STB libraries
-- **`Logger`** - Centralized logging with debug/release configurations
-- **`DearImGui`** - Optional debug UI integration (gracefully stubbed when unused)
+- **`FileSystem`** - Resource path management with conventions for shaders/textures/models.
+- **`ImageHandling`** - Image I/O via SDL_image and STB libraries.
+- **`Logger`** - Centralized logging with debug/release configurations.
+- **`DearImGui`** - Optional debug UI integration (gracefully stubbed when unused).
 
 #### Support Systems
-- **`GameClock`** - Frame timing and delta calculations
-- **`Utility`** - Math helpers and common algorithms
-- **`VulkanMath`** - GLM integration with Vulkan conventions
+- **`GameClock`** - Frame timing and delta calculations.
+- **`Utility`** - Math helpers and common algorithms.
+- **`VulkanMath`** - GLM integration with Vulkan conventions.
 
 ## Design Patterns & Benefits
 
@@ -156,25 +156,23 @@ class VulkanTester {
 
 This single initialization replaces hundreds of lines of typical Vulkan setup code while providing enterprise-grade resource management and cross-platform compatibility.
 
+</br>
+________________________________
 
-# DOCUMENT REVISIONS
+***DOCUMENT REVISIONS***
 
 Added to TECHNICAL DETAILS section: comprehensive architectural insights and
   detailed component descriptions. The updated documentation now provides:
 
-  Key Enhancements Added:
+Key Enhancements Added:
 
-  1. Structured Architecture Overview - Clear four-tier breakdown (Objects, Setup, Adjunct, Platform)
-  2. Detailed Component Descriptions - Each major class explained with its specific purpose and
-  capabilities
-  3. Design Pattern Documentation - RAII, dependency injection, platform abstraction, and live resizing
-   explained
-  4. Practical Benefits - Real-world advantages like cross-platform deployment and resource leak
-  prevention
-  5. Integration Example - Concrete code showing the simplicity achieved
-  6. Technical Depth - Specific features like device ranking, queue family management, mipmap
-  generation, etc.
+1. Structured Architecture Overview - Clear four-tier breakdown (Objects, Setup, Adjunct, Platform).
+2. Detailed Component Descriptions - Each major class explained with its specific purpose and capabilities.
+3. Design Pattern Documentation - RAII, dependency injection, platform abstraction, and live resizing explained.
+4. Practical Benefits - Real-world advantages like cross-platform deployment and resource leak prevention.
+5. Integration Example - Concrete code showing the simplicity achieved.
+6. Technical Depth - Specific features like device ranking, queue family management, mipmap generation, etc.
 
-  The documentation now serves as both a technical reference for developers and a comprehensive
-  overview for project stakeholders, highlighting the sophisticated engineering that makes Vulkan
-  development accessible through this module.
+The documentation now serves as both a technical reference for developers and a comprehensive
+overview for project stakeholders, highlighting the sophisticated engineering that makes Vulkan
+development accessible through this module.
