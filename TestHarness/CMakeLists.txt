@@ -1,23 +1,65 @@
 cmake_minimum_required(VERSION 3.16.0 FATAL_ERROR)
 
-set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
+# Platform detection
+if(WIN32)
+    set(PLATFORM_NAME "Windows")
+elseif(APPLE)
+    set(PLATFORM_NAME "macOS")
+elseif(UNIX AND NOT APPLE)
+    if(EXISTS "/proc/device-tree/model")
+        file(READ "/proc/device-tree/model" DEVICE_MODEL)
+        if(DEVICE_MODEL MATCHES "Raspberry Pi")
+            set(PLATFORM_NAME "RaspberryPi")
+        else()
+            set(PLATFORM_NAME "Linux")
+        endif()
+    else()
+        set(PLATFORM_NAME "Linux")
+    endif()
+else()
+    set(PLATFORM_NAME "Unknown")
+endif()
 
-set(CMAKE_C_COMPILER /usr/bin/clang)
-set(CMAKE_CPP_COMPILER /usr/bin/clang-cpp)
-set(CMAKE_CXX_COMPILER /usr/bin/clang++)
-set(CMAKE_LINKER /usr/bin/ld.lld)
+message(STATUS "Building for platform: ${PLATFORM_NAME}")
+
+# Platform-specific compiler settings
+if(APPLE)
+    set(CMAKE_C_COMPILER /usr/bin/clang)
+    set(CMAKE_CPP_COMPILER /usr/bin/clang-cpp)
+    set(CMAKE_CXX_COMPILER /usr/bin/clang++)
+    set(CMAKE_LINKER /usr/bin/ld.lld)
+elseif(WIN32)
+    # Use default MSVC or specified compiler
+else()
+    # Use default GCC/Clang for Linux/RaspberryPi
+endif()
 
 project(VulkanModule CXX)
 
 
-if(NOT CMAKE_PLATFORM_NAME)				# Set target architecture type if empty.
-    set(CMAKE_PLATFORM_NAME "x64")
+# Set target architecture
+if(NOT CMAKE_PLATFORM_NAME)
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(CMAKE_PLATFORM_NAME "x64")
+    elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
+        set(CMAKE_PLATFORM_NAME "x86")
+    else()
+        set(CMAKE_PLATFORM_NAME "unknown")
+    endif()
 endif()
-message("${CMAKE_PLATFORM_NAME} architecture in use")
 
+# ARM64 detection for Raspberry Pi 5
+if(PLATFORM_NAME STREQUAL "RaspberryPi" AND CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+    set(CMAKE_PLATFORM_NAME "arm64")
+endif()
+
+message(STATUS "${CMAKE_PLATFORM_NAME} architecture in use")
+
+# Validate supported architectures
 if(NOT ("${CMAKE_PLATFORM_NAME}" STREQUAL "x64"
-     OR "${CMAKE_PLATFORM_NAME}" STREQUAL "x86"))
-    message(FATAL_ERROR "${CMAKE_PLATFORM_NAME} arch is not supported!")
+     OR "${CMAKE_PLATFORM_NAME}" STREQUAL "x86"
+     OR "${CMAKE_PLATFORM_NAME}" STREQUAL "arm64"))
+    message(FATAL_ERROR "${CMAKE_PLATFORM_NAME} architecture is not supported!")
 endif()
 
 set(CMAKE_CONFIGURATION_TYPES				# Global configuration types
@@ -115,56 +157,122 @@ elseif("${CMAKE_PLATFORM_NAME}" STREQUAL "x86")
 endif()
 
 
-if("${CMAKE_PLATFORM_NAME}" STREQUAL "x64")		# Include directories
-    target_include_directories(${PROJECT_NAME} PRIVATE
-		"/opt/homebrew/Cellar/vulkan-headers/1.4.326/include;"
-		"/opt/homebrew/Cellar/vulkan-headers/1.4.326/include/vulkan;"
-		"/opt/homebrew/Cellar/sdl2/2.32.10/include;"
-		"/opt/homebrew/Cellar/sdl2/2.32.10/include/SDL2;"
-		"/opt/homebrew/Cellar/sdl2_image/2.8.8/include;"
-		"/opt/homebrew/Cellar/sdl2_image/2.8.8/include/SDL2;"
-		"/opt/homebrew/Cellar/glm/1.0.1/include;"
-        "${CMAKE_CURRENT_SOURCE_DIR}/include;"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src;"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../Setup;"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../Assist;"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../Adjunct;"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../Adjunct/Renderables;"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../Adjunct/VertexTypes;"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../Objects;"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../Platform;"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../Platform/OSAbstraction;"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../Platform/ImageHandling;"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../Platform/Logger;"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../Platform/FileSystem;"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../Platform/GUISystem;"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../Platform/GUISystem/stubs;"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../Platform/ControlScheme;"
+# Find required packages
+find_package(Vulkan REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(SDL2 REQUIRED sdl2)
+pkg_check_modules(SDL2_IMAGE REQUIRED SDL2_image)
+
+# Find GLM
+find_path(GLM_INCLUDE_DIR glm/glm.hpp
+    HINTS
+        "/opt/homebrew/include"  # macOS Homebrew
+        "/usr/include"           # Linux
+        "/usr/local/include"     # Generic Unix
+        "C:/vcpkg/installed/x64-windows/include"  # Windows vcpkg
+        "$ENV{VULKAN_SDK}/include"
+)
+
+# Platform-specific include directories
+set(PLATFORM_INCLUDES)
+if(APPLE)
+    # macOS Homebrew paths
+    list(APPEND PLATFORM_INCLUDES
+        "/opt/homebrew/include"
+        "/opt/homebrew/include/SDL2"
+    )
+elseif(WIN32)
+    # Windows paths
+    list(APPEND PLATFORM_INCLUDES
+        "$ENV{VULKAN_SDK}/include"
+        "C:/vcpkg/installed/x64-windows/include"
+        "C:/vcpkg/installed/x64-windows/include/SDL2"
+    )
+else()
+    # Linux/Raspberry Pi paths
+    list(APPEND PLATFORM_INCLUDES
+        "/usr/include"
+        "/usr/include/SDL2"
+        "/usr/local/include"
+        "/usr/local/include/SDL2"
+    )
+endif()
+
+# Include directories
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${Vulkan_INCLUDE_DIRS}
+    ${SDL2_INCLUDE_DIRS}
+    ${SDL2_IMAGE_INCLUDE_DIRS}
+    ${GLM_INCLUDE_DIR}
+    ${PLATFORM_INCLUDES}
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Setup"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Assist"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Adjunct"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Adjunct/Renderables"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Adjunct/VertexTypes"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Objects"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Platform"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Platform/OSAbstraction"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Platform/ImageHandling"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Platform/Logger"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Platform/FileSystem"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Platform/GUISystem"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Platform/GUISystem/stubs"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Platform/ControlScheme"
+)
+
+
+# Platform-specific compile definitions
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    "SDL_MAIN_HANDLED"
+)
+
+if(WIN32)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        "_MBCS"
+        "WIN32_LEAN_AND_MEAN"
+        "NOMINMAX"
+        "VK_USE_PLATFORM_WIN32_KHR"
+    )
+elseif(APPLE)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        "VK_USE_PLATFORM_METAL_EXT"
+    )
+else()
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        "VK_USE_PLATFORM_XCB_KHR"
     )
 endif()
 
 
-if("${CMAKE_PLATFORM_NAME}" STREQUAL "x64")		# Compile definitions
-    target_compile_definitions(${PROJECT_NAME} PRIVATE
-        "SDL_MAIN_HANDLED;"
-        "_MBCS"
-    )
-elseif("${CMAKE_PLATFORM_NAME}" STREQUAL "x86")
-    target_compile_definitions(${PROJECT_NAME} PRIVATE
-        "_MBCS"
-    )
-endif()
+# Cross-platform post-build events will be added below
 
-
-if("${CMAKE_PLATFORM_NAME}" STREQUAL "x64")		# Post build events
+# Create build directories
+if(WIN32)
     add_custom_command(
-        TARGET ${PROJECT_NAME}
-        POST_BUILD
-        COMMAND if [ ! -d "build" ]\; then mkdir build\; fi
-        COMMAND if [ ! -d "build/compiledShaders" ]\; then mkdir "build/compiledShaders"\; fi
-        COMMAND cp src/shaders/*.spv build/compiledShaders/ 2>/dev/null || true
-        COMMAND if [ ! -L "build/textures" ]\; then cd build\; ln -s "../../graphics/assets/textures" \; fi
-        COMMENT "Post-build events complete."
+        TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/compiledShaders"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/*.spv" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/compiledShaders/" 2>NUL || echo "Shaders copied"
+        COMMENT "Windows: Setting up shader directory"
+    )
+else()
+    add_custom_command(
+        TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "build"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "build/compiledShaders"
+        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/*.spv" "build/compiledShaders/" 2>/dev/null || true
+        COMMENT "Unix: Setting up shader directory"
+    )
+endif()
+
+# Platform-specific resource setup
+if(NOT WIN32)
+    add_custom_command(
+        TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND test -L "build/textures" || (cd build && ln -s "../../graphics/assets/textures" 2>/dev/null || true)
+        COMMENT "Creating texture symlink"
     )
 endif()
 
@@ -179,68 +287,109 @@ endif()
 #endif()
 
 
-if("${CMAKE_PLATFORM_NAME}" STREQUAL "x64")		# Dependencies
-    set(ADDITIONAL_LIBRARY_DEPENDENCIES
-        "vulkan;"
-        "SDL2;"
-        "SDL2_image;"
-        "m;"
+# Platform-specific library dependencies
+set(ADDITIONAL_LIBRARY_DEPENDENCIES
+    ${Vulkan_LIBRARIES}
+    ${SDL2_LIBRARIES}
+    ${SDL2_IMAGE_LIBRARIES}
+)
+
+if(APPLE)
+    list(APPEND ADDITIONAL_LIBRARY_DEPENDENCIES
+        "m"
         "stdc++"
+    )
+elseif(WIN32)
+    # Windows-specific libraries
+    list(APPEND ADDITIONAL_LIBRARY_DEPENDENCIES
+        "user32"
+        "gdi32"
+        "shell32"
+    )
+else()
+    # Linux/Raspberry Pi libraries
+    list(APPEND ADDITIONAL_LIBRARY_DEPENDENCIES
+        "m"
+        "stdc++"
+        "pthread"
+        "dl"
     )
 endif()
 
-target_link_libraries(${PROJECT_NAME} PRIVATE "${ADDITIONAL_LIBRARY_DEPENDENCIES}")
+target_link_libraries(${PROJECT_NAME} PRIVATE ${ADDITIONAL_LIBRARY_DEPENDENCIES})
 
-if("${CMAKE_PLATFORM_NAME}" STREQUAL "x64")
+# Platform-specific library directories
+if(APPLE)
     target_link_directories(${PROJECT_NAME} PRIVATE
-		"/opt/homebrew/Cellar/molten-vk/1.4.0/lib;"
-		"/opt/homebrew/Cellar/vulkan-loader/1.4.326/lib;"
-		"/opt/homebrew/Cellar/sdl2/2.32.10/lib;"
-		"/opt/homebrew/Cellar/sdl2_image/2.8.8/lib;"
+        "/opt/homebrew/lib"
+    )
+elseif(WIN32)
+    target_link_directories(${PROJECT_NAME} PRIVATE
+        "$ENV{VULKAN_SDK}/lib"
+        "C:/vcpkg/installed/x64-windows/lib"
+    )
+else()
+    target_link_directories(${PROJECT_NAME} PRIVATE
+        "/usr/lib"
+        "/usr/local/lib"
+        "/usr/lib/aarch64-linux-gnu"  # Raspberry Pi 5 ARM64
     )
 endif()
 
 #add_link_options("-mcmodel=medium")
 
-target_compile_options(${PROJECT_NAME} PRIVATE
-            $<$<CONFIG:Debug>:
-                /Od
-            >
-            $<$<CONFIG:Release>:
-                /O2;
-                /Oi;
-                /Gy
-            >
-            #/std:c++latest;
-            #/sdl;
-            #/W3;
-            #-fPIC;
-            -ggdb3
-            -std=c++20
-            #^because^ otherwise:  -Wno-c++17-extensions
-            #          and for designated initializers
-            -m64;
-            #-mcmodel=medium;
-            ${DEFAULT_CXX_DEBUG_INFORMATION_FORMAT};
-            -Wno-vla;
-            -Wno-reorder-init-list
-            # ^also^ avert designated intializer warnings
-            #-Wno-c99-designator;
-            #-Wno-deprecated-volatile;
-            ${DEFAULT_CXX_EXCEPTION_HANDLING}
-        )
+# Platform-specific compiler options
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        $<$<CONFIG:Debug>:/Od /Zi>
+        $<$<CONFIG:Release>:/O2 /Oi /Gy>
+        /std:c++20
+        /W3
+        /EHsc
+    )
+else()
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        $<$<CONFIG:Debug>:-g -O0>
+        $<$<CONFIG:Release>:-O2 -DNDEBUG>
+        -std=c++20
+        -Wall
+        -Wno-vla
+        -Wno-reorder-init-list
+    )
 
-target_link_options(${PROJECT_NAME} PRIVATE
-            $<$<CONFIG:Release>:
-                /OPT:REF;
-                /OPT:ICF;
-                #-mcmodel=medium
-            >
-            #/DEBUG:FULL;
-            -m64;
-            -fPIE;
-            #-mcmodel=medium
+    if(NOT APPLE)
+        target_compile_options(${PROJECT_NAME} PRIVATE -fPIC)
+    endif()
+
+    if(PLATFORM_NAME STREQUAL "RaspberryPi")
+        target_compile_options(${PROJECT_NAME} PRIVATE
+            -march=armv8-a
+            -mtune=cortex-a76
         )
+    elseif("${CMAKE_PLATFORM_NAME}" STREQUAL "x64")
+        target_compile_options(${PROJECT_NAME} PRIVATE -m64)
+    endif()
+endif()
+
+# Platform-specific linker options
+if(MSVC)
+    target_link_options(${PROJECT_NAME} PRIVATE
+        $<$<CONFIG:Release>:/OPT:REF /OPT:ICF>
+        $<$<CONFIG:Debug>:/DEBUG:FULL>
+    )
+else()
+    target_link_options(${PROJECT_NAME} PRIVATE
+        $<$<CONFIG:Release>:-s>  # Strip symbols in release
+    )
+
+    if(NOT APPLE)
+        target_link_options(${PROJECT_NAME} PRIVATE -fPIE)
+    endif()
+
+    if("${CMAKE_PLATFORM_NAME}" STREQUAL "x64")
+        target_link_options(${PROJECT_NAME} PRIVATE -m64)
+    endif()
+endif()
 
 # END OF FILE
 

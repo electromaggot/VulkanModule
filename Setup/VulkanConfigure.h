@@ -73,8 +73,10 @@ const int N_PRECEDENCES = N_PIXEL_FORMAT_PRECEDENCES + N_COLOR_SPACE_PRECEDENCES
 const StrPtr INSTANCE_EXTENSION_NAMES[] = {
 //			 ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
 	DEBUG_REPORT_EXTENSION,			// Add debug display extensions; needed to relay debug messages.
-	DEBUG_UTILS_EXTENSION,
-	VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME	// Required for MoltenVK on macOS.
+	DEBUG_UTILS_EXTENSION
+	#ifdef __APPLE__
+	,VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME	// Required for MoltenVK on macOS.
+	#endif
 	//TJ_REMOVE_LATER for testing:
 	//,VK_EXT_DEPTH_RANGE_UNRESTRICTED_EXTENSION_NAME	//test: also won't be defined
 	//,VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME	//test: but will be
@@ -85,8 +87,10 @@ const int N_INSTANCE_EXTENSION_NAMES = N_ELEMENTS_IN_ARRAY(INSTANCE_EXTENSION_NA
 
 const bool REQUIRE_INSTANCE_EXTENSION[] = {
 	false,
-	false,
-	true	// VK_KHR_PORTABILITY_ENUMERATION required for MoltenVK.
+	false
+	#ifdef __APPLE__
+	,true	// VK_KHR_PORTABILITY_ENUMERATION required for MoltenVK.
+	#endif
 };
 
 

@@ -4,14 +4,64 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Building and Running
 
-### Build the TestHarness
+### Prerequisites
+
+#### All Platforms
+- CMake 3.16+
+- Vulkan SDK
+- SDL2 and SDL2_image libraries
+- GLM (OpenGL Mathematics library)
+
+#### Platform-Specific Setup
+
+**macOS:**
 ```bash
-cd TestHarness/build
-cmake ..
-make -j$(nproc)
+# Install via Homebrew
+brew install vulkan-headers vulkan-loader molten-vk sdl2 sdl2_image glm
 ```
 
-The built executable will be located at `TestHarness/build/VulkanTester`.
+**Windows:**
+- Install Vulkan SDK from https://vulkan.lunarg.com/
+- Use vcpkg for dependencies:
+```cmd
+vcpkg install sdl2 sdl2-image glm vulkan
+```
+
+**Linux/Ubuntu:**
+```bash
+sudo apt-get update
+sudo apt-get install vulkan-tools libvulkan-dev vulkan-validationlayers-dev
+sudo apt-get install libsdl2-dev libsdl2-image-dev libglm-dev
+sudo apt-get install build-essential cmake pkg-config
+```
+
+**Raspberry Pi 5:**
+```bash
+# Same as Linux, plus ARM64-specific packages
+sudo apt-get install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+```
+
+### Build the TestHarness
+
+**All Platforms:**
+```bash
+cd TestHarness
+mkdir -p build && cd build
+cmake ..
+cmake --build . -j$(nproc)
+```
+
+**Windows (Visual Studio):**
+```cmd
+cd TestHarness
+mkdir build && cd build
+cmake .. -G "Visual Studio 16 2019" -A x64
+cmake --build . --config Release
+```
+
+The built executable will be located at:
+- **macOS/Linux:** `TestHarness/build/VulkanTester`
+- **Windows:** `TestHarness/build/Release/VulkanTester.exe`
 
 ### Project Structure
 TestHarness uses organized directory structure:
@@ -19,8 +69,14 @@ TestHarness uses organized directory structure:
 - `TestHarness/include/` - Header files (.h)
 - `TestHarness/src/shaders/` - SPIR-V compiled shaders (.spv)
 
+### Cross-Platform Notes
+- **macOS:** Uses MoltenVK for Vulkan support, requires portability extensions
+- **Windows:** Direct Vulkan support, uses Win32 platform extensions
+- **Linux:** Direct Vulkan support, uses XCB platform extensions
+- **Raspberry Pi 5:** ARM64 optimizations enabled automatically
+
 ### Shader Compilation
-The build system automatically copies pre-compiled SPIR-V shaders from `src/shaders/*.spv` to `build/compiledShaders/` during the build process.
+The build system automatically copies pre-compiled SPIR-V shaders from `src/shaders/*.spv` to the appropriate runtime directory during the build process.
 
 Note: This module is typically used as a submodule by projects like HelloVulkanSDL which provide additional shader compilation infrastructure.
 
