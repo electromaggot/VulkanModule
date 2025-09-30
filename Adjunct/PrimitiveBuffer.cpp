@@ -18,8 +18,8 @@
 PrimitiveBuffer::PrimitiveBuffer(VkCommandPool& pool, GraphicsDevice& device)
 	:	BufferBase(device),
 		CommandBufferBase(pool, device),
-		bufferMemory(0),
-		buffer(0)	// these are opaque, but assume 0 may indicate "uninitialized"
+		buffer(0),		// These buffers are opaque, but
+		bufferMemory(0)	//	assume 0 indicates "uninitialized."
 { }
 
 PrimitiveBuffer::PrimitiveBuffer(MeshObject& meshObject, VkCommandPool& pool, GraphicsDevice& device)

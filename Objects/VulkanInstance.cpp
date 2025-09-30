@@ -14,7 +14,7 @@
 	#include "imgui.h"
 #undef INSTANTIATE
 
-#undef __cpp_impl_three_way_comparison		//TJ: otherwise "spaceship operator" errors-out with: std::partial_ordering not supported
+//#undef __cpp_impl_three_way_comparison		//TJ: otherwise "spaceship operator" errors-out with: std::partial_ordering not supported
 #include "vulkan/vulkan.hpp"		// for error to_string(VkResult)
 
 

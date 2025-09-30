@@ -17,10 +17,10 @@
 
 TextureImage::TextureImage(TextureSpec& texSpec, VkCommandPool& pool, GraphicsDevice& device,
 						   iPlatform& platform, VkSampler injectedSampler)
-	:	CommandBufferBase(pool, device),
-		specified(texSpec),
+	:	ImageResource(device, &mipmaps),
+		CommandBufferBase(pool, device),
 		mipmaps(pool, device),
-		ImageResource(device, &mipmaps)
+		specified(texSpec)
 {
 	if (texSpec.fileName)
 		create(texSpec, device, platform);
