@@ -125,6 +125,9 @@ void Descriptors::createDescriptorSets()
 			VkDescriptorImageInfo*	pImageInfo	= nullptr;
 
 			switch (describers[iBind].type) {
+				case DYNAMIC_BUFFER:
+					pBufferInfo = &describers[iBind].bufferInfo;
+					break;
 				case BUFFER:
 					pBufferInfo = &describers[iBind].bufferInfo;
 					break;

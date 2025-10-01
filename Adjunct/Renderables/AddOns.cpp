@@ -10,6 +10,7 @@
 #include "AddOns.h"
 
 #include "CommandObjects.h"
+#include "DynamicUniformBuffer.h"
 
 #include "PrimitiveBuffer.h"
 
@@ -80,12 +81,21 @@ void AddOns::createDescribedItems(vector<UBO>& UBOs, vector<TextureSpec>& textur
 	// Uniform Buffer Objects first (explicitly: the MVP UBO)
 	for (UBO& eachUBO : UBOs) {
 		ubos.push_back(eachUBO);
-		UniformBuffer* pUniformBuffer = new UniformBuffer(eachUBO.byteSize, vulkan.swapchain, vulkan.device);
-		pUniformBuffers.push_back(pUniformBuffer);
-		described.emplace_back( pUniformBuffer->getDescriptorBufferInfo(),			// layout(binding = 0)	<-- appears in Vertex Shader
-								eachUBO.getShaderStageFlags());
-	}																				// If there's > 1 UBO above, adjust the layout
-																					//	number below, (binding = N + 1) accordingly!
+
+		if (eachUBO.isDynamic) {
+			// Dynamic UBO: No per-object UniformBuffer created, using shared DynamicUniformBuffer
+			pUniformBuffers.push_back(nullptr);
+			VkDescriptorBufferInfo bufInfo = eachUBO.pDynamicUBO->getDescriptorBufferInfo(0);
+			described.emplace_back(bufInfo, eachUBO.getShaderStageFlags(), DYNAMIC_BUFFER);
+		} else {
+			// Regular UBO: create UniformBuffer as before
+			UniformBuffer* pUniformBuffer = new UniformBuffer(eachUBO.byteSize, vulkan.swapchain, vulkan.device);
+			pUniformBuffers.push_back(pUniformBuffer);
+			described.emplace_back(pUniformBuffer->getDescriptorBufferInfo(),	// layout(binding = 0)	<-- appears in Vertex Shader
+									eachUBO.getShaderStageFlags());
+		}
+	}																			// If there's > 1 UBO above, adjust the layout
+																				//	number below, (binding = N + 1) accordingly!
 	// Textures next (may be more than one)... order is important here too == binding index
 	for (TextureSpec& textureSpec : textureSpecs) {
 		if (textureSpec.fileName || textureSpec.pImageInfo) {
@@ -103,8 +113,10 @@ void AddOns::createDescribedItems(vector<UBO>& UBOs, vector<TextureSpec>& textur
 
 void AddOns::destroyDescribedItems()
 {
-	for (auto& pUniformBuffer : pUniformBuffers)
-		delete pUniformBuffer;
+	for (auto& pUniformBuffer : pUniformBuffers) {
+		if (pUniformBuffer)  // Skip nullptr entries (Dynamic UBOs)
+			delete pUniformBuffer;
+	}
 	pUniformBuffers.clear();
 	for (auto& pTextureImage : pTextureImages)
 		delete pTextureImage;
@@ -114,8 +126,10 @@ void AddOns::destroyDescribedItems()
 
 void AddOns::RecreateDescribables()
 {
-	for (auto& pUniformBuffer : pUniformBuffers)
-		pUniformBuffer->Recreate(-1, vulkan.swapchain);
+	for (auto& pUniformBuffer : pUniformBuffers) {
+		if (pUniformBuffer)  // Skip nullptr entries (Dynamic UBOs)
+			pUniformBuffer->Recreate(-1, vulkan.swapchain);
+	}
 
 	// Recreation (reload or regeneration) of TextureImages wasn't given much consideration, so if it is
 	//	really necessary, simply destroy and reinstantiate them... especially since the specs are saved.
@@ -136,8 +150,16 @@ vector<DescribEd> AddOns::reDescribe()
 {
 	vector<DescribEd> redescribedAddOns;
 	for (int index = 0; index < pUniformBuffers.size(); ++index)
-		redescribedAddOns.emplace_back(pUniformBuffers[index]->getDescriptorBufferInfo(),
-									   ubos[index].getShaderStageFlags());
+	{
+		if (ubos[index].isDynamic) {
+			// Dynamic UBO: query shared buffer info
+			VkDescriptorBufferInfo bufInfo = ubos[index].pDynamicUBO->getDescriptorBufferInfo(0);
+			redescribedAddOns.emplace_back(bufInfo, ubos[index].getShaderStageFlags(), DYNAMIC_BUFFER);
+		} else {
+			redescribedAddOns.emplace_back(pUniformBuffers[index]->getDescriptorBufferInfo(),
+										   ubos[index].getShaderStageFlags());
+		}
+	}
 	for (auto& pTextureImage : pTextureImages)
 		redescribedAddOns.emplace_back(pTextureImage->getDescriptorImageInfo(),
 									   VK_SHADER_STAGE_FRAGMENT_BIT);

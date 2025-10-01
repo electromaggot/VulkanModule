@@ -61,24 +61,33 @@ struct UBO_rtm {
 
 //----------------------------------------------------------------------------
 
+// Forward declaration
+class DynamicUniformBuffer;
+
 
 struct UBO {
 	int					byteSize;
 	void*				pBytes;
 	DestinationStage	destinationStage;
+	bool				isDynamic;					// for Dynamic Uniform Buffers
+	DynamicUniformBuffer* pDynamicUBO;				// Pointer to Dynamic UBO
 
 	UBO(UBO_MVP& mvp, DestinationStage dstage = DESTINATION_VERTEX_STAGE)
-		:	byteSize(sizeof(UBO_MVP)), pBytes(&mvp), destinationStage(dstage)	{ }
+		:	byteSize(sizeof(UBO_MVP)), pBytes(&mvp), destinationStage(dstage), isDynamic(false), pDynamicUBO(nullptr)	{ }
 
 	UBO(mat4& model, DestinationStage dstage = DESTINATION_VERTEX_STAGE)
-		:	byteSize(sizeof(mat4)), pBytes(&model), destinationStage(dstage)	{ }
+		:	byteSize(sizeof(mat4)), pBytes(&model), destinationStage(dstage), isDynamic(false), pDynamicUBO(nullptr)	{ }
 	UBO(UBO_VP& vp, DestinationStage dstage = DESTINATION_VERTEX_STAGE)
-		:	byteSize(sizeof(UBO_VP)), pBytes(&vp), destinationStage(dstage)		{ }
+		:	byteSize(sizeof(UBO_VP)), pBytes(&vp), destinationStage(dstage), isDynamic(false), pDynamicUBO(nullptr)		{ }
 
 	UBO(UBO_rtm& rtm, DestinationStage dstage = DESTINATION_FRAGMENT_STAGE)
-		:	byteSize(sizeof(UBO_rtm)), pBytes(&rtm), destinationStage(dstage)	{ }
+		:	byteSize(sizeof(UBO_rtm)), pBytes(&rtm), destinationStage(dstage), isDynamic(false), pDynamicUBO(nullptr)	{ }
 
-	UBO() : byteSize(0), pBytes(nullptr), destinationStage(DESTINATION_UNKNOWN)	{ }
+	// Constructor for dynamic uniform buffer
+	UBO(DynamicUniformBuffer* dynUBO, DestinationStage dstage = DESTINATION_VERTEX_STAGE)
+		:	byteSize(0), pBytes(nullptr), destinationStage(dstage), isDynamic(true), pDynamicUBO(dynUBO)	{ }
+
+	UBO() : byteSize(0), pBytes(nullptr), destinationStage(DESTINATION_UNKNOWN), isDynamic(false), pDynamicUBO(nullptr)	{ }
 
 	VkShaderStageFlags	getShaderStageFlags() {
 		assert(destinationStage != DESTINATION_UNKNOWN);

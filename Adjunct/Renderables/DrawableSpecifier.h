@@ -29,6 +29,7 @@ public:
 	vector<TextureSpec>	textures;
 	Customizer			customize = NONE;
 	bool				(*updateMethod)(GameClock&) = nullptr;
+	ShaderModules*		pSharedShaderModules = nullptr;  // Optional: use cached shared shaders
 };
 
 
