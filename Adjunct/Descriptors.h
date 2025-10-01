@@ -16,8 +16,9 @@
 
 
 enum GeneralVkDescriptorType {
-	BUFFER	= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-	TEXTURE = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+	BUFFER			= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+	DYNAMIC_BUFFER	= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+	TEXTURE			= VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
 };
 
 
@@ -31,9 +32,11 @@ struct DescribEd {	// Pronounced "describe-ed" meaning: "the thing being describ
 	VkShaderStageFlags		stage;
 
 	DescribEd(VkDescriptorBufferInfo bufinf, VkShaderStageFlags flags)
-		:	type(BUFFER), bufferInfo(bufinf), stage(flags)			{ }
+		:	type(BUFFER), bufferInfo(bufinf), stage(flags)	{ }
+	DescribEd(VkDescriptorBufferInfo bufinf, VkShaderStageFlags flags, GeneralVkDescriptorType bufType)
+		:	type(bufType), bufferInfo(bufinf), stage(flags)	{ }  // For dynamic buffers
 	DescribEd(VkDescriptorImageInfo imginf, VkShaderStageFlags flags)
-		:	type(TEXTURE), imageInfo(imginf), stage(flags)			{ }
+		:	type(TEXTURE), imageInfo(imginf), stage(flags)	{ }
 	VkDescriptorType	getDescriptorType()		{ return (VkDescriptorType) type;	}
 	VkShaderStageFlags	getShaderStageFlags()	{ return stage;						}
 };

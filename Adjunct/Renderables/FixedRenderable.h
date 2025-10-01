@@ -30,6 +30,10 @@ public:
 	}
 
 	void IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex);
+
+	// Dynamic UBO support
+	uint32_t dynamicOffset = 0;
+	bool  hasDynamicOffset = false;
 };
 
 #endif	// FixedRenderable_h

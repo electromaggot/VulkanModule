@@ -20,10 +20,19 @@ void FixedRenderable::IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, i
 {
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.getVkPipeline());
 
-	if (descriptors.exist())
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-								pipeline.getPipelineLayout(), 0, 1,
-								&descriptors.getSets()[bufferIndex], 0, nullptr);
+	if (descriptors.exist()) {
+		if (hasDynamicOffset) {
+			// Bind descriptor with dynamic offset for per-object data
+			uint32_t dynamicOffsets[] = { dynamicOffset };
+			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+									pipeline.getPipelineLayout(), 0, 1,
+									&descriptors.getSets()[bufferIndex], 1, dynamicOffsets);
+		} else {
+			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+									pipeline.getPipelineLayout(), 0, 1,
+									&descriptors.getSets()[bufferIndex], 0, nullptr);
+		}
+	}
 
 	if (addOns.pVertexBuffer) {
 		VkBuffer vertexBuffers[] = { addOns.pVertexBuffer->getVk() };

@@ -58,7 +58,8 @@ struct iRenderableBase
 struct iRenderable : iRenderableBase
 {
 	iRenderable(DrawableSpecifier& specified, VulkanSetup& vulkan, iPlatform& platform)
-		:	shaderModules(	* new ShaderModules(specified.shaders, vulkan.device)),
+		:	shaderModules(	specified.pSharedShaderModules ? *specified.pSharedShaderModules
+													: * new ShaderModules(specified.shaders, vulkan.device)),
 			addOns(			* new AddOns(specified, vulkan, platform)),
 			descriptors(	* new Descriptors(addOns.described, vulkan.swapchain, vulkan.device)),
 			pipeline(		* new GraphicsPipeline(shaderModules, vulkan.renderPass, vulkan.swapchain, vulkan.device,
@@ -66,7 +67,8 @@ struct iRenderable : iRenderableBase
 			vertexObject(	specified.mesh),
 			customizer(		specified.customize),
 			name(			specified.name),
-			updateMethod(	specified.updateMethod)
+			updateMethod(	specified.updateMethod),
+			ownsShaderModules(!specified.pSharedShaderModules)
 	{
 		isSelfManaged = false;
 	}
@@ -79,7 +81,8 @@ struct iRenderable : iRenderableBase
 		delete(&pipeline);
 		delete(&descriptors);
 		delete(&addOns);
-		delete(&shaderModules);
+		if (ownsShaderModules)
+			delete(&shaderModules);
 	}
 
 
@@ -92,6 +95,7 @@ struct iRenderable : iRenderableBase
 	Customizer			customizer;
 	string&				name;
 	bool				(*updateMethod)(GameClock&);
+	bool				ownsShaderModules;	// true if we created it, false if shared
 
 
 	virtual iRenderable* newConcretion(CommandRecording* pRecordingMode) const = 0;
@@ -219,6 +223,9 @@ public:
 					AddOns& addOns = pRenderable->addOns;
 					if (addOns.described.size() > 0)
 						for (int index = 0; index < addOns.pUniformBuffers.size(); ++index) {
+							// Skip dynamic UBOs (they are updated separately via DynamicUniformBuffer)
+							if (addOns.pUniformBuffers[index] == nullptr)
+								continue;
 							UniformBuffer& unibuf = *addOns.pUniformBuffers[index];
 							void* pUboData = addOns.ubos[index].pBytes;
 							size_t numBytes = addOns.ubos[index].byteSize;

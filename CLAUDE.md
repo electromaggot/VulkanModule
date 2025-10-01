@@ -101,8 +101,10 @@ VulkanModule is a reusable foundation for Vulkan graphics projects, providing ob
 
 **Adjunct/** - Higher-level abstractions:
 - `Renderables/` - Base classes for drawable objects (FixedRenderable, DynamicRenderable)
+  - `ShaderCache` - Shared shader management with reference counting to eliminate redundant shader loading
 - `VertexTypes/` - Various vertex format definitions
 - `TextureImage`, `UniformBuffer` - Resource management
+- `DynamicUniformBuffer` - Efficient per-object uniform data using dynamic offsets for rendering thousands of objects
 
 **Platform/** - Platform abstraction layer:
 - `OSAbstraction/PlatformSDL` - SDL2 window/input handling (primary platform)
@@ -115,6 +117,8 @@ VulkanModule is a reusable foundation for Vulkan graphics projects, providing ob
 2. **Recreate Pattern**: Objects support `Recreate()` for handling window resize/minimize events
 3. **Dependency Order**: VulkanSetup instantiates objects in strict dependency order
 4. **Platform Abstraction**: iPlatform interface allows different windowing systems (SDL2, GLFW, XCB)
+5. **Resource Sharing**: ShaderCache enables sharing ShaderModules across renderables to eliminate redundant loads
+6. **Dynamic Uniform Buffers**: Support for VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC with per-object offsets for efficient multi-object rendering
 
 ### Dependencies
 
@@ -129,3 +133,77 @@ The TestHarness directory contains a minimal test application demonstrating modu
 1. Create platform (SDL)
 2. Instantiate VulkanSetup with platform and configuration
 3. Store references to key objects for rendering loop
+
+## Advanced Features
+
+### Dynamic Uniform Buffers
+
+Dynamic Uniform Buffers enable efficient rendering of large numbers of objects by using a single shared buffer with dynamic offsets instead of creating individual UniformBuffer objects per renderable.
+
+**Usage:**
+
+```cpp
+// 1. Create DynamicUniformBuffer (typically in application initialization)
+const uint32_t MAX_OBJECTS = 1000;
+const uint32_t FRAMES_IN_FLIGHT = swapchain.getNumImages();
+DynamicUniformBuffer* dynamicUBO = new DynamicUniformBuffer(MAX_OBJECTS, FRAMES_IN_FLIGHT, device);
+
+// 2. Configure drawable to use dynamic UBO
+drawable->pUBOs = {
+    camera.uboMVP,          // Binding 0: Static camera matrices
+    UBO(dynamicUBO)         // Binding 1: Dynamic per-object transforms
+};
+
+// 3. Set dynamic offset on renderable
+FixedRenderable fixedRenderable(*drawable, vulkan, platform);
+fixedRenderable.hasDynamicOffset = true;
+fixedRenderable.dynamicOffset = dynamicUBO->getDynamicOffset(objectIndex);
+
+// 4. Update per-object transforms each frame
+dynamicUBO->updateObjectTransform(frameIndex, objectIndex, modelMatrix);
+```
+
+**Benefits:**
+- Renders thousands of objects with minimal overhead
+- Single buffer allocation instead of hundreds/thousands of individual buffers
+- Reduced descriptor set updates
+- Lower memory fragmentation
+
+**Implementation Details:**
+- Automatically adds `VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC` to descriptor pool
+- `FixedRenderable` checks `hasDynamicOffset` and passes offset array to `vkCmdBindDescriptorSets()`
+- Update transforms before recording command buffers each frame
+
+### Shader Caching
+
+ShaderCache eliminates redundant shader loading when multiple renderables use the same shaders, crucial for scenes with thousands of objects.
+
+**Usage:**
+
+```cpp
+// 1. Create ShaderCache (typically in application initialization)
+ShaderCache* shaderCache = new ShaderCache(vulkan.device);
+
+// 2. Get or create shared shaders for a drawable
+ShaderModules* pSharedShaders = shaderCache->getOrCreate(drawable->shaders);
+drawable->pSharedShaderModules = pSharedShaders;
+shaderCache->addRef(pSharedShaders);
+
+// 3. Create renderable (will use shared shaders)
+FixedRenderable fixedRenderable(*drawable, vulkan, platform);
+
+// 4. ShaderCache handles cleanup automatically via reference counting
+// When last renderable using a shader set is destroyed, shaders are freed
+```
+
+**Benefits:**
+- Shaders loaded once and shared across all renderables using the same shader set
+- Automatic reference counting prevents premature deletion
+- Reduced I/O and memory usage
+- Faster scene initialization
+
+**Implementation Details:**
+- Shaders are cached by a key generated from shader file names and types
+- `iRenderable` checks `pSharedShaderModules` and uses it if provided, otherwise creates its own
+- `ownsShaderModules` flag prevents double-deletion
+- Reference counting ensures shaders persist until last user is destroyed

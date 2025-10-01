@@ -103,6 +103,8 @@ Application-focused components for content creation:
 #### Resource Management
 - **`TextureImage`** - Texture loading with mipmap generation
 - **`UniformBuffer`** - Shader uniform data with automatic layout
+- **`DynamicUniformBuffer`** - Efficient per-object uniform data using VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC with dynamic offsets for rendering thousands of objects
+- **`ShaderCache`** - Shared shader module management with reference counting to eliminate redundant shader loading when multiple renderables use the same shaders
 - **`BufferBase`** - Memory allocation strategies and buffer utilities
 - **`CommandBufferBase`** - Command recording abstractions
 
@@ -142,6 +144,9 @@ Unlike typical Vulkan applications that freeze during window operations, VulkanM
 
 ### Extensible Architecture
 The modular design allows applications to use only needed components, from minimal "hello triangle" examples to full game engines.
+
+### Resource Sharing and Scalability
+ShaderCache enables efficient sharing of shader modules across renderables, eliminating redundant file I/O and memory usage when rendering scenes with thousands of objects using the same shaders. Combined with DynamicUniformBuffer's dynamic offset support, VulkanModule efficiently handles large-scale scenes with minimal per-object overhead.
 
 ## TestHarness Integration
 
