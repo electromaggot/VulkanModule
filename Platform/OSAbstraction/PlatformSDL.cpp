@@ -342,8 +342,10 @@ bool PlatformSDL::PollEvent(iControlScheme* pController)
 			case SDL_MOUSEMOTION:
 				mouseX = event.motion.x;	// handle mouse input passively
 				mouseY = event.motion.y;
-				if (pController)			// handle actively
+				if (pController) {			// handle actively
 					pController->handlePrimaryPressAndDrag(mouseX, mouseY);
+					pController->handleSecondaryPressAndDrag(mouseX, mouseY);
+				}
 				break;
 			case SDL_MOUSEBUTTONDOWN:
 				if (pController)
