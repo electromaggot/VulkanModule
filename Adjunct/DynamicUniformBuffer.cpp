@@ -2,7 +2,11 @@
 // DynamicUniformBuffer.cpp
 //	VulkanModule AddOns
 //
-// Implementation of enhanced uniform buffer with dynamic offsets
+// Implementation of enhanced uniform buffer with dynamic offsets.
+//	See header file for more information.
+//
+// Created 1-Oct-2024 by Tadd Jensen
+//  © 0000 (uncopyrighted; use at will)
 //
 #include "DynamicUniformBuffer.h"
 #include "GraphicsDevice.h"
@@ -13,7 +17,7 @@
 #include <algorithm>
 
 DynamicUniformBuffer::DynamicUniformBuffer(uint32_t maxObjects, uint32_t framesInFlight,
-											GraphicsDevice& device)
+										   GraphicsDevice& device)
 	: BufferBase(device)
 	, maxObjects(maxObjects)
 	, framesInFlight(framesInFlight)
@@ -34,6 +38,7 @@ DynamicUniformBuffer::~DynamicUniformBuffer()
 {
 	destroy();
 }
+
 
 void DynamicUniformBuffer::create()
 {

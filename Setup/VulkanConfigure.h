@@ -86,10 +86,11 @@ const StrPtr INSTANCE_EXTENSION_NAMES[] = {
 const int N_INSTANCE_EXTENSION_NAMES = N_ELEMENTS_IN_ARRAY(INSTANCE_EXTENSION_NAMES);
 
 const bool REQUIRE_INSTANCE_EXTENSION[] = {
-	false,
 	false
+	,false
 	#ifdef __APPLE__
 	,true	// VK_KHR_PORTABILITY_ENUMERATION required for MoltenVK.
+	//,false  // VK_KHR_PORTABILITY_ENUMERATION is for MoltenVK, but not absolutely required if not supported.
 	#endif
 };
 

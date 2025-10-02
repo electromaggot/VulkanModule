@@ -33,10 +33,12 @@ public:
 	virtual void handlePrimaryPressAndDrag(int toX, int toY)	{ }		// "Press" means either mouse
 	virtual void handlePrimaryPressDown(int atX, int atY)		{ }		//	 button (click) or touch (tap).
 	virtual void handlePrimaryPressUp(int atX, int atY)			{ }
-	virtual void handleSecondaryPressDown(int atX, int atY)		{ }		// "Secondary" == right mouse
-	virtual void handleSecondaryPressUp(int atX, int atY)		{ }		//	 button or 2-finger touch.
-	virtual void handleTertiaryPressDown(int atX, int atY)		{ }		// "Tertiary" == mouse wheel
-	virtual void handleTertiaryPressUp(int atX, int atY)		{ }		//	 click or 3-finger touch.
+	virtual void handleSecondaryPressAndDrag(int toX, int toY)	{ }		// "Secondary" == right mouse
+	virtual void handleSecondaryPressDown(int atX, int atY)		{ }		//	 button or 2-finger touch.
+	virtual void handleSecondaryPressUp(int atX, int atY)		{ }
+	virtual void handleTertiaryPressAndDrag(int toX, int toY)	{ }		// "Tertiary" == mouse wheel
+	virtual void handleTertiaryPressDown(int atX, int atY)		{ }		//	 click or 3-finger touch.
+	virtual void handleTertiaryPressUp(int atX, int atY)		{ }
 
 	virtual void handleMouseWheel(int spunX, int spunY)			{ }		// "can" assume zooming via mouse.
 	virtual void handlePinchSpread(float amount)				{ }		// Always means zoom via touch.

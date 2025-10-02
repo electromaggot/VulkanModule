@@ -4,9 +4,9 @@
 //
 // Enhanced uniform buffer that supports multiple objects with dynamic offsets.
 // This provides better performance than individual uniform buffers per object
-// by packing multiple object transforms into a single buffer.
+//	by packing multiple object transforms into a single buffer.
 //
-// Created for SceneEdit integration
+// Created 1-Oct-2024 by Tadd Jensen
 //	© 0000 (uncopyrighted; use at will)
 //
 #ifndef DynamicUniformBuffer_h
