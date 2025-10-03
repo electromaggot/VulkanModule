@@ -93,9 +93,6 @@ void DynamicUniformBuffer::updateObjectTransform(uint32_t frameIndex, uint32_t o
 
 	// Copy model matrix
 	memcpy(objectData->model, glm::value_ptr(modelMatrix), sizeof(objectData->model));
-
-	// For normal matrix, use model matrix for now (proper implementation would be inverse transpose)
-	memcpy(objectData->normalMatrix, glm::value_ptr(modelMatrix), sizeof(objectData->normalMatrix));
 }
 
 uint32_t DynamicUniformBuffer::getDynamicOffset(uint32_t objectIndex) const

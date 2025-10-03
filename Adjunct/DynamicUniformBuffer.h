@@ -22,7 +22,6 @@ public:
 	// Structure for per-object uniform data
 	struct PerObjectData {
 		alignas(16) float model[16];		// Model matrix
-		alignas(16) float normalMatrix[16];	// Normal matrix (inverse transpose)
 	};
 
 	DynamicUniformBuffer(uint32_t maxObjects, uint32_t framesInFlight,
