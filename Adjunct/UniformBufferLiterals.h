@@ -59,6 +59,17 @@ struct UBO_rtm {
 	alignas(16)		vec4  mouse;
 };
 
+// This UBO passes scene lighting information to shaders for Phong shading.
+// Contains light position, color, intensity, and ambient settings.
+// Intended for both vertex and fragment stages (vertex for position, fragment for lighting calcs).
+//
+struct UBO_Light {
+	alignas(16)		vec4  position;			// xyz = position, w = unused
+	alignas(16)		vec4  color;			// rgb = color, a = intensity
+	alignas(4)		float ambientStrength;	// ambient lighting strength
+	alignas(4)		float _padding[3];		// padding for alignment (12 bytes as 3 floats)
+};
+
 //----------------------------------------------------------------------------
 
 // Forward declaration
@@ -82,6 +93,9 @@ struct UBO {
 
 	UBO(UBO_rtm& rtm, DestinationStage dstage = DESTINATION_FRAGMENT_STAGE)
 		:	byteSize(sizeof(UBO_rtm)), pBytes(&rtm), destinationStage(dstage), isDynamic(false), pDynamicUBO(nullptr)	{ }
+
+	UBO(UBO_Light& light, DestinationStage dstage = DESTINATION_FRAGMENT_STAGE)
+		:	byteSize(sizeof(UBO_Light)), pBytes(&light), destinationStage(dstage), isDynamic(false), pDynamicUBO(nullptr)	{ }
 
 	// Constructor for dynamic uniform buffer
 	UBO(DynamicUniformBuffer* dynUBO, DestinationStage dstage = DESTINATION_VERTEX_STAGE)

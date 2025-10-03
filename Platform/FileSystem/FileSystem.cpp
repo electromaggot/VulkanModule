@@ -14,13 +14,13 @@
 #include <fstream>
 
 
-const StrPtr SHADER_SUBDIRECTORY  = "compiledShaders/";
+const StrPtr SHADER_SUBDIRECTORY  = "shaders/compiled/";
 
-const StrPtr TEXTURE_SUBDIRECTORY = "textures/";
+const StrPtr TEXTURE_SUBDIRECTORY = "assets/textures/";
 
-const StrPtr MODEL_SUBDIRECTORY = "models/";
+const StrPtr MODEL_SUBDIRECTORY = "assets/models/";
 
-const StrPtr FONT_SUBDIRECTORY = "fonts/";
+const StrPtr FONT_SUBDIRECTORY = "assets/fonts/";
 
 
 // Directory hierarchy project-specific conventions
