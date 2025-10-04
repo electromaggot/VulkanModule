@@ -63,6 +63,7 @@ public:
 		// METHODS
 	void CreateVulkanSurface(VkInstance instance, VkSurfaceKHR& surface);
 	bool GetWindowSize(int& pixelWidth, int& pixelHeight);
+	void SetWindowTitle(const char* title);
 	void DialogBox(const char* message, const char* title = "ERROR", AlertLevel level = FAILURE);
 	bool PollEvent(iControlScheme* pControl = nullptr);
 	bool IsEventQUIT();
