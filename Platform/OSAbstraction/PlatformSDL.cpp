@@ -91,14 +91,77 @@ void PlatformSDL::createVulkanCompatibleWindow()
 		winX = settings.startingWindowX;
 		winY = settings.startingWindowY;
 	}
-	if (winWide <= 0 || winWide > AppConstants.MaxSaneScreenWidth)		// Do not allow…
-		winWide  = AppConstants.DefaultWindowWidth;
-	if (winHigh <= 0 || winHigh > AppConstants.MaxSaneScreenHeight)		//	…window to…
-		winHigh = AppConstants.DefaultWindowHeight;
-	if (winX < -winWide || winX > AppConstants.MaxSaneScreenWidth)		//	…be entirely…
+
+	// Validate window position across ALL displays (multi-monitor support)
+	int numDisplays = SDL_GetNumVideoDisplays();
+	bool windowOnValidDisplay = false;
+	const int MIN_VISIBLE_PIXELS = 50;  // Minimum pixels of title bar that must be visible
+
+	// Check each display to see if window is visible on any of them
+	for (int i = 0; i < numDisplays; ++i) {
+		SDL_Rect displayBounds;
+		if (SDL_GetDisplayBounds(i, &displayBounds) == 0) {
+			// Check if window's title bar is accessible on this display
+			bool titleBarVisible = (winX + MIN_VISIBLE_PIXELS >= displayBounds.x &&  // Not too far left
+									winX <= displayBounds.x + displayBounds.w - MIN_VISIBLE_PIXELS &&  // Not too far right
+									winY >= displayBounds.y &&  // Title bar not above screen
+									winY <= displayBounds.y + displayBounds.h - MIN_VISIBLE_PIXELS);  // Not too far down
+
+			if (titleBarVisible) {
+				windowOnValidDisplay = true;
+
+				// Validate window size against this display
+				if (winWide <= 0 || winWide > displayBounds.w)
+					winWide  = AppConstants.DefaultWindowWidth;
+				if (winHigh <= 0 || winHigh > displayBounds.h)
+					winHigh = AppConstants.DefaultWindowHeight;
+
+				// Ensure window size doesn't exceed this display's bounds
+				if (winWide > displayBounds.w)
+					winWide = displayBounds.w;
+				if (winHigh > displayBounds.h)
+					winHigh = displayBounds.h;
+
+				Log(LOW, "Window validated on display %d: pos(%d, %d) size(%dx%d)", i, winX, winY, winWide, winHigh);
+				break;  // Found valid display, stop checking
+			}
+		}
+	}
+
+	// If window is not visible on ANY display, center it on primary display
+	if (!windowOnValidDisplay) {
+		Log(LOW, "Window position (%d, %d) not visible on any display, centering on primary", winX, winY);
 		winX = SDL_WINDOWPOS_CENTERED;
-	if (winY < -winHigh || winY > AppConstants.MaxSaneScreenHeight)		//	…off-screen.
 		winY = SDL_WINDOWPOS_CENTERED;
+
+		// Validate size against primary display
+		SDL_Rect primaryBounds;
+		if (SDL_GetDisplayBounds(0, &primaryBounds) == 0) {
+			if (winWide <= 0 || winWide > primaryBounds.w)
+				winWide  = AppConstants.DefaultWindowWidth;
+			if (winHigh <= 0 || winHigh > primaryBounds.h)
+				winHigh = AppConstants.DefaultWindowHeight;
+		} else {
+			// Fallback if SDL functions fail - use conservative defaults
+			if (winWide <= 0 || winWide > AppConstants.MaxSaneScreenWidth)
+				winWide  = AppConstants.DefaultWindowWidth;
+			if (winHigh <= 0 || winHigh > AppConstants.MaxSaneScreenHeight)
+				winHigh = AppConstants.DefaultWindowHeight;
+		}
+	}
+
+	// Final fallback for invalid positions
+	if (winX == INT_MIN || winY == INT_MIN) {
+		// Fallback to original validation
+		if (winWide <= 0 || winWide > AppConstants.MaxSaneScreenWidth)
+			winWide  = AppConstants.DefaultWindowWidth;
+		if (winHigh <= 0 || winHigh > AppConstants.MaxSaneScreenHeight)
+			winHigh = AppConstants.DefaultWindowHeight;
+		if (winX < -winWide || winX > AppConstants.MaxSaneScreenWidth)
+			winX = SDL_WINDOWPOS_CENTERED;
+		if (winY < -winHigh || winY > AppConstants.MaxSaneScreenHeight)
+			winY = SDL_WINDOWPOS_CENTERED;
+	}
 
 	int windowFlags = SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN
 					| SDL_WINDOW_RESIZABLE	// not just for desktop windows, also applies to mobile device orientation changes
