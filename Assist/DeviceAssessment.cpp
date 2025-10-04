@@ -212,14 +212,7 @@ void DeviceAssessment::assayPresentModeSupport(VkPhysicalDevice device, int iDev
 	// Log available present modes
 	Log(NOTE, "Available present modes for Device %d:", iDevice);
 	for (uint32_t i = 0; i < nModes; ++i) {
-		const char* modeName = "UNKNOWN";
-		switch (presentModes[i]) {
-			case VK_PRESENT_MODE_IMMEDIATE_KHR: modeName = "IMMEDIATE (no vsync)"; break;
-			case VK_PRESENT_MODE_MAILBOX_KHR: modeName = "MAILBOX (triple buffering)"; break;
-			case VK_PRESENT_MODE_FIFO_KHR: modeName = "FIFO (vsync, 60fps cap)"; break;
-			case VK_PRESENT_MODE_FIFO_RELAXED_KHR: modeName = "FIFO_RELAXED"; break;
-		}
-		Log(NOTE, "  - %s (%d)", modeName, presentModes[i]);
+		Log(NOTE, "  - %s (%d)", presentModeName(presentModes[i]), presentModes[i]);
 	}
 
 	for (int iPrecedence = 0; iPrecedence < N_PRESENT_MODE_PRECEDENCES; ++iPrecedence)
@@ -230,18 +223,25 @@ void DeviceAssessment::assayPresentModeSupport(VkPhysicalDevice device, int iDev
 				deviceProfiles[iDevice].surfaceSupportScore += score;
 				deviceProfiles[iDevice].selectedPresentMode = deviceMode;
 
-				const char* selectedName = "UNKNOWN";
-				switch (deviceMode) {
-					case VK_PRESENT_MODE_IMMEDIATE_KHR: selectedName = "IMMEDIATE (no vsync, unlimited FPS)"; break;
-					case VK_PRESENT_MODE_MAILBOX_KHR: selectedName = "MAILBOX (triple buffering, unlimited FPS)"; break;
-					case VK_PRESENT_MODE_FIFO_KHR: selectedName = "FIFO (vsync ON, 60fps cap)"; break;
-					case VK_PRESENT_MODE_FIFO_RELAXED_KHR: selectedName = "FIFO_RELAXED"; break;
-				}
-				Log(NOTE, "Selected present mode: %s", selectedName);
+				Log(NOTE, "Selected present mode: %s", presentModeName(deviceMode));
 				return;
 			}
 	Log(WARN, "Device " + to_string(iDevice) + " supports NONE of " + to_string(N_PRESENT_MODE_PRECEDENCES) + " requested/preferred Present Modes.");
 
 	Log(WARN, "Sans a better PresentMode, choosing first one reported: " + to_string(presentModes[0]));
 	deviceProfiles[iDevice].selectedPresentMode = presentModes[0];
+}
+
+const char* DeviceAssessment::presentModeName(int iEnumMode) {
+	switch (iEnumMode) {
+		case VK_PRESENT_MODE_IMMEDIATE_KHR:				return "IMMEDIATE (no vsync)";
+		case VK_PRESENT_MODE_MAILBOX_KHR:				return "MAILBOX (triple buffering)";
+		case VK_PRESENT_MODE_FIFO_KHR:					return "FIFO (vsync, 60fps cap)";
+		case VK_PRESENT_MODE_FIFO_RELAXED_KHR:			return "FIFO_RELAXED";
+
+		case VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR:	return "SHARED_DEMAND_REFRESH";
+		case VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR: return "SHARED_CONTINUOUS_REFRESH";
+		case VK_PRESENT_MODE_FIFO_LATEST_READY_KHR:		return "FIFO_LATEST_READY";
+		default:										return "UNKNOWN (new?) MODE";
+	}
 }
