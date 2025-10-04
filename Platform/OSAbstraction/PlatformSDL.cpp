@@ -18,6 +18,7 @@
 
 #include "AppConstants.h"
 #include <climits>	// (to build on Linux side)
+#include <cstdlib>	// for setenv on macOS
 
 
 PlatformSDL::PlatformSDL()
@@ -62,6 +63,20 @@ void PlatformSDL::initializeSDL()
 
 	char hintHomeIndicator[2] = { DEFAULT_HOME_INDICATOR_APPEARANCE, '\0' };
 	SDL_SetHint(SDL_HINT_IOS_HIDE_HOME_INDICATOR, hintHomeIndicator);
+
+#ifdef __APPLE__
+	// Disable vsync at Metal layer for higher FPS (MoltenVK can enforce vsync despite Vulkan present mode)
+	SDL_SetHint(SDL_HINT_RENDER_VSYNC, "0");
+	// Request immediate updates to reduce latency
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");  // Nearest pixel sampling (faster)
+
+	// MoltenVK-specific: Disable displaySyncEnabled on CAMetalLayer
+	// This prevents Metal from enforcing vsync at the compositor level
+	setenv("MVK_CONFIG_DISPLAY_WATERMARK", "0", 0);  // Also disable watermark for performance
+	setenv("MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS", "0", 0);  // Async queue submits for better performance
+
+	Log(NOTE, "macOS: Configured for maximum frame rate (vsync disabled at Metal layer)");
+#endif
 }
 
 // Create a vulkan window; fatal throw on failure.
@@ -92,6 +107,26 @@ void PlatformSDL::createVulkanCompatibleWindow()
 	pWindow = SDL_CreateWindow(AppConstants.WindowTitle, winX, winY, winWide, winHigh, windowFlags);
 	if (!pWindow)
 		Fatal("Fail to Create Vulkan-compatible Window with SDL: " + string(SDL_GetError()));
+
+	// Log display information for performance diagnostics
+	int displayIndex = SDL_GetWindowDisplayIndex(pWindow);
+	if (displayIndex >= 0) {
+		const char* displayName = SDL_GetDisplayName(displayIndex);
+		SDL_DisplayMode displayMode;
+		if (SDL_GetCurrentDisplayMode(displayIndex, &displayMode) == 0) {
+			Log(NOTE, "Window on display %d: \"%s\" ( %d × %d @ %dHz )",
+				displayIndex,
+				displayName ? displayName : "Unknown",
+				displayMode.w, displayMode.h, displayMode.refresh_rate);
+
+			// Helpful performance hint based on display type
+			if (displayIndex > 0) {
+				Log(NOTE, "External display detected - FPS may be limited by display connection/vsync");
+			} else {
+				Log(NOTE, "Built-in display - expect maximum performance");
+			}
+		}
+	}
 
 	pixelsWide = LastSavedPixelsWide = winWide;
 	pixelsHigh = LastSavedPixelsHigh = winHigh;
@@ -250,6 +285,12 @@ bool PlatformSDL::GetWindowSize(int& pixelWidth, int& pixelHeight)
 		error += ", " + sdlError;
 	Log(WARN, error);
 	return false;
+}
+
+void PlatformSDL::SetWindowTitle(const char* title)
+{
+	if (pWindow)
+		SDL_SetWindowTitle(pWindow, title);
 }
 
 void PlatformSDL::recordWindowGeometry() // (with logging too)

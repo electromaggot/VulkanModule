@@ -209,6 +209,19 @@ void DeviceAssessment::assayPresentModeSupport(VkPhysicalDevice device, int iDev
 	VkPresentModeKHR presentModes[nModes];
 	vkGetPhysicalDeviceSurfacePresentModesKHR(device, windowSurface, &nModes, presentModes);
 
+	// Log available present modes
+	Log(NOTE, "Available present modes for Device %d:", iDevice);
+	for (uint32_t i = 0; i < nModes; ++i) {
+		const char* modeName = "UNKNOWN";
+		switch (presentModes[i]) {
+			case VK_PRESENT_MODE_IMMEDIATE_KHR: modeName = "IMMEDIATE (no vsync)"; break;
+			case VK_PRESENT_MODE_MAILBOX_KHR: modeName = "MAILBOX (triple buffering)"; break;
+			case VK_PRESENT_MODE_FIFO_KHR: modeName = "FIFO (vsync, 60fps cap)"; break;
+			case VK_PRESENT_MODE_FIFO_RELAXED_KHR: modeName = "FIFO_RELAXED"; break;
+		}
+		Log(NOTE, "  - %s (%d)", modeName, presentModes[i]);
+	}
+
 	for (int iPrecedence = 0; iPrecedence < N_PRESENT_MODE_PRECEDENCES; ++iPrecedence)
 		for (auto& deviceMode : presentModes)
 			if (deviceMode == PRESENT_MODE_PRECEDENCE[iPrecedence])
@@ -216,6 +229,15 @@ void DeviceAssessment::assayPresentModeSupport(VkPhysicalDevice device, int iDev
 				RawScore score = N_PRECEDENCES - iPrecedence;
 				deviceProfiles[iDevice].surfaceSupportScore += score;
 				deviceProfiles[iDevice].selectedPresentMode = deviceMode;
+
+				const char* selectedName = "UNKNOWN";
+				switch (deviceMode) {
+					case VK_PRESENT_MODE_IMMEDIATE_KHR: selectedName = "IMMEDIATE (no vsync, unlimited FPS)"; break;
+					case VK_PRESENT_MODE_MAILBOX_KHR: selectedName = "MAILBOX (triple buffering, unlimited FPS)"; break;
+					case VK_PRESENT_MODE_FIFO_KHR: selectedName = "FIFO (vsync ON, 60fps cap)"; break;
+					case VK_PRESENT_MODE_FIFO_RELAXED_KHR: selectedName = "FIFO_RELAXED"; break;
+				}
+				Log(NOTE, "Selected present mode: %s", selectedName);
 				return;
 			}
 	Log(WARN, "Device " + to_string(iDevice) + " supports NONE of " + to_string(N_PRESENT_MODE_PRECEDENCES) + " requested/preferred Present Modes.");
