@@ -53,6 +53,8 @@ private:
 	void assayDeviceExtensionSupport(VkPhysicalDevice device, int iDevice);
 	void assaySurfaceFormatSupport(VkPhysicalDevice device, int iDevice);
 	void assayPresentModeSupport(VkPhysicalDevice device, int iDevice);
+
+	const char* presentModeName(int iEnumMode);
 };
 
 #endif // DeviceAssay_h
