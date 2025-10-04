@@ -110,7 +110,12 @@ void TextureImage::createBlank(ImageInfo& params, GraphicsDevice& graphicsDevice
 
 	pStagingBuffer->CreateAndMapBuffer(params.numBytes);
 
-	pStagingBuffer->Clear();
+	// If pixel data is provided, copy it; otherwise create blank (zeroed) texture
+	if (params.pPixels) {
+		memcpy(pStagingBuffer->pBytes(), params.pPixels, static_cast<size_t>(params.numBytes));
+	} else {
+		pStagingBuffer->Clear();
+	}
 
 	createImage(params.wide, params.high, params.format, VK_IMAGE_TILING_OPTIMAL,
 				VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,

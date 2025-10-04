@@ -22,7 +22,8 @@ enum Customizer
 	WIREFRAME			= 0b00000001,	// e.g. render with: VK_POLYGON_MODE _LINE instead of _FILL
 	SHOW_BACKFACES		= 0b00000010,	// override default: VK_CULL_MODE_BACK_BIT with _NONE
 	FRONT_CLOCKWISE		= 0b00000100,	//		   i.e. NOT: VK_FRONT_FACE_COUNTER_CLOCKWISE
-	MODELED_FOR_VULKAN	= 0b00001000	// versus default, model created for OpenGL + Right-Handed
+	MODELED_FOR_VULKAN	= 0b00001000,	// versus default, model created for OpenGL + Right-Handed
+	ALPHA_BLENDING		= 0b00010000	// enable alpha blending for transparency (billboards, particles, etc.)
 };
 
 inline Customizer operator | (Customizer left, Customizer right)
