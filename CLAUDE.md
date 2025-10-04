@@ -207,3 +207,47 @@ FixedRenderable fixedRenderable(*drawable, vulkan, platform);
 - `iRenderable` checks `pSharedShaderModules` and uses it if provided, otherwise creates its own
 - `ownsShaderModules` flag prevents double-deletion
 - Reference counting ensures shaders persist until last user is destroyed
+
+### GameClock - Frame Timing and FPS Tracking
+
+`Assist/GameClock.h` provides frame timing utilities for time-dependent rendering and game logic.
+
+**Features:**
+- **Delta time calculation**: Precise per-frame time for smooth animations
+- **Elapsed time tracking**: Total time since application start
+- **FPS counter**: Automatic calculation and tracking, updated every second
+
+**Usage:**
+
+```cpp
+GameClock gameClock;
+
+// In main loop
+gameClock.BeginNewFrame();  // Call once per frame
+
+float deltaTime = gameClock.deltaSeconds();     // Time since last frame
+float elapsed = gameClock.secondsElapsed();     // Total elapsed time
+int fps = gameClock.getFPS();                   // Current FPS (0 until first second)
+bool fpsUpdated = gameClock.wasFPSUpdated();    // True if FPS recalculated this frame
+```
+
+**FPS Counter Details:**
+- Calculates FPS every second based on actual frame count
+- Returns 0 until first full second has elapsed
+- `wasFPSUpdated()` allows checking when to update UI/logs
+- Useful for performance diagnostics and monitoring
+
+### Platform Utilities
+
+**PlatformSDL Extensions:**
+- `SetWindowTitle()` - Update window title (useful for FPS display)
+- Display information logging at startup:
+  - Monitor index and name
+  - Resolution and refresh rate
+  - Performance hints for built-in vs external displays
+
+**macOS-Specific:**
+- MoltenVK configuration for maximum performance
+- vsync disabled at Metal layer when possible
+- Async queue submits enabled
+- Note: macOS compositor may still enforce vsync on external displays
