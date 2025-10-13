@@ -241,7 +241,7 @@ const char* DeviceAssessment::presentModeName(int iEnumMode) {
 
 		case VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR:	return "SHARED_DEMAND_REFRESH";
 		case VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR: return "SHARED_CONTINUOUS_REFRESH";
-		case VK_PRESENT_MODE_FIFO_LATEST_READY_KHR:		return "FIFO_LATEST_READY";
+		// case VK_PRESENT_MODE_FIFO_LATEST_READY_KHR:		return "FIFO_LATEST_READY";  // Not available in Vulkan 1.2.135
 		default:										return "UNKNOWN (new?) MODE";
 	}
 }
