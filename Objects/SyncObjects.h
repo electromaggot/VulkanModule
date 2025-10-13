@@ -32,6 +32,7 @@ public:
 public:		//TJ: the following are "tentatively" public; determine later if they can be made less visible
 	VkSemaphore	imageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore	renderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
+	VkSemaphore	shadowCompleteSemaphores[MAX_FRAMES_IN_FLIGHT];  // Shadow pass completion semaphores
 	VkFence		inFlightFences[MAX_FRAMES_IN_FLIGHT];
 
 private:

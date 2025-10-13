@@ -104,14 +104,20 @@ void GraphicsDevice::createLogicalDevice(ValidationLayers& validation)
 VkPhysicalDevice GraphicsDevice::selectGPU(VkInstance& instance, VkSurfaceKHR& surface,
 										   DeviceSelectionMethod choice) {
 	uint32_t nPhysicalDevices = 0;
-	vkEnumeratePhysicalDevices(instance, &nPhysicalDevices, nullptr);
+	VkResult result = vkEnumeratePhysicalDevices(instance, &nPhysicalDevices, nullptr);
+	if (result != VK_SUCCESS) {
+		Fatal("Failed to enumerate physical devices: " + ErrStr(result));
+	}
 	if (nPhysicalDevices == 0) {
 		Fatal("No Physical Devices found with Vulkan support.");
 		exit(1); // (satisfy the Analyzer, which blind to Fatal above, fears below array may init with 0 size)
 	}
 
 	VkPhysicalDevice physicalDevices[nPhysicalDevices];
-	vkEnumeratePhysicalDevices(instance, &nPhysicalDevices, physicalDevices);
+	result = vkEnumeratePhysicalDevices(instance, &nPhysicalDevices, physicalDevices);
+	if (result != VK_SUCCESS) {
+		Fatal("Failed to enumerate physical devices (second call): " + ErrStr(result));
+	}
 
 	DeviceAssessment assessDevices(physicalDevices, nPhysicalDevices, Queues, surface);
 

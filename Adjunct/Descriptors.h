@@ -31,14 +31,26 @@ struct DescribEd {	// Pronounced "describe-ed" meaning: "the thing being describ
 	};
 	VkShaderStageFlags		stage;
 
+	// Per-frame image info for resources that vary per swapchain image (e.g., shadow maps with frames-in-flight).
+	// When populated, imageInfo at index iFrame is used instead of single imageInfo above.
+	vector<VkDescriptorImageInfo> perFrameImageInfo;
+
 	DescribEd(VkDescriptorBufferInfo bufinf, VkShaderStageFlags flags)
 		:	type(BUFFER), bufferInfo(bufinf), stage(flags)	{ }
 	DescribEd(VkDescriptorBufferInfo bufinf, VkShaderStageFlags flags, GeneralVkDescriptorType bufType)
 		:	type(bufType), bufferInfo(bufinf), stage(flags)	{ }  // For dynamic buffers
 	DescribEd(VkDescriptorImageInfo imginf, VkShaderStageFlags flags)
 		:	type(TEXTURE), imageInfo(imginf), stage(flags)	{ }
+	// Constructor for per-frame texture descriptors (e.g., shadow maps with multiple frames-in-flight).
+	DescribEd(vector<VkDescriptorImageInfo> perFrameImgInfo, VkShaderStageFlags flags)
+		:	type(TEXTURE), stage(flags), perFrameImageInfo(perFrameImgInfo) {
+		// Initialize union's imageInfo with first frame's info (for compatibility with single-frame access).
+		if (!perFrameImageInfo.empty())
+			imageInfo = perFrameImageInfo[0];
+	}
 	VkDescriptorType	getDescriptorType()		{ return (VkDescriptorType) type;	}
 	VkShaderStageFlags	getShaderStageFlags()	{ return stage;						}
+	bool				hasPerFrameImageInfo()	{ return !perFrameImageInfo.empty();}
 };
 
 

@@ -42,9 +42,12 @@ void SyncObjects::createSyncObjects()
 		if (call == VK_SUCCESS) {
 			call = vkCreateSemaphore(device, &semaphoreInfo, nullALLOC, &renderFinishedSemaphores[iFrame]);
 			if (call == VK_SUCCESS) {
-				call = vkCreateFence(device, &fenceInfo, nullALLOC, &inFlightFences[iFrame]);
-				if (call == VK_SUCCESS)
-					continue;
+				call = vkCreateSemaphore(device, &semaphoreInfo, nullALLOC, &shadowCompleteSemaphores[iFrame]);
+				if (call == VK_SUCCESS) {
+					call = vkCreateFence(device, &fenceInfo, nullALLOC, &inFlightFences[iFrame]);
+					if (call == VK_SUCCESS)
+						continue;
+				}
 			}
 		}
 		Fatal("Create synchronization object for frame " + to_string(iFrame) + " FAILURE" + ErrStr(call));
@@ -56,6 +59,7 @@ void SyncObjects::destroySyncObjects()
 	for (size_t iFrame = 0; iFrame < MaxFramesInFlight; ++iFrame) {
 		vkDestroyFence(device, inFlightFences[iFrame], nullALLOC);
 		vkDestroySemaphore(device, renderFinishedSemaphores[iFrame], nullALLOC);
+		vkDestroySemaphore(device, shadowCompleteSemaphores[iFrame], nullALLOC);
 		vkDestroySemaphore(device, imageAvailableSemaphores[iFrame], nullALLOC);
 	}
 }

@@ -60,9 +60,14 @@ protected:
 		// METHODS
 
 	void createVertexAndOrIndexBuffers(MeshObject& meshObject);
+	void createDescribedItems(vector<UBO>& UBO, vector<TextureSpec>& textureSpecs,
+							  vector<VkDescriptorImageInfo>& runtimeTextures,
+							  vector<vector<VkDescriptorImageInfo>>& perFrameRuntimeTextures,
+							  iPlatform& platform);
 	void destroyVertexAndOrIndexBuffers();
 
-	void createDescribedItems(vector<UBO>& UBO, vector<TextureSpec>& textureSpecs, iPlatform& platform);
+	void createDescribedItems(vector<UBO>& UBO, vector<TextureSpec>& textureSpecs,
+							  vector<VkDescriptorImageInfo>& runtimeTextures, iPlatform& platform);
 	void destroyDescribedItems();
 
 	void Recreate(MeshObject& meshObject);

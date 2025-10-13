@@ -27,6 +27,8 @@ public:
 	Shaders				shaders;
 	vector<UBO>			pUBOs;
 	vector<TextureSpec>	textures;
+	vector<VkDescriptorImageInfo> runtimeTextures;  // Runtime textures (e.g., shadow maps - single image shared across frames)
+	vector<vector<VkDescriptorImageInfo>> perFrameRuntimeTextures;  // Per-frame runtime textures (e.g., shadow maps with frames-in-flight to prevent cross-frame races)
 	Customizer			customize = NONE;
 	bool				(*updateMethod)(GameClock&) = nullptr;
 	ShaderModules*		pSharedShaderModules = nullptr;  // Optional: use cached shared shaders

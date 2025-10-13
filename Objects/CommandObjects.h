@@ -35,6 +35,9 @@ class CommandPool
 public:
 	CommandPool(GraphicsDevice& graphicsDevice);
 	~CommandPool();
+
+	VkCommandPool getVkCommandPool() const { return vkCommandPool; }
+
 private:
 	VkCommandPool	 vkCommandPool;
 	GraphicsDevice&	 device;
@@ -137,6 +140,7 @@ public:
 
 		// getters
 	uint32_t				NumFrames()	{ return numFrames; }
+	CommandPool&			getCommandPool() { return commandPool; }
 
 	static GraphicsDevice&	device()	{ return pSingleton->commandPool.device; }
 	static VkCommandPool&	vkPool()	{ return pSingleton->commandPool.vkCommandPool; }
