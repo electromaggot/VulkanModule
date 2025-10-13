@@ -108,6 +108,14 @@ Application-focused components for content creation:
 - **`BufferBase`** - Memory allocation strategies and buffer utilities.
 - **`CommandBufferBase`** - Command recording abstractions.
 
+#### Shadow Mapping System
+- **`ShadowSystem`** (`Adjunct/Shadowing/`) - Complete shadow mapping infrastructure with **zero VRAM cost** when disabled:
+  - **`ShadowSystem`** - Unified shadow management with per-frame shadow maps and automatic synchronization.
+  - **`ShadowMap`** - Depth-only shadow map resources with configurable resolution and PCF sampling.
+  - **`ShadowPass`** - Shadow pass command buffer recording with proper layout transitions.
+  - **`ShadowProjection`** - Reusable light-space matrix calculations with multiple projection and camera modes.
+  - **`ShadowMappingTypes`** - Modular type definitions for shadow techniques, projection modes, and camera orientations.
+
 ### 4. **Platform/** - Abstraction Layer
 Cross-platform compatibility and I/O systems:
 
