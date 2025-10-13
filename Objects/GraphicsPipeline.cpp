@@ -21,6 +21,20 @@ GraphicsPipeline::GraphicsPipeline(ShaderModules& shaders, RenderPass& renderPas
 	create(shaders, pVertex, swapchain.getExtent(), renderPass, pDescriptors, customize);
 }
 
+// Overloaded constructor for custom VkRenderPass (e.g., shadow mapping)
+GraphicsPipeline::GraphicsPipeline(ShaderModules& shaders, VkRenderPass vkRenderPass,
+								   Swapchain& swapchain, GraphicsDevice& graphics,
+								   VertexAbstract* pVertex, Descriptors* pDescriptors,
+								   Customizer customize, VkExtent2D customExtent)
+	:	device(graphics.getLogical())
+{
+	pVertex->vetIsValid();
+
+	// Use custom extent if provided (width != 0), otherwise use swapchain extent
+	VkExtent2D extent = (customExtent.width != 0) ? customExtent : swapchain.getExtent();
+	create(shaders, pVertex, extent, vkRenderPass, true, false, pDescriptors, customize);
+}
+
 GraphicsPipeline::~GraphicsPipeline()
 {
 	destroy();
@@ -122,7 +136,7 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 
 	// Alpha blending: disabled by default, enabled via ALPHA_BLENDING customizer flag
 	VkPipelineColorBlendAttachmentState colorBlendAttachment = {
-		.blendEnable		 = customize & ALPHA_BLENDING ? VK_TRUE : VK_FALSE,
+		.blendEnable		 = static_cast<VkBool32>(customize & ALPHA_BLENDING ? VK_TRUE : VK_FALSE),
 		.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
 		.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
 		.colorBlendOp		 = VK_BLEND_OP_ADD,
@@ -211,3 +225,144 @@ void GraphicsPipeline::Recreate(ShaderModules& shaders, RenderPass& renderPass, 
 
 	Supposedly Unity3D uses clockwise and left-hand-coordinate system, so watch out for that.
 */
+
+// Overloaded create for custom VkRenderPass (shadow mapping uses depth-only pass)
+void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVertex,
+							  VkExtent2D swapchainExtent, VkRenderPass vkRenderPass, bool useDepthBuffer,
+							  bool hasColorAttachment, Descriptors* pDescriptors, Customizer customize)
+{
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
+		.sType	= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+		.pNext	= nullptr,
+		.flags	= 0,
+		.vertexBindingDescriptionCount	 = pVertex ? pVertex->nBindingDescriptions()   : 0,
+		.pVertexBindingDescriptions		 = pVertex ? pVertex->pBindingDescriptions()   : nullptr,
+		.vertexAttributeDescriptionCount = pVertex ? pVertex->nAttributeDescriptions() : 0,
+		.pVertexAttributeDescriptions	 = pVertex ? pVertex->pAttributeDescriptions() : nullptr
+	};
+
+	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {
+		.sType	  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+		.pNext	  = nullptr,
+		.flags	  = 0,
+		.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+		.primitiveRestartEnable = VK_FALSE
+	};
+
+	VkViewport viewport = {
+		.x	= 0.0f,
+		.y	= 0.0f,
+		.width	= (float) swapchainExtent.width,
+		.height	= (float) swapchainExtent.height,
+		.minDepth = 0.0f,
+		.maxDepth = 1.0f
+	};
+	VkRect2D scissor = {
+		.offset = { 0, 0 },
+		.extent = swapchainExtent
+	};
+	VkPipelineViewportStateCreateInfo viewportState = {
+		.sType	= VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+		.pNext	= nullptr,
+		.flags	= 0,
+		.viewportCount	= 1,
+		.pViewports		= &viewport,
+		.scissorCount	= 1,
+		.pScissors		= &scissor
+	};
+
+	VkPipelineRasterizationStateCreateInfo rasterizer = {
+		.sType	= VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+		.pNext	= nullptr,
+		.flags	= 0,
+		.depthClampEnable		 = VK_FALSE,
+		.rasterizerDiscardEnable = VK_FALSE,
+		.polygonMode			 = customize & WIREFRAME ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL,
+		.cullMode	  = (VkFlags) (customize & SHOW_BACKFACES ? VK_CULL_MODE_NONE : VK_CULL_MODE_BACK_BIT),
+		.frontFace				 = customize & FRONT_CLOCKWISE ? VK_FRONT_FACE_CLOCKWISE
+														: VK_FRONT_FACE_COUNTER_CLOCKWISE,
+		.depthBiasEnable		 = VK_FALSE,
+		.lineWidth				 = 1.0f
+	};
+
+	VkPipelineMultisampleStateCreateInfo multisampling = {
+		.sType	= VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+		.pNext	= nullptr,
+		.flags	= 0,
+		.rasterizationSamples	= VK_SAMPLE_COUNT_1_BIT,
+		.sampleShadingEnable	= VK_FALSE
+	};
+
+	VkPipelineDepthStencilStateCreateInfo depthStencil = {
+		.sType					= VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+		.pNext					= nullptr,
+		.flags					= 0,
+		.depthTestEnable		= VK_TRUE,
+		.depthWriteEnable		= VK_TRUE,
+		.depthCompareOp			= VK_COMPARE_OP_LESS,
+		.depthBoundsTestEnable	= VK_FALSE,
+		.stencilTestEnable		= VK_FALSE
+	};
+
+	VkPipelineColorBlendAttachmentState colorBlendAttachment = {
+		.blendEnable		 = static_cast<VkBool32>(customize & ALPHA_BLENDING ? VK_TRUE : VK_FALSE),
+		.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+		.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+		.colorBlendOp		 = VK_BLEND_OP_ADD,
+		.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+		.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+		.alphaBlendOp		 = VK_BLEND_OP_ADD,
+		.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+						| VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
+	};
+	VkPipelineColorBlendStateCreateInfo colorBlending = {
+		.sType	= VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+		.pNext	= nullptr,
+		.flags	= 0,
+		.logicOpEnable		= VK_FALSE,
+		.logicOp			= VK_LOGIC_OP_COPY,
+		.attachmentCount	= static_cast<uint32_t>(hasColorAttachment ? 1 : 0),
+		.pAttachments		= hasColorAttachment ? &colorBlendAttachment : nullptr,
+		.blendConstants		= { 0.0f, 0.0f, 0.0f, 0.0f }
+	};
+
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
+		.sType	= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+		.pNext	= nullptr,
+		.flags	= 0,
+		.setLayoutCount	= pDescriptors ? (uint32_t) 1 : 0,
+		.pSetLayouts	= pDescriptors ? pDescriptors->getpLayout() : nullptr
+	};
+
+	call = vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullALLOC, &pipelineLayout);
+
+	if (call != VK_SUCCESS)
+		Fatal("Create Pipeline Layout FAILURE" + ErrStr(call));
+
+	VkGraphicsPipelineCreateInfo pipelineInfo = {
+		.sType	= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+		.pNext	= nullptr,
+		.flags	= 0,
+		.stageCount			 = shaderModules.NumShaderStages(),
+		.pStages			 = shaderModules.ShaderStages(),
+		.pVertexInputState	 = &vertexInputInfo,
+		.pInputAssemblyState = &inputAssembly,
+		.pTessellationState	 = nullptr,
+		.pViewportState		 = &viewportState,
+		.pRasterizationState = &rasterizer,
+		.pMultisampleState	 = &multisampling,
+		.pDepthStencilState	 = useDepthBuffer ? &depthStencil : nullptr,
+		.pColorBlendState	 = &colorBlending,
+		.pDynamicState		 = nullptr,
+		.layout				 = pipelineLayout,
+		.renderPass			 = vkRenderPass,
+		.subpass			 = 0,
+		.basePipelineHandle	 = VK_NULL_HANDLE,
+		.basePipelineIndex	 = -1
+	};
+
+	call = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1,
+									 &pipelineInfo, nullALLOC, &graphicsPipeline);
+	if (call != VK_SUCCESS)
+		Fatal("FAIL on Create Graphics Pipeline" + ErrStr(call));
+}

@@ -20,7 +20,8 @@ AddOns::AddOns(DrawableSpecifier& drawable, VulkanSetup& setup, iPlatform& abstr
 		platform(abstractPlatform)
 {
 	createVertexAndOrIndexBuffers(drawable.mesh);
-	createDescribedItems(drawable.pUBOs, drawable.textures, abstractPlatform);
+	createDescribedItems(drawable.pUBOs, drawable.textures, drawable.runtimeTextures,
+						 drawable.perFrameRuntimeTextures, abstractPlatform);
 }
 
 AddOns::~AddOns()
@@ -76,6 +77,8 @@ void AddOns::Recreate(MeshObject& meshObject)
 //	make sure each INDEX matches its "layout(binding = <INDEX>)" in your Shader...
 //																					// e.g. :
 void AddOns::createDescribedItems(vector<UBO>& UBOs, vector<TextureSpec>& textureSpecs,
+								  vector<VkDescriptorImageInfo>& runtimeTextures,
+								  vector<vector<VkDescriptorImageInfo>>& perFrameRuntimeTextures,
 								  iPlatform& platform)
 {
 	// Uniform Buffer Objects first (explicitly: the MVP UBO)
@@ -108,6 +111,17 @@ void AddOns::createDescribedItems(vector<UBO>& UBOs, vector<TextureSpec>& textur
 										// ^^^^^^ TODO: ^^^^^^^^ We don't have a mechanism (YET!) allowing an image to
 			}							//		be specified for the VERTEX STAGE, which could be helpful for something
 		}								//		like offseting vertices based on a depth map.
+	}
+
+	// Runtime textures (e.g., shadow maps) - already created, just add descriptors:
+	for (VkDescriptorImageInfo& imageInfo : runtimeTextures) {
+		described.emplace_back(imageInfo, VK_SHADER_STAGE_FRAGMENT_BIT);
+	}
+
+	// Per-frame runtime textures (e.g., shadow maps with frames-in-flight).
+	// Each texture binding has one image per swapchain frame to prevent cross-frame races.
+	for (vector<VkDescriptorImageInfo>& perFrameImageInfo : perFrameRuntimeTextures) {
+		described.emplace_back(perFrameImageInfo, VK_SHADER_STAGE_FRAGMENT_BIT);
 	}
 }
 
