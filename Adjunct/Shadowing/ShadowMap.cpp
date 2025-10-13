@@ -4,7 +4,7 @@
 //
 // Implementation of shadow mapping resources.
 //
-// Created 10/3/25 by Tadd Jensen
+// Created 3 Oct 2025 by Tadd Jensen
 //	© 0000 (uncopyrighted; use at will)
 //
 #include "ShadowMap.h"
@@ -93,8 +93,8 @@ void ShadowMap::createShadowImage()
 
 	vkBindImageMemory(vkDevice, shadowImage, shadowImageMemory, 0);
 
-	// Transition shadow map to depth attachment layout for first use
-	// Create a one-time command buffer for the layout transition
+	// Transition shadow map to depth attachment layout for first use.
+	// Create a one-time command buffer for the layout transition:
 	VkCommandBufferAllocateInfo cmdAllocInfo = {
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
 		.pNext = nullptr,
@@ -114,7 +114,7 @@ void ShadowMap::createShadowImage()
 	};
 	vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
-	// Transition from UNDEFINED to DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+	// Transition from UNDEFINED to DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
 	VkImageMemoryBarrier barrier = {
 		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
 		.pNext = nullptr,

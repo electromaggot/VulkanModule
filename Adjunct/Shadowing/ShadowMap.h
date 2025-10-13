@@ -6,7 +6,7 @@
 // Provides infrastructure for rendering scene from light's perspective to generate shadow maps.
 // Note: Does not derive from BufferBase (which is VkBuffer-specific); creates VkImage instead.
 //
-// Created 10/3/25 by Tadd Jensen
+// Created 3 Oct 2025 by Tadd Jensen
 //	© 0000 (uncopyrighted; use at will)
 //
 #ifndef ShadowMap_h

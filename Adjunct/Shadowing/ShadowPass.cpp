@@ -1,8 +1,13 @@
 //
 // ShadowPass.cpp
-// VulkanModule - Shadow Mapping Pass Management
+//	VulkanModule - Shadow Mapping Pass Management
 //
-
+// Implement command buffer recording (one) for shadow map image (multiple).
+//	See header file for details.
+//
+// Created 1 Oct 2025 by Tadd Jensen
+//  © 0000 (uncopyrighted; use at will)
+//
 #include "ShadowPass.h"
 #include "../../Setup/VulkanSetup.h"
 #include "../../Setup/VulkanConfigure.h"
@@ -59,7 +64,7 @@ void ShadowPass::recreate(uint32_t numFrames)
 	allocateCommandBuffers(numFrames);
 }
 
-void ShadowPass::recordShadowPass(std::vector<iRenderable*>& shadowRenderables, uint32_t frameIndex)
+void ShadowPass::recordShadowPass(std::vector<iRenderable*>& shadowRenderables, uint32_t frameIndex, ShadowMap& shadowMapForFrame)
 {
 	VkCommandBuffer commandBuffer = shadowCommandBuffers[frameIndex];
 
@@ -83,7 +88,7 @@ void ShadowPass::recordShadowPass(std::vector<iRenderable*>& shadowRenderables, 
 		.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
 		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-		.image = shadowMap.getImage(),
+		.image = shadowMapForFrame.getImage(),
 		.subresourceRange = {
 			.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
 			.baseMipLevel = 0,
@@ -109,11 +114,11 @@ void ShadowPass::recordShadowPass(std::vector<iRenderable*>& shadowRenderables, 
 	VkRenderPassBeginInfo renderPassInfo = {
 		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
 		.pNext = nullptr,
-		.renderPass = shadowMap.getRenderPass(),
-		.framebuffer = shadowMap.getFramebuffer(),
+		.renderPass = shadowMapForFrame.getRenderPass(),
+		.framebuffer = shadowMapForFrame.getFramebuffer(),
 		.renderArea = {
 			.offset = { 0, 0 },
-			.extent = { SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT }
+			.extent = { shadowMapForFrame.getWidth(), shadowMapForFrame.getHeight() }
 		},
 		.clearValueCount = 1,
 		.pClearValues = &clearValue
@@ -121,13 +126,9 @@ void ShadowPass::recordShadowPass(std::vector<iRenderable*>& shadowRenderables, 
 
 	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-	// Record shadow renderables
-	// TODO: Current renderables have pipelines for main render pass, not shadow render pass
-	// Need to create shadow-specific pipeline or manually bind vertex buffers
-	// For now, skip drawing - this will show if shadow map is being cleared properly
+	// Record shadow renderables (render geometry from light's perspective for depth)
 	for (iRenderable* pRenderable : shadowRenderables) {
-		// TEMPORARILY DISABLED - pipeline incompatibility
-		// pRenderable->IssueBindAndDrawCommands(commandBuffer, frameIndex);
+		pRenderable->IssueBindAndDrawCommands(commandBuffer, frameIndex);
 	}
 
 	vkCmdEndRenderPass(commandBuffer);

@@ -126,6 +126,43 @@ const bool REQUIRE_DEVICE_EXTENSION[] = {
 };
 
 
+// SHADOW MAPPING CONFIGURATION
+//
+// Shadow mapping provides realistic shadows by rendering the scene from the light's perspective.
+// Quality/performance trade-offs can be tuned via the constants below.
+//
+// NOTE: Shadow projection and camera modes are defined in Shadowing/ShadowMappingTypes.h
+//       These enums have been moved to eliminate dependencies and improve modularity.
+
+// SHADOW MAP RESOLUTION: Controls shadow detail and memory usage.
+// Higher resolution = sharper shadow edges but more GPU memory and slower rendering.
+// Lower resolution = faster rendering but blockier/pixelated shadow edges.
+// Recommended values:
+//   1024x1024 = Fast, suitable for low-end hardware (softer/blurrier shadows)
+//   2048x2048 = Balanced quality/performance (default, good for most scenes)
+//   4096x4096 = High quality, sharp shadows (slower, for high-end GPUs)
+const uint32_t SHADOW_MAP_WIDTH = 2048;
+const uint32_t SHADOW_MAP_HEIGHT = 2048;
+
+// PCF (Percentage Closer Filtering) KERNEL SIZE: Controls shadow softness.
+// PCF samples neighboring texels to create soft shadow edges (anti-aliasing for shadows).
+// Larger kernel = softer, more natural shadows but more texture samples (slower).
+// Smaller kernel = sharper, faster shadows but potentially aliased edges.
+// Kernel size = (2 * PCF_KERNEL_RADIUS + 1)²
+// Recommended values:
+//   Radius 1 = 3x3 kernel = 9 samples (fast, relatively sharp edges)
+//   Radius 2 = 5x5 kernel = 25 samples (balanced, moderate softness)
+//   Radius 3 = 7x7 kernel = 49 samples (slow, very soft/natural shadows)
+const int PCF_KERNEL_RADIUS = 1;
+
+// SHADOW BIAS: Prevents "shadow acne" (self-shadowing artifacts).
+// Shadow acne appears as dotted/striped patterns on surfaces that should be lit.
+// Too low = shadow acne artifacts (flickering dots/stripes)
+// Too high = "peter panning" (shadows detach from object bases, objects appear to float)
+// This value is tuned for typical scenes; adjust if you see artifacts
+const float SHADOW_BIAS = 0.0015f;
+
+
 // some UTILITY METHODS  (like to assist logging & debugging)
 
 #define stringAllRequiredNames(kind)							\
