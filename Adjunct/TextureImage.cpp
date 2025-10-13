@@ -158,13 +158,13 @@ void TextureImage::createSampler(TextureSpec& texSpec)
 		.addressModeU	= wrapping,
 		.addressModeV	= wrapping,
 		.addressModeW	= wrapping,
-		.mipLodBias	 = 0,
+		.mipLodBias			= RenderSettings.useMipLod ? texSpec.lodBias : 0,
 		.anisotropyEnable	= RenderSettings.useAnisotropy ? (VkBool32) VK_TRUE : VK_FALSE,
 		.maxAnisotropy		= RenderSettings.useAnisotropy ? RenderSettings.anisotropyLevel : 1,
 		.compareEnable	= VK_FALSE,
 		.compareOp		= VK_COMPARE_OP_ALWAYS,
 		.minLod		 = 0,
-		.maxLod		 = 0,
+		.maxLod		 = RenderSettings.useMipLod ? static_cast<float>(mipmaps.NumLevels() - 1) : 0,
 		.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
 		.unnormalizedCoordinates = VK_FALSE	// (i.e. 0.0 to 1.0 range vs. in pixels)
 	};
