@@ -57,12 +57,16 @@ struct iRenderableBase
 //
 struct iRenderable : iRenderableBase
 {
-	iRenderable(DrawableSpecifier& specified, VulkanSetup& vulkan, iPlatform& platform)
+	iRenderable(DrawableSpecifier& specified, VulkanSetup& vulkan, iPlatform& platform, VkRenderPass renderPass = VK_NULL_HANDLE, VkExtent2D customExtent = {0, 0})
 		:	shaderModules(	specified.pSharedShaderModules ? *specified.pSharedShaderModules
 													: * new ShaderModules(specified.shaders, vulkan.device)),
 			addOns(			* new AddOns(specified, vulkan, platform)),
 			descriptors(	* new Descriptors(addOns.described, vulkan.swapchain, vulkan.device)),
-			pipeline(		* new GraphicsPipeline(shaderModules, vulkan.renderPass, vulkan.swapchain, vulkan.device,
+			pipeline(		renderPass != VK_NULL_HANDLE
+								? * new GraphicsPipeline(shaderModules, renderPass, vulkan.swapchain, vulkan.device,
+														 &specified.mesh.vertexType, &descriptors, specified.customize, customExtent)
+								: * new GraphicsPipeline(shaderModules, vulkan.renderPass,
+												   vulkan.swapchain, vulkan.device,
 												   &specified.mesh.vertexType, &descriptors, specified.customize)),
 			vertexObject(	specified.mesh),
 			customizer(		specified.customize),
@@ -100,6 +104,20 @@ struct iRenderable : iRenderableBase
 
 	virtual iRenderable* newConcretion(CommandRecording* pRecordingMode) const = 0;
 	virtual void IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex = 0) = 0;
+
+	// Update uniform buffers for this renderable.
+	void UpdateUniformBuffers(int iNextImage)
+	{
+		for (int index = 0; index < addOns.pUniformBuffers.size(); ++index) {
+			// Skip dynamic UBOs (updated separately via DynamicUniformBuffer)
+			if (addOns.pUniformBuffers[index] == nullptr)
+				continue;
+			UniformBuffer& unibuf = *addOns.pUniformBuffers[index];
+			void* pUboData = addOns.ubos[index].pBytes;
+			size_t numBytes = addOns.ubos[index].byteSize;
+			unibuf.Update(iNextImage, pUboData, numBytes);
+		}
+	}
 
 	virtual bool Update(GameClock& time)
 	{
