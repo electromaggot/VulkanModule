@@ -70,6 +70,15 @@ struct UBO_Light {
 	alignas(4)		float _padding[3];		// padding for alignment (12 bytes as 3 floats)
 };
 
+// This UBO passes shadow mapping transformation matrix to shaders.
+// The light space matrix transforms vertices from world space to light's view/projection space
+// for shadow map generation and sampling.
+// Intended for vertex stage (transforms vertices into light space).
+//
+struct UBO_Shadow {
+	alignas(16)		mat4 lightSpaceMatrix;	// Combined light view * projection matrix
+};
+
 //----------------------------------------------------------------------------
 
 // Forward declaration
@@ -96,6 +105,9 @@ struct UBO {
 
 	UBO(UBO_Light& light, DestinationStage dstage = DESTINATION_FRAGMENT_STAGE)
 		:	byteSize(sizeof(UBO_Light)), pBytes(&light), destinationStage(dstage), isDynamic(false), pDynamicUBO(nullptr)	{ }
+
+	UBO(UBO_Shadow& shadow, DestinationStage dstage = DESTINATION_VERTEX_STAGE)
+		:	byteSize(sizeof(UBO_Shadow)), pBytes(&shadow), destinationStage(dstage), isDynamic(false), pDynamicUBO(nullptr)	{ }
 
 	// Constructor for dynamic uniform buffer
 	UBO(DynamicUniformBuffer* dynUBO, DestinationStage dstage = DESTINATION_VERTEX_STAGE)
