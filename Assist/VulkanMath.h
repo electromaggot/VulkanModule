@@ -29,7 +29,7 @@ enum CoordinateSystem {
 	//#define GLM_FORCE_LEFT_HANDED			// See note at file's end for why this is now excluded...
 	#define GLM_FORCE_RADIANS
 	#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
-	//#define GLM_FORCE_DEPTH_ZERO_TO_ONE	//	...and this too, for now.
+	#define GLM_FORCE_DEPTH_ZERO_TO_ONE		// Vulkan uses [0,1] depth range (OpenGL uses [-1,1])
 	#include <glm/glm.hpp>
 	#include <glm/gtc/matrix_transform.hpp>
 
