@@ -102,9 +102,13 @@ VulkanModule is a reusable foundation for Vulkan graphics projects, providing ob
 **Adjunct/** - Higher-level abstractions:
 - `Renderables/` - Base classes for drawable objects (FixedRenderable, DynamicRenderable)
   - `ShaderCache` - Shared shader management with reference counting to eliminate redundant shader loading
+  - `iRenderable::UpdateUniformBuffers()` - Public method for uploading UBO data to GPU
 - `VertexTypes/` - Various vertex format definitions
 - `TextureImage`, `UniformBuffer` - Resource management
 - `DynamicUniformBuffer` - Efficient per-object uniform data using dynamic offsets for rendering thousands of objects
+- `Shadowing/` - Complete shadow mapping infrastructure
+  - `ShadowMap` - Shadow map image, render pass, framebuffer, and sampler
+  - `ShadowPass` - Shadow pass command buffer recording and management
 
 **Platform/** - Platform abstraction layer:
 - `OSAbstraction/PlatformSDL` - SDL2 window/input handling (primary platform)
@@ -251,3 +255,202 @@ bool fpsUpdated = gameClock.wasFPSUpdated();    // True if FPS recalculated this
 - vsync disabled at Metal layer when possible
 - Async queue submits enabled
 - Note: macOS compositor may still enforce vsync on external displays
+
+### Shadow Mapping
+
+VulkanModule provides complete shadow mapping infrastructure for realistic shadow rendering. The system supports both orthographic (directional/sun) and perspective (point light) projections, with flexible camera orientation modes and automatic resolution scaling.
+
+**Core Components:**
+
+**ShadowSystem** (`Adjunct/Shadowing/ShadowSystem.h`) - **Primary Interface**
+- Unified management of shadow mapping resources and rendering
+- **Zero VRAM allocation** when `SHADOW_TECHNIQUE_NONE` is specified
+- Encapsulates multiple `ShadowMap` instances (one per swapchain image) and `ShadowPass`
+- Single, clean API for initialization and per-frame recording
+- Automatic cross-frame synchronization support
+- Methods:
+  - `recordFrame()` - Returns true if shadows were recorded, false if disabled
+  - `isEnabled()` - Check if shadow system is active
+  - `getPerFrameDescriptorInfo()` - Get shadow map descriptors for all frames
+  - `getRenderPass()`, `getExtent()`, `getCommandBuffer()` - Resource accessors
+
+**ShadowMap** (`Adjunct/Shadowing/ShadowMap.h`)
+- Encapsulates all shadow map resources:
+  - Depth-only image with configurable resolution (default 2048x2048)
+  - Image view, render pass, and framebuffer
+  - Depth sampler with PCF (Percentage Closer Filtering)
+- Supports `Recreate()` for window resize handling
+- `RecreateWithNewResolution()` for dynamic resolution changes
+- RAII resource management
+
+**ShadowPass** (`Adjunct/Shadowing/ShadowPass.h`)
+- Manages shadow pass command buffer recording
+- Depth-only rendering from light's perspective
+- Proper layout transitions and synchronization
+- Records all shadow-casting renderables
+- **Critical**: Uses actual shadow map dimensions via `shadowMap.getWidth()/getHeight()` (not hardcoded constants)
+
+**ShadowProjection** (`Adjunct/Shadowing/ShadowProjection.h`)
+- Reusable utility for calculating light-space projection matrices
+- **Projection modes**:
+  - `SHADOW_ORTHOGRAPHIC`: Parallel light rays (sun/directional)
+  - `SHADOW_PERSPECTIVE`: Radial light rays (point light)
+- **Camera orientation modes** (`ShadowCameraMode`):
+  - `SHADOW_CAMERA_STRAIGHT_DOWN`: Points straight down (-Y axis), prevents clipping with wide FOV
+  - `SHADOW_CAMERA_CUSTOM_DIRECTION`: Uses custom direction vector for spotlights
+  - `SHADOW_CAMERA_LOOK_AT_ORIGIN`: Looks from light toward scene center
+- **Dynamic resolution calculation**: `calculateRecommendedResolution()` scales shadow map based on FOV and camera mode
+- Handles gimbal lock avoidance automatically
+- Configurable ortho size, FOV, near/far planes
+
+**Usage Example:**
+
+```cpp
+#include "Shadowing/ShadowMap.h"
+#include "Shadowing/ShadowPass.h"
+#include "Shadowing/ShadowProjection.h"
+
+// 1. Calculate optimal shadow map resolution based on FOV and camera mode
+float shadowFOV = glm::radians(170.0f);  // Wide FOV for maximum coverage
+ShadowCameraMode cameraMode = SHADOW_CAMERA_STRAIGHT_DOWN;
+uint32_t optimalResolution = ShadowProjection::calculateRecommendedResolution(
+    shadowFOV, cameraMode, SHADOW_PERSPECTIVE);
+// Returns 4096x4096 for 170° FOV with STRAIGHT_DOWN mode
+
+// 2. Create shadow map with dynamic resolution
+ShadowMap* shadowMap = new ShadowMap(vulkan.device, commandPool,
+                                      optimalResolution, optimalResolution);
+ShadowPass* shadowPass = new ShadowPass(vulkan, *shadowMap);
+
+// 3. Each frame, calculate light-space matrix with camera mode
+vec3 lightPos = light.getPosition();
+vec3 sceneCenter = vec3(0.0f, 0.0f, 0.0f);
+float fov = glm::radians(170.0f);
+float farPlane = 60.0f;
+
+shadowUBO.lightSpaceMatrix = ShadowProjection::calculateLightSpaceMatrix(
+    lightPos, sceneCenter, SHADOW_PERSPECTIVE,
+    SHADOW_CAMERA_STRAIGHT_DOWN,         // Camera orientation
+    glm::vec3(0.0f, -1.0f, 0.0f),       // customDirection (for CUSTOM_DIRECTION)
+    15.0f,                               // orthoSize (for ORTHOGRAPHIC)
+    fov,                                 // Field of view
+    0.1f,                                // nearPlane
+    farPlane);                           // farPlane
+
+// 4. Record shadow pass
+shadowPass->recordShadowPass(shadowRenderables, frameIndex);
+
+// 5. Shadow map sampler automatically bound at descriptor binding 4
+// Main pass shaders sample shadow map for shadow calculations
+```
+
+**Configuration (VulkanConfigure.h):**
+
+```cpp
+// Shadow projection mode
+enum ShadowProjectionMode {
+    SHADOW_ORTHOGRAPHIC,    // Directional/sun light (parallel rays)
+    SHADOW_PERSPECTIVE      // Point light source (radial rays)
+};
+
+// Shadow camera orientation mode
+enum ShadowCameraMode {
+    SHADOW_CAMERA_STRAIGHT_DOWN,      // Points down -Y axis (default, prevents clipping)
+    SHADOW_CAMERA_CUSTOM_DIRECTION,   // Uses custom direction vector
+    SHADOW_CAMERA_LOOK_AT_ORIGIN      // Looks from light toward scene center
+};
+
+// Quality/performance tunables (defaults)
+const uint32_t SHADOW_MAP_WIDTH = 2048;   // Default resolution (scales with FOV)
+const uint32_t SHADOW_MAP_HEIGHT = 2048;
+const int PCF_KERNEL_RADIUS = 1;          // Shadow softness (1=3x3, 2=5x5, 3=7x7)
+const float SHADOW_BIAS = 0.0015f;        // Prevents shadow acne
+```
+
+**Shadow Projection Modes:**
+
+- **SHADOW_ORTHOGRAPHIC**:
+  - Parallel light rays across entire scene
+  - Uniform shadow quality regardless of distance
+  - Best for outdoor scenes with sun/moon lighting
+  - Uses `glm::ortho()` projection
+
+- **SHADOW_PERSPECTIVE**:
+  - Radial light rays from light position
+  - Matches Phong lighting for accurate shadows
+  - Shadow detail decreases with distance
+  - Best for indoor scenes with point lights
+  - Uses `glm::perspective()` with configurable FOV (default 90°, up to 170° for wide coverage)
+
+**Shadow Camera Orientation Modes:**
+
+- **SHADOW_CAMERA_STRAIGHT_DOWN** (default):
+  - Camera points straight down (-Y axis)
+  - Prevents shadow clipping at light's extreme positions
+  - Best for overhead lighting with wide FOV
+  - Natural for scenes with ground planes
+
+- **SHADOW_CAMERA_CUSTOM_DIRECTION**:
+  - Camera uses custom direction vector
+  - Useful for spotlights or directed lighting effects
+  - Specify direction via `customDirection` parameter
+
+- **SHADOW_CAMERA_LOOK_AT_ORIGIN**:
+  - Camera looks from light toward scene center
+  - Good for focused lighting on central scene elements
+  - May clip shadows at extremes with wide FOV
+
+**Dynamic Resolution Scaling:**
+
+`ShadowProjection::calculateRecommendedResolution()` automatically selects optimal shadow map resolution based on:
+- **FOV**: Wider FOV requires higher resolution to prevent pixelation
+- **Camera mode**: STRAIGHT_DOWN and CUSTOM_DIRECTION modes benefit from higher resolution
+- **Projection mode**: Perspective typically needs higher resolution than orthographic
+
+Resolution guidelines (for STRAIGHT_DOWN/CUSTOM_DIRECTION):
+- FOV 150°+: 4096x4096 (4K shadow map)
+- FOV 120-150°: 3072x3072 (3K shadow map)
+- FOV 90-120°: 2048x2048 (2K shadow map, default)
+- FOV < 90°: 2048x2048
+
+**Quality Tuning:**
+
+Shadow Map Resolution:
+- 1024x1024: Fast, softer shadows (low-end hardware)
+- 2048x2048: Balanced (default for narrow FOV)
+- 3072x3072: High quality (wide FOV 120-150°)
+- 4096x4096: Very high quality (wide FOV 150°+, high-end hardware)
+- Use `calculateRecommendedResolution()` for automatic selection
+- Override via `ShadowMap` constructor or `RecreateWithNewResolution()`
+
+PCF Kernel Radius:
+- 1 (3x3): 9 samples, fast, sharper edges
+- 2 (5x5): 25 samples, balanced
+- 3 (7x7): 49 samples, slow, very soft shadows
+
+Shadow Bias:
+- Too low: "shadow acne" (dotted artifacts)
+- Too high: "peter panning" (detached shadows)
+- Default 0.0015f suitable for most scenes
+
+FOV Selection:
+- 90° or less: Standard, good quality with 2K shadow map
+- 90-120°: Standard-wide, may need 2-3K shadow map
+- 120-150°: Wide, requires 3K shadow map to prevent pixelation
+- 150°+: Very wide, requires 4K shadow map for sharp shadows
+- Wide FOV with STRAIGHT_DOWN mode prevents shadow clipping
+
+**UBO Bindings:**
+Applications using shadow mapping must follow these descriptor bindings:
+- Binding 0: Camera MVP matrices
+- Binding 1: Dynamic UBO (per-object transforms)
+- Binding 2: Lighting UBO
+- Binding 3: Shadow UBO (light-space matrix)
+- Binding 4: Shadow map sampler (texture)
+
+**Implementation Details:**
+- Uses `GLM_FORCE_DEPTH_ZERO_TO_ONE` for [0,1] depth range
+- Two-pass rendering: shadow pass → main pass
+- PCF sampling in fragment shader for soft shadows
+- Adaptive bias based on surface angle to light
+- Shadows affect diffuse/specular only, not ambient
