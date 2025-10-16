@@ -28,7 +28,8 @@
 enum FilterMode {
 	LINEAR,
 	NEAREST,
-	MIPMAP
+	MIPMAP,
+	MIPMAP_SHARP	// NEAREST mag (sharp close-up) + LINEAR min + mipmaps (smooth distance)
 };
 
 enum WrapMode {

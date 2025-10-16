@@ -90,7 +90,7 @@ void TextureImage::create(TextureSpec& texSpec, GraphicsDevice& graphicsDevice, 
 
 	pStagingBuffer->CopyOutToTextureImage();
 
-	if (texSpec.filterMode == MIPMAP)
+	if (texSpec.filterMode == MIPMAP || texSpec.filterMode == MIPMAP_SHARP)
 		mipmaps.Generate(image, format, width, height);
 	else
 		transitionImageLayout(image, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,	// from
@@ -110,7 +110,7 @@ void TextureImage::createBlank(ImageInfo& params, GraphicsDevice& graphicsDevice
 
 	pStagingBuffer->CreateAndMapBuffer(params.numBytes);
 
-	// If pixel data is provided, copy it; otherwise create blank (zeroed) texture
+	// If pixel data is provided, copy it; otherwise create blank (zeroed) texture.
 	if (params.pPixels) {
 		memcpy(pStagingBuffer->pBytes(), params.pPixels, static_cast<size_t>(params.numBytes));
 	} else {
@@ -139,6 +139,7 @@ void TextureImage::createBlank(ImageInfo& params, GraphicsDevice& graphicsDevice
 // filterMode NEAREST is a special case for either performance testing or an instance where
 //	render quality is unimportant.  When set, it is applied to mipmaps, but those would have
 //	to be enabled elsewhere, apart from the general simplification offered by TextureSpec.
+// filterMode MIPMAP_SHARP uses NEAREST for mag (sharp close-up) and LINEAR for min (smooth distance).
 //
 void TextureImage::createSampler(TextureSpec& texSpec)
 {
@@ -146,14 +147,23 @@ void TextureImage::createSampler(TextureSpec& texSpec)
 								  : texSpec.wrapMode == MIRROR ? VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT
 								  : VK_SAMPLER_ADDRESS_MODE_REPEAT;
 
-	VkFilter filtering = texSpec.filterMode != NEAREST ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;	// <-- zooms to blocky pixels!
-																								//	   (or shrinks to sloppy pixels!)
+	// Determine mag and min filters based on filter mode:
+	VkFilter magFilter, minFilter;
+	if (texSpec.filterMode == MIPMAP_SHARP) {
+		magFilter = VK_FILTER_NEAREST;	// Sharp close-up for pixel-art textures.
+		minFilter = VK_FILTER_LINEAR;	// Smooth minification with mipmaps (i.e. somewhat blurry).
+	} else {
+		VkFilter filtering = texSpec.filterMode != NEAREST ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;	// <-- zooms to blocky pixels!
+		magFilter = filtering;																		// (or shrinks to sloppy pixels!)
+		minFilter = filtering;
+	}
+
 	VkSamplerCreateInfo samplerInfo = {
 		.sType	= VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
 		.pNext	= nullptr,
 		.flags	= 0,
-		.magFilter	 = filtering,
-		.minFilter	 = filtering,
+		.magFilter	 = magFilter,
+		.minFilter	 = minFilter,
 		.mipmapMode  = texSpec.filterMode != NEAREST ? VK_SAMPLER_MIPMAP_MODE_LINEAR : VK_SAMPLER_MIPMAP_MODE_NEAREST,
 		.addressModeU	= wrapping,
 		.addressModeV	= wrapping,
