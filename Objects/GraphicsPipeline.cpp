@@ -124,7 +124,7 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.pNext					= nullptr,
 		.flags					= 0,
 		.depthTestEnable		= VK_TRUE,
-		.depthWriteEnable		= VK_TRUE,
+		.depthWriteEnable		= static_cast<VkBool32>(customize & ALPHA_BLENDING ? VK_FALSE : VK_TRUE),  // Disable depth writes for transparent objects
 		.depthCompareOp			= VK_COMPARE_OP_LESS,
 		.depthBoundsTestEnable	= VK_FALSE,
 		.stencilTestEnable		= VK_FALSE,
@@ -298,7 +298,7 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.pNext					= nullptr,
 		.flags					= 0,
 		.depthTestEnable		= VK_TRUE,
-		.depthWriteEnable		= VK_TRUE,
+		.depthWriteEnable		= static_cast<VkBool32>(customize & ALPHA_BLENDING ? VK_FALSE : VK_TRUE),  // Disable depth writes for transparent objects
 		.depthCompareOp			= VK_COMPARE_OP_LESS,
 		.depthBoundsTestEnable	= VK_FALSE,
 		.stencilTestEnable		= VK_FALSE
