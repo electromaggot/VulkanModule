@@ -454,3 +454,104 @@ Applications using shadow mapping must follow these descriptor bindings:
 - PCF sampling in fragment shader for soft shadows
 - Adaptive bias based on surface angle to light
 - Shadows affect diffuse/specular only, not ambient
+
+### Rendering Customizations (Customizer Flags)
+
+VulkanModule provides bitfield flags (`Adjunct/Renderables/Customizer.h`) for per-renderable customization of the graphics pipeline. Applications can extend this enum with additional flags.
+
+**Built-in Flags:**
+
+```cpp
+enum Customizer
+{
+    NONE                = 0,
+    WIREFRAME           = 0b00000001,  // VK_POLYGON_MODE_LINE instead of _FILL
+    SHOW_BACKFACES      = 0b00000010,  // VK_CULL_MODE_NONE instead of _BACK_BIT
+    FRONT_CLOCKWISE     = 0b00000100,  // VK_FRONT_FACE_CLOCKWISE (Vulkan native)
+    MODELED_FOR_VULKAN  = 0b00001000,  // Model uses Vulkan conventions (vs OpenGL)
+    ALPHA_BLENDING      = 0b00010000,  // Enable alpha blending + disable depth writes
+    LINE_TOPOLOGY       = 0b00100000   // VK_PRIMITIVE_TOPOLOGY_LINE_LIST
+};
+```
+
+**How To Use:**
+
+```cpp
+DrawableSpecifier* drawable = object->createDrawable();
+
+// Single flag
+drawable->customize = SHOW_BACKFACES;
+
+// Multiple flags (bitwise OR)
+drawable->customize = static_cast<Customizer>(LINE_TOPOLOGY | SHOW_BACKFACES | ALPHA_BLENDING);
+
+// Create renderable
+FixedRenderable renderable(*drawable, vulkan, platform);
+```
+
+**Flag Details:**
+
+- **WIREFRAME**: Renders triangle edges as lines (debug/visualization)
+  - Sets `VK_POLYGON_MODE_LINE` in rasterization state
+  - Does NOT affect primitive topology (still triangle list)
+
+- **SHOW_BACKFACES**: Disables backface culling
+  - Sets `VK_CULL_MODE_NONE` in rasterization state
+  - Essential for transparent geometry where both sides are visible
+  - Useful for line rendering to show away-facing edges
+
+- **FRONT_CLOCKWISE**: Uses clockwise winding for front faces
+  - Sets `VK_FRONT_FACE_CLOCKWISE`
+  - Vulkan native (OpenGL uses counter-clockwise by default)
+  - Use `MODELED_FOR_VULKAN` for models created with Vulkan conventions
+
+- **ALPHA_BLENDING**: Enables alpha blending and disables depth writes
+  - Configures blend state for transparency (src_alpha, one_minus_src_alpha)
+  - Disables depth writes (allows see-through rendering)
+  - Required for billboards, particles, and transparent geometry
+
+- **LINE_TOPOLOGY**: Renders as line list instead of triangles
+  - Sets `VK_PRIMITIVE_TOPOLOGY_LINE_LIST` in input assembly
+  - Indices interpreted as pairs: (v0,v1), (v2,v3), etc.
+  - Perfect for glowing edges, wireframe overlays, debug visualization
+  - Typically combined with `SHOW_BACKFACES` and `ALPHA_BLENDING`
+
+**Extending Customizer:**
+
+Applications can extend the enum with additional flags (use bits 0b01000000 and higher):
+
+```cpp
+// In application-level Customizer.h override
+enum Customizer
+{
+    // ... built-in flags ...
+    LINE_TOPOLOGY       = 0b00100000,
+    MY_CUSTOM_FLAG      = 0b01000000,  // Application-specific
+    ANOTHER_FLAG        = 0b10000000
+};
+```
+
+**Pipeline Configuration:**
+
+The `GraphicsPipeline` class automatically applies customizations during pipeline creation:
+
+- Rasterization state: `polygonMode`, `cullMode`, `frontFace`
+- Input assembly: `topology` (triangle list vs line list)
+- Depth/stencil state: `depthWriteEnable` (disabled with ALPHA_BLENDING)
+- Color blend state: Blend equation (configured with ALPHA_BLENDING)
+
+**Common Combinations:**
+
+```cpp
+// Transparent geometry (windows, glass)
+drawable->customize = static_cast<Customizer>(SHOW_BACKFACES | ALPHA_BLENDING);
+
+// Glowing line edges (TRON-style)
+drawable->customize = static_cast<Customizer>(LINE_TOPOLOGY | SHOW_BACKFACES | ALPHA_BLENDING);
+
+// Debug wireframe overlay
+drawable->customize = WIREFRAME;
+
+// Vulkan-native model
+drawable->customize = static_cast<Customizer>(MODELED_FOR_VULKAN | FRONT_CLOCKWISE);
+```

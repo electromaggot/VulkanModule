@@ -72,7 +72,8 @@ struct iRenderable : iRenderableBase
 			customizer(		specified.customize),
 			name(			specified.name),
 			updateMethod(	specified.updateMethod),
-			ownsShaderModules(!specified.pSharedShaderModules)
+			ownsShaderModules(!specified.pSharedShaderModules),
+			pass(			specified.pass)
 	{
 		isSelfManaged = false;
 	}
@@ -100,6 +101,7 @@ struct iRenderable : iRenderableBase
 	string&				name;
 	bool				(*updateMethod)(GameClock&);
 	bool				ownsShaderModules;	// true if we created it, false if shared
+	const char*			pass;				// Render pass type (nullptr for primary, or "transparency"/"lines"/"shadow")
 
 
 	virtual iRenderable* newConcretion(CommandRecording* pRecordingMode) const = 0;
@@ -212,7 +214,11 @@ public:
 				 && recordingMode != ON_CHANGE_FLAGGED);  // <-- always gets its own exclusive CommandBuffer
 
 		recordables[iRecordable].pRenderables.push_back(pRenderable);
-		Log(RAW, "done: %s SPAWNED.", pRenderable->name.c_str());
+		if (pRenderable->pass == nullptr) {
+			Log(RAW, "done: %s SPAWNED.", pRenderable->name.c_str());
+		} else {
+			Log(RAW, "done: %s BOUND.", pRenderable->name.c_str());
+		}
 	}
 
 

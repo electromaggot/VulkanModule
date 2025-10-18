@@ -92,6 +92,13 @@ Application-focused components for content creation:
 - **`DynamicRenderable`** - Mutable geometry supporting real-time updates.
 - **`MeshObject`** - 3D model representation with material support.
 - **`DrawableSpecifier`** - Rendering configuration and state.
+- **`Customizer`** - Bitfield flags for per-renderable pipeline customization:
+  - `WIREFRAME` - Polygon line mode for debug visualization.
+  - `SHOW_BACKFACES` - Disable backface culling for transparent geometry.
+  - `FRONT_CLOCKWISE` - Vulkan-native clockwise winding.
+  - `ALPHA_BLENDING` - Enable transparency with depth write disable.
+  - `LINE_TOPOLOGY` - Render as line list instead of triangles (perfect for glowing edges, wireframe overlays).
+  - Extensible for application-specific rendering modes.
 
 #### Vertex Pipeline
 - **`VertexAbstract`** - Base vertex interface with attribute binding.
@@ -173,6 +180,13 @@ This single initialization replaces hundreds of lines of typical Vulkan setup co
 ________________________________
 
 ***DOCUMENT REVISIONS***
+
+**Latest Updates (2025):**
+- Added **Customizer** bitfield flags system documentation for per-renderable pipeline customization.
+- Documented `LINE_TOPOLOGY` flag for line list rendering (glowing edges, wireframe overlays).
+- Enhanced transparency support documentation (`SHOW_BACKFACES`, `ALPHA_BLENDING`).
+
+**Previous Enhancements:**
 
 Added to TECHNICAL DETAILS section: comprehensive architectural insights and
   detailed component descriptions. The updated documentation now provides:
