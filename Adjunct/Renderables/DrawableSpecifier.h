@@ -32,6 +32,7 @@ public:
 	Customizer			customize = NONE;
 	bool				(*updateMethod)(GameClock&) = nullptr;
 	ShaderModules*		pSharedShaderModules = nullptr;  // Optional: use cached shared shaders
+	const char*			pass = nullptr;  // Render pass type (nullptr for primary spawn, "transparency"/"lines"/"shadow" for subsequent passes)
 };
 
 
@@ -40,10 +41,15 @@ public:
 
 class DrawableSpecifier : public DrawableProperties {
 public:
-	DrawableSpecifier(MeshObject& refVtxObj, const char* drawbjectName)
+	DrawableSpecifier(MeshObject& refVtxObj, const char* drawbjectName, const char* passType = nullptr)
 		:	DrawableProperties { refVtxObj, drawbjectName }
 	{		// other members, all vectors, should automatically construct empty
-		Log(RAW, "SPAWN %s...", drawbjectName);
+		pass = passType;  // Store pass type for later reference
+		if (pass == nullptr) {
+			Log(RAW, "SPAWN %s...", drawbjectName);
+		} else {
+			Log(RAW, " BIND %s %s...", drawbjectName, pass);
+		}
 	}
 
 	DrawableSpecifier(DrawableProperties& refProps)

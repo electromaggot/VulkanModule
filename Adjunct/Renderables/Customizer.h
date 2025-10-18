@@ -23,7 +23,8 @@ enum Customizer
 	SHOW_BACKFACES		= 0b00000010,	// override default: VK_CULL_MODE_BACK_BIT with _NONE
 	FRONT_CLOCKWISE		= 0b00000100,	//		   i.e. NOT: VK_FRONT_FACE_COUNTER_CLOCKWISE
 	MODELED_FOR_VULKAN	= 0b00001000,	// versus default, model created for OpenGL + Right-Handed
-	ALPHA_BLENDING		= 0b00010000	// enable alpha blending for transparency (billboards, particles, etc.)
+	ALPHA_BLENDING		= 0b00010000,	// enable alpha blending for transparency (billboards, particles, etc.)
+	LINE_TOPOLOGY		= 0b00100000	// use VK_PRIMITIVE_TOPOLOGY_LINE_LIST instead of TRIANGLE_LIST
 };
 
 inline Customizer operator | (Customizer left, Customizer right)
