@@ -249,6 +249,11 @@ bool fpsUpdated = gameClock.wasFPSUpdated();    // True if FPS recalculated this
   - Monitor index and name
   - Resolution and refresh rate
   - Performance hints for built-in vs external displays
+- `IsEventQUIT()` - Application quit detection
+  - **Shift+ESC** - Quit application (requires modifier to prevent accidental quits)
+  - **SDL_QUIT** - Window manager quit event
+  - **Window close button** - User closes window
+  - Note: ESC alone reserved for canceling edit operations in editor mode
 
 **macOS-Specific:**
 - MoltenVK configuration for maximum performance

@@ -550,8 +550,12 @@ void PlatformSDL::process(SDL_WindowEvent& windowEvent)
 
 bool PlatformSDL::IsEventQUIT()
 {
-	return (event.type == SDL_QUIT
-		|| (event.type == SDL_KEYUP && event.key.keysym.sym == SDLK_ESCAPE)
+	// Quit on: SDL_QUIT, Shift+ESC, or window close
+	// (ESC alone is reserved for canceling operations, e.g. edit operation in editor mode.)
+	bool isShiftEscape = ( event.type == SDL_KEYUP && event.key.keysym.sym == SDLK_ESCAPE
+						&& (event.key.keysym.mod & (KMOD_LSHIFT | KMOD_RSHIFT)) );
+
+	return (event.type == SDL_QUIT || isShiftEscape
 		|| (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE));
 }
 
