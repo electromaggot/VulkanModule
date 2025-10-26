@@ -51,6 +51,7 @@ public:
 	static string ModelFileFullPath(const char* fileName);
 	static string ModelFileFullPath(const string& fileName);
 	static string FontFileFullPath(StrPtr fileName);
+	static string TerrainFileFullPath(StrPtr fileName);
 
 	vector<char> ReadShaderFile(const string& shaderFilename);
 	vector<char> ReadTextureFile(const string& imageFilename);
