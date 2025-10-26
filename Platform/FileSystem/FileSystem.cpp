@@ -22,6 +22,8 @@ const StrPtr MODEL_SUBDIRECTORY = "assets/models/";
 
 const StrPtr FONT_SUBDIRECTORY = "assets/fonts/";
 
+const StrPtr TERRAIN_SUBDIRECTORY = "assets/terrains/";
+
 
 // Directory hierarchy project-specific conventions
 
@@ -48,6 +50,11 @@ string FileSystem::ModelFileFullPath(const string& fileName)
 string FileSystem::FontFileFullPath(StrPtr fileName)
 {
 	return ExeAccompaniedFullPath(fileName, FONT_SUBDIRECTORY);
+}
+
+string FileSystem::TerrainFileFullPath(StrPtr fileName)
+{
+	return ExeAccompaniedFullPath(fileName, TERRAIN_SUBDIRECTORY);
 }
 
 
