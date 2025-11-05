@@ -9,10 +9,11 @@
 //  © 0000 (uncopyrighted; use at will)
 //
 #include "ShadowPass.h"
-#include "../../Setup/VulkanSetup.h"
-#include "../../Setup/VulkanConfigure.h"
-#include "../Renderables/iRenderable.h"
-#include "../../Platform/Logger/Logging.h"
+#include "VulkanSetup.h"
+#include "VulkanConfigure.h"
+#include "iRenderable.h"
+#include "Logging.h"
+
 
 ShadowPass::ShadowPass(VulkanSetup& vulkan, ShadowMap& shadowMap)
 	: vulkan(vulkan)
@@ -114,7 +115,7 @@ void ShadowPass::recordShadowPass(std::vector<iRenderable*>& shadowRenderables, 
 	VkRenderPassBeginInfo renderPassInfo = {
 		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
 		.pNext = nullptr,
-		.renderPass = shadowMapForFrame.getRenderPass(),
+		.renderPass = shadowMapForFrame.getVkRenderPass(),
 		.framebuffer = shadowMapForFrame.getFramebuffer(),
 		.renderArea = {
 			.offset = { 0, 0 },

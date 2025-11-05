@@ -10,11 +10,12 @@
 #ifndef RenderPass_h
 #define RenderPass_h
 
+#include "iRenderPass.h"
 #include "GraphicsDevice.h"
 #include "Swapchain.h"
 
 
-class RenderPass
+class RenderPass : public iRenderPass
 {
 		// XSTRUCT
 public:
@@ -25,17 +26,25 @@ public:
 private:
 	VkRenderPass renderPass;
 
-	VkDevice&	 device;		// Save to destruct as constructed
+	GraphicsDevice&	 device;		// Save to destruct as constructed.
 
 		// METHODS
 private:
+	void	create();
 	void	create(VkFormat imageFormat, VkFormat depthFormat);
+	void	destroy();
+
+public:
+	void	Recreate() override;
 
 		// getters
-public:
-	VkRenderPass& getVkRenderPass()		{ return renderPass; }
+	VkRenderPass& getVkRenderPass() override	{ return renderPass; }
 
-	bool	isDepthBufferUsed = false;	// treated as read-only (i.e.
-};										//	set then not re-referenced)
+	bool	hasColorAttachment() override		{ return true; }
+
+	bool	isDepthBufferUsed() override		{ return useDepthBuffer; }
+
+	bool	useDepthBuffer = false;	// treated as read-only (i.e.
+};									//	set then not re-referenced)
 
 #endif // RenderPass_h

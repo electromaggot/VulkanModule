@@ -15,17 +15,14 @@
 
 
 ShadowSystem::ShadowSystem(VulkanSetup& vulkan, uint32_t numFrames,
-						   ShadowTechnique tech,
-						   uint32_t resolution,
-						   ShadowProjectionMode projMode,
-						   ShadowCameraMode camMode)
-	: technique(tech)
-	, projectionMode(projMode)
-	, cameraMode(camMode)
-	, shadowPass(nullptr)
+						   ShadowTechnique tech, uint32_t resolution,
+						   ShadowProjectionMode projMode, ShadowCameraMode camMode)
+	:	technique(tech)
+		, projectionMode(projMode)
+		, cameraMode(camMode)
+		, shadowPass(nullptr)
 {
-	if (technique == SHADOW_TECHNIQUE_NONE) {
-		// No resources allocated - zero VRAM cost.
+	if (technique == SHADOW_TECHNIQUE_NONE) {	// No resources allocated - zero VRAM cost.
 		Log(NOTE, "ShadowSystem: Shadows DISABLED (zero VRAM allocation)");
 		return;
 	}
@@ -122,13 +119,22 @@ vector<VkDescriptorImageInfo> ShadowSystem::getPerFrameDescriptorInfo() const
 	return descriptors;
 }
 
-VkRenderPass ShadowSystem::getRenderPass() const
+iRenderPass* ShadowSystem::getpRenderPass() const
+{
+	if (technique == SHADOW_TECHNIQUE_NONE || shadowMaps.empty()) {
+		return nullptr;
+	}
+	// All shadow maps share the same render pass:
+	return shadowMaps[0]->getpRenderPass();
+}
+
+VkRenderPass ShadowSystem::getVkRenderPass() const
 {
 	if (technique == SHADOW_TECHNIQUE_NONE || shadowMaps.empty()) {
 		return VK_NULL_HANDLE;
 	}
 	// All shadow maps share the same render pass:
-	return shadowMaps[0]->getRenderPass();
+	return shadowMaps[0]->getVkRenderPass();
 }
 
 VkExtent2D ShadowSystem::getExtent() const

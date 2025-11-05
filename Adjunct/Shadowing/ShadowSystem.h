@@ -15,6 +15,7 @@
 #include "vulkan/vulkan.h"
 #include "glm/glm.hpp"
 #include "ShadowMappingTypes.h"  // Shadow mapping type definitions
+#include "iRenderPass.h"
 
 class VulkanSetup;
 struct iRenderable;  // Changed from 'class' to 'struct' to match definition.
@@ -31,8 +32,7 @@ public:
 	// Constructor: Creates shadow resources based on technique.
 	// If technique is NONE, allocates ZERO resources (no VRAM cost).
 	ShadowSystem(VulkanSetup& vulkan, uint32_t numFrames,
-				 ShadowTechnique technique,
-				 uint32_t resolution = 2048,
+				 ShadowTechnique technique, uint32_t resolution = 2048,
 				 ShadowProjectionMode projMode = SHADOW_PERSPECTIVE,
 				 ShadowCameraMode camMode = SHADOW_CAMERA_STRAIGHT_DOWN);
 	~ShadowSystem();
@@ -49,8 +49,9 @@ public:
 	VkImageView getShadowMapView(uint32_t frameIndex) const;
 	VkSampler getShadowMapSampler() const;
 	VkCommandBuffer getCommandBuffer(uint32_t frameIndex) const;
-	VkRenderPass getRenderPass() const;	// Returns shadow map render pass (VK_NULL_HANDLE if disabled).
-	VkExtent2D getExtent() const;		// Returns shadow map extent (0x0 if disabled).
+	iRenderPass* getpRenderPass() const;
+	VkRenderPass getVkRenderPass() const;	// Returns shadow map render pass (VK_NULL_HANDLE if disabled).
+	VkExtent2D getExtent() const;			// Returns shadow map extent (0x0 if disabled).
 
 	// Get per-frame descriptor info for all shadow maps (for descriptor set creation).
 	// Returns empty vector if shadows disabled.
