@@ -9,9 +9,6 @@
 //
 #include "GraphicsPipeline.h"
 
-const bool INVERT_Z = true;	// Temporary, will replace with Config system later, but
-							//	definitely a necessary global graphics engine setting.
-
 
 GraphicsPipeline::GraphicsPipeline(ShaderModules& shaders, iRenderPass& renderPass,
 								   Swapchain& swapchain, GraphicsDevice& graphics,
