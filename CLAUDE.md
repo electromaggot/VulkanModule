@@ -472,8 +472,8 @@ enum Customizer
     NONE                = 0,
     WIREFRAME           = 0b00000001,  // VK_POLYGON_MODE_LINE instead of _FILL
     SHOW_BACKFACES      = 0b00000010,  // VK_CULL_MODE_NONE instead of _BACK_BIT
-    FRONT_CLOCKWISE     = 0b00000100,  // VK_FRONT_FACE_CLOCKWISE (Vulkan native)
-    MODELED_FOR_VULKAN  = 0b00001000,  // Model uses Vulkan conventions (vs OpenGL)
+    FRONT_CLOCKWISE     = 0b00000100,  // not VK_FRONT_FACE_COUNTER_CLOCKWISE (Vulkan native)
+    MODELED_FOR_DIRECT3D = 0b00001000,  // Model uses D3D/Unity conventions (vs OpenGL/Vulkan)
     ALPHA_BLENDING      = 0b00010000,  // Enable alpha blending + disable depth writes
     LINE_TOPOLOGY       = 0b00100000   // VK_PRIMITIVE_TOPOLOGY_LINE_LIST
 };
@@ -507,8 +507,8 @@ FixedRenderable renderable(*drawable, vulkan, platform);
 
 - **FRONT_CLOCKWISE**: Uses clockwise winding for front faces
   - Sets `VK_FRONT_FACE_CLOCKWISE`
-  - Vulkan native (OpenGL uses counter-clockwise by default)
-  - Use `MODELED_FOR_VULKAN` for models created with Vulkan conventions
+  - Direct3D/Unity native (OpenGL uses counter-clockwise by default)
+  - Use `MODELED_FOR_DIRECT3D` for models created with D3D or Unity conventions
 
 - **ALPHA_BLENDING**: Enables alpha blending and disables depth writes
   - Configures blend state for transparency (src_alpha, one_minus_src_alpha)
@@ -557,6 +557,6 @@ drawable->customize = static_cast<Customizer>(LINE_TOPOLOGY | SHOW_BACKFACES | A
 // Debug wireframe overlay
 drawable->customize = WIREFRAME;
 
-// Vulkan-native model
-drawable->customize = static_cast<Customizer>(MODELED_FOR_VULKAN | FRONT_CLOCKWISE);
+// Direct3D-native model
+drawable->customize = static_cast<Customizer>(MODELED_FOR_DIRECT3D | FRONT_CLOCKWISE);
 ```
