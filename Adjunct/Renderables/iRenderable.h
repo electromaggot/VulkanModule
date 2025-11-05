@@ -57,17 +57,16 @@ struct iRenderableBase
 //
 struct iRenderable : iRenderableBase
 {
-	iRenderable(DrawableSpecifier& specified, VulkanSetup& vulkan, iPlatform& platform, VkRenderPass renderPass = VK_NULL_HANDLE, VkExtent2D customExtent = {0, 0})
+	iRenderable(DrawableSpecifier& specified, VulkanSetup& vulkan, iPlatform& platform,
+				iRenderPass* pCustomRenderPass = nullptr, VkExtent2D customExtent = { 0, 0 })
 		:	shaderModules(	specified.pSharedShaderModules ? *specified.pSharedShaderModules
 													: * new ShaderModules(specified.shaders, vulkan.device)),
 			addOns(			* new AddOns(specified, vulkan, platform)),
 			descriptors(	* new Descriptors(addOns.described, vulkan.swapchain, vulkan.device)),
-			pipeline(		renderPass != VK_NULL_HANDLE
-								? * new GraphicsPipeline(shaderModules, renderPass, vulkan.swapchain, vulkan.device,
-														 &specified.mesh.vertexType, &descriptors, specified.customize, customExtent)
-								: * new GraphicsPipeline(shaderModules, vulkan.renderPass,
-												   vulkan.swapchain, vulkan.device,
-												   &specified.mesh.vertexType, &descriptors, specified.customize)),
+			pipeline(		* new GraphicsPipeline(shaderModules,
+												   (pCustomRenderPass != nullptr) ? *pCustomRenderPass : vulkan.renderPass,
+												   vulkan.swapchain, vulkan.device, &specified.mesh.vertexType,
+												   &descriptors, specified.customize, customExtent)),
 			vertexObject(	specified.mesh),
 			customizer(		specified.customize),
 			name(			specified.name),

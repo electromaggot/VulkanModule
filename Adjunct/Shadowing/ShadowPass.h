@@ -12,16 +12,10 @@
 #define ShadowPass_h
 
 #include "ShadowMap.h"
-#include "../../Objects/CommandObjects.h"
-#include "../../Objects/GraphicsDevice.h"
+#include "CommandObjects.h"
+#include "GraphicsDevice.h"
 #include <vector>
 
-class VulkanSetup;
-struct iRenderable;
-class ShaderModules;
-class GraphicsPipeline;
-class DynamicUniformBuffer;
-struct UBO;
 
 class ShadowPass
 {

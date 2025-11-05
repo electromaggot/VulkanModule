@@ -15,23 +15,19 @@
 
 ShadowMap::ShadowMap(GraphicsDevice& graphicsDevice, CommandPool& commandPool,
 					 uint32_t shadowMapWidth, uint32_t shadowMapHeight)
-	:	device(graphicsDevice),
-		commandPool(commandPool),
-		width(shadowMapWidth),
-		height(shadowMapHeight),
-		shadowImage(VK_NULL_HANDLE),
-		shadowImageMemory(VK_NULL_HANDLE),
-		shadowImageView(VK_NULL_HANDLE),
-		shadowSampler(VK_NULL_HANDLE),
-		shadowRenderPass(VK_NULL_HANDLE),
-		shadowFramebuffer(VK_NULL_HANDLE),
-		depthFormat(VK_FORMAT_D32_SFLOAT)	// 32-bit float depth for high precision
+	:	device(graphicsDevice)
+		, commandPool(commandPool)
+		, width(shadowMapWidth)
+		, height(shadowMapHeight)
+		, depthFormat(VK_FORMAT_D32_SFLOAT)	// 32-bit float depth for high precision.
+		, renderPass(device, depthFormat)
+		, shadowImage(VK_NULL_HANDLE)
+		, shadowImageMemory(VK_NULL_HANDLE)
+		, shadowImageView(VK_NULL_HANDLE)
+		, shadowSampler(VK_NULL_HANDLE)
+		, shadowFramebuffer(VK_NULL_HANDLE)
 {
-	createShadowImage();
-	createShadowImageView();
-	createShadowSampler();
-	createShadowRenderPass();
-	createShadowFramebuffer();
+	create();
 }
 
 ShadowMap::~ShadowMap()
@@ -39,14 +35,19 @@ ShadowMap::~ShadowMap()
 	destroy();
 }
 
-void ShadowMap::Recreate()
+void ShadowMap::create()
 {
-	destroy();
 	createShadowImage();
 	createShadowImageView();
 	createShadowSampler();
-	createShadowRenderPass();
 	createShadowFramebuffer();
+}
+
+void ShadowMap::Recreate()
+{
+	destroy();
+	create();
+	renderPass.Recreate();
 }
 
 void ShadowMap::createShadowImage()
@@ -118,19 +119,19 @@ void ShadowMap::createShadowImage()
 	VkImageMemoryBarrier barrier = {
 		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
 		.pNext = nullptr,
-		.srcAccessMask = 0,
-		.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-		.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-		.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+		.srcAccessMask		 = 0,
+		.dstAccessMask		 = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+		.oldLayout			 = VK_IMAGE_LAYOUT_UNDEFINED,
+		.newLayout			 = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
 		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-		.image = shadowImage,
+		.image				 = shadowImage,
 		.subresourceRange = {
-			.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
-			.baseMipLevel = 0,
-			.levelCount = 1,
-			.baseArrayLayer = 0,
-			.layerCount = 1
+			.aspectMask		= VK_IMAGE_ASPECT_DEPTH_BIT,
+			.baseMipLevel	= 0,
+			.levelCount		= 1,
+			.baseArrayLayer	= 0,
+			.layerCount		= 1
 		}
 	};
 
@@ -169,10 +170,10 @@ void ShadowMap::createShadowImageView()
 	VkImageViewCreateInfo viewInfo = {
 		.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
 		.pNext = nullptr,
-		.flags = 0,
-		.image = shadowImage,
+		.flags	  = 0,
+		.image	  = shadowImage,
 		.viewType = VK_IMAGE_VIEW_TYPE_2D,
-		.format = depthFormat,
+		.format	  = depthFormat,
 		.components = {
 			.r = VK_COMPONENT_SWIZZLE_IDENTITY,
 			.g = VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -180,14 +181,13 @@ void ShadowMap::createShadowImageView()
 			.a = VK_COMPONENT_SWIZZLE_IDENTITY
 		},
 		.subresourceRange = {
-			.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
-			.baseMipLevel = 0,
-			.levelCount = 1,
+			.aspectMask		= VK_IMAGE_ASPECT_DEPTH_BIT,
+			.baseMipLevel	= 0,
+			.levelCount	 	= 1,
 			.baseArrayLayer = 0,
-			.layerCount = 1
+			.layerCount		= 1
 		}
 	};
-
 	VkDevice vkDevice = device.getLogical();
 	if (vkCreateImageView(vkDevice, &viewInfo, nullptr, &shadowImageView) != VK_SUCCESS)
 		Fatal("Failed to create shadow map image view!");
@@ -196,23 +196,23 @@ void ShadowMap::createShadowImageView()
 void ShadowMap::createShadowSampler()
 {
 	VkSamplerCreateInfo samplerInfo = {
-		.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-		.pNext = nullptr,
-		.flags = 0,
-		.magFilter = VK_FILTER_LINEAR,		// Linear filtering for PCF
-		.minFilter = VK_FILTER_LINEAR,
-		.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-		.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-		.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-		.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-		.mipLodBias = 0.0f,
+		.sType			= VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+		.pNext			= nullptr,
+		.flags			= 0,
+		.magFilter		= VK_FILTER_LINEAR,	// Linear filtering for PCF.
+		.minFilter		= VK_FILTER_LINEAR,
+		.mipmapMode		= VK_SAMPLER_MIPMAP_MODE_LINEAR,
+		.addressModeU	= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+		.addressModeV	= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+		.addressModeW	= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+		.mipLodBias		= 0.0f,
 		.anisotropyEnable = VK_FALSE,
-		.maxAnisotropy = 1.0f,
-		.compareEnable = VK_FALSE,			// Disable hardware PCF for manual control
-		.compareOp = VK_COMPARE_OP_LESS,
-		.minLod = 0.0f,
-		.maxLod = 1.0f,
-		.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
+		.maxAnisotropy	= 1.0f,
+		.compareEnable	= VK_FALSE,			// Disable hardware PCF for manual control.
+		.compareOp		= VK_COMPARE_OP_LESS,
+		.minLod			= 0.0f,
+		.maxLod			= 1.0f,
+		.borderColor	= VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
 		.unnormalizedCoordinates = VK_FALSE
 	};
 
@@ -221,77 +221,18 @@ void ShadowMap::createShadowSampler()
 		Fatal("Failed to create shadow map sampler!");
 }
 
-void ShadowMap::createShadowRenderPass()
-{
-	VkAttachmentDescription depthAttachment = {
-		.flags = 0,
-		.format = depthFormat,
-		.samples = VK_SAMPLE_COUNT_1_BIT,
-		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-		.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-		.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,  // Image already transitioned
-		.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL  // For sampling in main pass
-	};
-
-	VkAttachmentReference depthAttachmentRef = {
-		.attachment = 0,
-		.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-	};
-
-	VkSubpassDescription subpass = {
-		.flags = 0,
-		.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-		.inputAttachmentCount = 0,
-		.pInputAttachments = nullptr,
-		.colorAttachmentCount = 0,
-		.pColorAttachments = nullptr,
-		.pResolveAttachments = nullptr,
-		.pDepthStencilAttachment = &depthAttachmentRef,
-		.preserveAttachmentCount = 0,
-		.pPreserveAttachments = nullptr
-	};
-
-	VkSubpassDependency dependency = {
-		.srcSubpass = VK_SUBPASS_EXTERNAL,
-		.dstSubpass = 0,
-		.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-		.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-		.srcAccessMask = 0,
-		.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-		.dependencyFlags = 0
-	};
-
-	VkRenderPassCreateInfo renderPassInfo = {
-		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-		.pNext = nullptr,
-		.flags = 0,
-		.attachmentCount = 1,
-		.pAttachments = &depthAttachment,
-		.subpassCount = 1,
-		.pSubpasses = &subpass,
-		.dependencyCount = 1,
-		.pDependencies = &dependency
-	};
-
-	VkDevice vkDevice = device.getLogical();
-	if (vkCreateRenderPass(vkDevice, &renderPassInfo, nullptr, &shadowRenderPass) != VK_SUCCESS)
-		Fatal("Failed to create shadow render pass!");
-}
-
 void ShadowMap::createShadowFramebuffer()
 {
 	VkFramebufferCreateInfo framebufferInfo = {
-		.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-		.pNext = nullptr,
-		.flags = 0,
-		.renderPass = shadowRenderPass,
+		.sType			 = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+		.pNext			 = nullptr,
+		.flags			 = 0,
+		.renderPass		 = renderPass.getVkRenderPass(),
 		.attachmentCount = 1,
-		.pAttachments = &shadowImageView,
-		.width = width,
-		.height = height,
-		.layers = 1
+		.pAttachments	 = &shadowImageView,
+		.width			 = width,
+		.height			 = height,
+		.layers			 = 1
 	};
 
 	VkDevice vkDevice = device.getLogical();
@@ -306,10 +247,6 @@ void ShadowMap::destroy()
 	if (shadowFramebuffer != VK_NULL_HANDLE) {
 		vkDestroyFramebuffer(vkDevice, shadowFramebuffer, nullptr);
 		shadowFramebuffer = VK_NULL_HANDLE;
-	}
-	if (shadowRenderPass != VK_NULL_HANDLE) {
-		vkDestroyRenderPass(vkDevice, shadowRenderPass, nullptr);
-		shadowRenderPass = VK_NULL_HANDLE;
 	}
 	if (shadowSampler != VK_NULL_HANDLE) {
 		vkDestroySampler(vkDevice, shadowSampler, nullptr);
@@ -340,7 +277,6 @@ uint32_t ShadowMap::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags pr
 			return i;
 		}
 	}
-
 	Fatal("Failed to find suitable memory type for shadow map!");
 	return 0;
 }
