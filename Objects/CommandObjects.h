@@ -25,6 +25,7 @@
 #include "Descriptors.h"
 
 #include "iRenderable.h"
+#include "RenderBatch.h"
 
 
 #pragma mark - COMMAND POOL
@@ -58,6 +59,7 @@ public:
 private:
 	VkCommandBufferBeginInfo beginInfo;
 	Event&					 event;
+	RenderBatchManager		 batchManager;			// Pipeline batching for optimized recording.
 
 		// METHODS
 public:
@@ -146,9 +148,7 @@ public:
 	static VkCommandPool&	vkPool()	{ return pSingleton->commandPool.vkCommandPool; }
 };
 
-
 #endif // CommandObjects_h
-
 
 
 /* DEV NOTE

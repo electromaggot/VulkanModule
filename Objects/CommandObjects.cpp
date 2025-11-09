@@ -94,9 +94,13 @@ void CommandBufferSet::recordCommands(vector<iRenderable*> pBufferRenderables, V
 		.pClearValues	 = clearValues
 	};
 
+	// Build pipeline batches for optimized recording; reduces pipeline binds from O(N) to O(M).
+	// Returns self-managed renderables (like ImGui) to render last.
+	vector<iRenderable*> selfManagedRenderables = batchManager.buildBatches(pBufferRenderables);
+
 	size_t numBufferSets = vkCommandBuffers.size();
 
-	for (int iBuffer = 0; iBuffer < numBufferSets; ++iBuffer)	//TJ_TODO: Re: repeat for every frame buffer, can't one same CommandBuffer be shared?
+	for (int iBuffer = 0; iBuffer < numBufferSets; ++iBuffer)
 	{
 		VkCommandBuffer& commandBuffer = vkCommandBuffers[iBuffer];
 
@@ -109,8 +113,8 @@ void CommandBufferSet::recordCommands(vector<iRenderable*> pBufferRenderables, V
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		for (auto pRenderable : pBufferRenderables)
-			pRenderable->IssueBindAndDrawCommands(commandBuffer, iBuffer);	// implemented by iRenderable subclass
+		// Record all batches with optimized pipeline binding, self-managed renderables last:
+		batchManager.recordBatches(commandBuffer, iBuffer, selfManagedRenderables);
 
 		vkCmdEndRenderPass(commandBuffer);
 

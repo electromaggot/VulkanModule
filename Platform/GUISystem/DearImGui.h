@@ -18,6 +18,7 @@
 class DearImGui : public iRenderableBase {
 public:
 	DearImGui(VulkanSetup& vulkan, iPlatform& platform);
+	DearImGui(const DearImGui& other);  	// copy constructor
 	~DearImGui();
 
 		// METHODS

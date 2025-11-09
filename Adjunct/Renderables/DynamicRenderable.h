@@ -29,7 +29,11 @@ public:
 
 	void IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex);
 
-	virtual void Update(float deltaSeconds) { }
+	virtual bool Update(GameClock& time)  { return true; }
+
+	// Dynamic UBO support
+	uint32_t dynamicOffset = 0;
+	bool  hasDynamicOffset = false;
 };
 
 #endif	// DynamicRenderable_h

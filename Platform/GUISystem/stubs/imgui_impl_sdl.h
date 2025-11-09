@@ -14,11 +14,13 @@
 #include <SDL.h>
 
 
-void ImGui_ImplSDL2_InitForVulkan(SDL_Window* pWindow);
+bool ImGui_ImplSDL2_InitForVulkan(SDL_Window* pWindow);
 
-void ImGui_ImplSDL2_NewFrame(SDL_Window* pWindow);
+void ImGui_ImplSDL2_NewFrame();
 
-void ImGui_ImplSDL2_ProcessEvent(SDL_Event* pEvent);
+bool ImGui_ImplSDL2_ProcessEvent(SDL_Event* pEvent);
+
+void ImGui_ImplSDL2_Shutdown();
 
 
 #endif	// imgui_impl_sdl_h
