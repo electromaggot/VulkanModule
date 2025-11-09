@@ -25,7 +25,7 @@
 #include "ImageSDL.h"
 
 #include "imgui.h"
-#include "imgui_impl_sdl.h"
+#include "imgui_impl_sdl2.h"
 
 
 class PlatformSDL : public iPlatform
@@ -74,7 +74,7 @@ public:
 
 	iImageSource& ImageSource()	 { return static_cast<iImageSource&>(image); }
 	void InitGUISystem()		 { ImGui_ImplSDL2_InitForVulkan(pWindow); }
-	void GUISystemNewFrame()	 { ImGui_ImplSDL2_NewFrame(pWindow); }
+	void GUISystemNewFrame()	 { ImGui_ImplSDL2_NewFrame(); }
 	void GUISystemProcessEvent(SDL_Event* pEvent)
 								 { ImGui_ImplSDL2_ProcessEvent(pEvent); }
 	void RegisterForceRenderCallback(PFNResizeForceRender pfnForceRender, void* pObject) {

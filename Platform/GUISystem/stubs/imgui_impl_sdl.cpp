@@ -10,8 +10,10 @@
 #include "imgui_impl_sdl.h"
 
 
-void ImGui_ImplSDL2_InitForVulkan(SDL_Window* pWindow)	{ }
+bool ImGui_ImplSDL2_InitForVulkan(SDL_Window* pWindow)	{ return true; }
 
-void ImGui_ImplSDL2_NewFrame(SDL_Window* pWindow)		{ }
+void ImGui_ImplSDL2_NewFrame()							{ }
 
-void ImGui_ImplSDL2_ProcessEvent(SDL_Event* pEvent)		{ }
+bool ImGui_ImplSDL2_ProcessEvent(SDL_Event* pEvent)		{ return false; }
+
+void ImGui_ImplSDL2_Shutdown()							{ }

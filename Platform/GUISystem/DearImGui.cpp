@@ -13,7 +13,7 @@
 
 #include "imgui.h"
 #include "imgui_impl_vulkan.h"
-#include "imgui_impl_sdl.h"
+#include "imgui_impl_sdl2.h"
 
 extern void MainGUI(DearImGui&);
 
@@ -30,8 +30,8 @@ static VkAllocationCallbacks*   g_Allocator = nullptr;
 
 
 DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
-	:	platform(platform),
-		device(vulkan.device.getLogical())
+	:	device(vulkan.device.getLogical())
+	  , platform(platform)
 {
 	ImGui_ImplVulkanH_Window guiWindow;
 	guiWindow.Width			= platform.pixelsWide;
@@ -96,6 +96,17 @@ DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
 	io.IniFilename = iniFileName.c_str();
 }
 
+// Copy constructor, useful e.g. for newConcretion() add to renderables.
+//
+DearImGui::DearImGui(const DearImGui& other)
+	:	device(other.device)
+	  , iniFileName(other.iniFileName)
+	  , platform(other.platform)
+{
+	// Copy constructor for renderables system - shares the same ImGui context.
+	// Note: This is a shallow copy that shares the ImGui context, not a deep copy.
+}
+
 DearImGui::~DearImGui()					// (CommandBuffer should get destroyed when commandPool does.)
 {
     err = vkDeviceWaitIdle(device);		// Cleanup
@@ -129,6 +140,8 @@ void DearImGui::preRender(void (*pfnLayOutGui)(DearImGui&), iPlatform& platform)
 }
 
 // Record Imgui Draw Data and draw funcs into command buffer.
+// ImGui renders LAST within the same render pass as the scene, after all
+//	batched renderables, ensuring ImGui overlays correctly on top of the 3D scene.
 //
 void DearImGui::IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex)
 {
@@ -167,7 +180,9 @@ void DearImGui::uploadFonts(VkCommandPool commandPool, VkCommandBuffer commandBu
 	err = vkBeginCommandBuffer(commandBuffer, &beginfo);
 	check_vk_result(err);
 
-	ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
+	bool fontsCreated = ImGui_ImplVulkan_CreateFontsTexture();	// Note that ImGui 1.90+ changed API:
+	if (! fontsCreated)									//	^ CreateFontsTexture no longer takes command buffer.
+		printf("Failed to create ImGui fonts texture\n");
 
 	VkSubmitInfo endInfo = {
 		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -183,7 +198,7 @@ void DearImGui::uploadFonts(VkCommandPool commandPool, VkCommandBuffer commandBu
 	err = vkDeviceWaitIdle(device);
 	check_vk_result(err);
 
-	ImGui_ImplVulkan_DestroyFontUploadObjects();
+	ImGui_ImplVulkan_DestroyFontsTexture();						// Note: ImGui 1.90+ renamed this function.
 }
 
 VkCommandBuffer DearImGui::allocateCommandBuffer(VkCommandPool commandPool, VkDevice device)
