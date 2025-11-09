@@ -120,7 +120,11 @@ VulkanModule is a reusable foundation for Vulkan graphics projects, providing ob
 - `Shader` - Shader module loading
 
 **Adjunct/** - Higher-level abstractions:
-- `Renderables/` - Base classes for drawable objects (FixedRenderable, DynamicRenderable)
+- `Renderables/` - Unified renderable system with pipeline batching optimization
+  - `Renderable` - Single unified class (replaces FixedRenderable/DynamicRenderable)
+  - `RenderBatchManager` - Pipeline batching system to minimize state changes
+  - `iRenderableBase` - Base for self-managed renderables (ImGui)
+  - `iRenderable` - Extends base with full pipeline/descriptor management
   - `ShaderCache` - Shared shader management with reference counting to eliminate redundant shader loading
   - `iRenderable::UpdateUniformBuffers()` - Public method for uploading UBO data to GPU
 - `VertexTypes/` - Various vertex format definitions
@@ -143,6 +147,8 @@ VulkanModule is a reusable foundation for Vulkan graphics projects, providing ob
 4. **Platform Abstraction**: iPlatform interface allows different windowing systems (SDL2, GLFW, XCB)
 5. **Resource Sharing**: ShaderCache enables sharing ShaderModules across renderables to eliminate redundant loads
 6. **Dynamic Uniform Buffers**: Support for VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC with per-object offsets for efficient multi-object rendering
+7. **Pipeline Batching**: RenderBatchManager groups renderables by pass and pipeline, reducing state changes from O(N) to O(M)
+8. **Pass-Based Rendering**: Explicit render order (opaque → transparent → lines → self-managed) ensures correct depth sorting
 
 ### Dependencies
 
@@ -179,9 +185,9 @@ drawable->pUBOs = {
 };
 
 // 3. Set dynamic offset on renderable
-FixedRenderable fixedRenderable(*drawable, vulkan, platform);
-fixedRenderable.hasDynamicOffset = true;
-fixedRenderable.dynamicOffset = dynamicUBO->getDynamicOffset(objectIndex);
+Renderable renderable(*drawable, vulkan, platform);
+renderable.hasDynamicOffset = true;
+renderable.dynamicOffset = dynamicUBO->getDynamicOffset(objectIndex);
 
 // 4. Update per-object transforms each frame
 dynamicUBO->updateObjectTransform(frameIndex, objectIndex, modelMatrix);
@@ -192,10 +198,11 @@ dynamicUBO->updateObjectTransform(frameIndex, objectIndex, modelMatrix);
 - Single buffer allocation instead of hundreds/thousands of individual buffers
 - Reduced descriptor set updates
 - Lower memory fragmentation
+- Works seamlessly with pipeline batching optimization
 
 **Implementation Details:**
 - Automatically adds `VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC` to descriptor pool
-- `FixedRenderable` checks `hasDynamicOffset` and passes offset array to `vkCmdBindDescriptorSets()`
+- `Renderable` checks `hasDynamicOffset` and passes offset array to `vkCmdBindDescriptorSets()`
 - Update transforms before recording command buffers each frame
 
 ### Shader Caching
@@ -214,7 +221,7 @@ drawable->pSharedShaderModules = pSharedShaders;
 shaderCache->addRef(pSharedShaders);
 
 // 3. Create renderable (will use shared shaders)
-FixedRenderable fixedRenderable(*drawable, vulkan, platform);
+Renderable renderable(*drawable, vulkan, platform);
 
 // 4. ShaderCache handles cleanup automatically via reference counting
 // When last renderable using a shader set is destroyed, shaders are freed
@@ -511,7 +518,7 @@ drawable->customize = SHOW_BACKFACES;
 drawable->customize = static_cast<Customizer>(LINE_TOPOLOGY | SHOW_BACKFACES | ALPHA_BLENDING);
 
 // Create renderable
-FixedRenderable renderable(*drawable, vulkan, platform);
+Renderable renderable(*drawable, vulkan, platform);
 ```
 
 **Flag Details:**

@@ -9,7 +9,7 @@
 #include "VulkanTester.h"
 
 #include "CommandObjects.h"
-#include "FixedRenderable.h"
+#include "Renderable.h"
 #include "VertexNull.h"
 
 

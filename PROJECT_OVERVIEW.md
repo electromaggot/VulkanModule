@@ -87,9 +87,11 @@ High-level composition layer that manages dependency order and configuration:
 Application-focused components for content creation:
 
 #### Renderables System
-- **`iRenderable`** - Base interface for drawable objects.
-- **`FixedRenderable`** - Static geometry with optimized vertex buffers.
-- **`DynamicRenderable`** - Mutable geometry supporting real-time updates.
+- **`iRenderableBase`** - Base interface for all renderables (self-managed and standard).
+- **`iRenderable`** - Standard renderables with full pipeline/descriptor management (extends iRenderableBase).
+- **`Renderable`** - Unified renderable class (replaces previous Fixed/Dynamic split), defaults to per-frame recording.
+- **`RenderBatchManager`** - Pipeline batching system that groups renderables by pass and pipeline to minimize state changes (O(N)→O(M) optimization).
+- **Pass-Based Rendering** - Explicit render order (shadow → opaque → transparent → lines → self-managed) ensures correct depth sorting.
 - **`MeshObject`** - 3D model representation with material support.
 - **`DrawableSpecifier`** - Rendering configuration and state.
 - **`Customizer`** - Bitfield flags for per-renderable pipeline customization:
@@ -182,6 +184,10 @@ ________________________________
 ***DOCUMENT REVISIONS***
 
 **Latest Updates (2025):**
+- **Renderables System Refactoring**: Unified `Renderable` class replaces FixedRenderable/DynamicRenderable split.
+- **Pipeline Batching**: Added `RenderBatchManager` for O(N)→O(M) optimization by grouping renderables by pass and pipeline.
+- **Pass-Based Rendering**: Explicit render order (shadow → opaque → transparent → lines → self-managed) ensures correct depth sorting.
+- **Self-Managed Renderables**: `iRenderableBase` base class supports ImGui and other UI overlays that manage their own pipeline state.
 - Added **Customizer** bitfield flags system documentation for per-renderable pipeline customization.
 - Documented `LINE_TOPOLOGY` flag for line list rendering (glowing edges, wireframe overlays).
 - Enhanced transparency support documentation (`SHOW_BACKFACES`, `ALPHA_BLENDING`).
