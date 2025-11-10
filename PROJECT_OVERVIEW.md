@@ -89,7 +89,8 @@ Application-focused components for content creation:
 #### Renderables System
 - **`iRenderableBase`** - Base interface for all renderables (self-managed and standard).
 - **`iRenderable`** - Standard renderables with full pipeline/descriptor management (extends iRenderableBase).
-- **`Renderable`** - Unified renderable class (replaces previous Fixed/Dynamic split), defaults to per-frame recording.
+- **`Renderable`** - Unified renderable class for dynamic geometry (replaces previous Fixed/Dynamic split), defaults to per-frame recording.
+- **`SecondaryRenderable`** - Optimized renderable for static geometry using secondary command buffers recorded once at initialization for zero per-frame CPU overhead.
 - **`RenderBatchManager`** - Pipeline batching system that groups renderables by pass and pipeline to minimize state changes (O(N)→O(M) optimization).
 - **Pass-Based Rendering** - Explicit render order (shadow → opaque → transparent → lines → self-managed) ensures correct depth sorting.
 - **`MeshObject`** - 3D model representation with material support.
@@ -185,6 +186,7 @@ ________________________________
 
 **Latest Updates (2025):**
 - **Renderables System Refactoring**: Unified `Renderable` class replaces FixedRenderable/DynamicRenderable split.
+- **Secondary Command Buffers**: Added `SecondaryRenderable` for optimal rendering of static geometry (skyboxes, environments) with zero per-frame CPU overhead.
 - **Pipeline Batching**: Added `RenderBatchManager` for O(N)→O(M) optimization by grouping renderables by pass and pipeline.
 - **Pass-Based Rendering**: Explicit render order (shadow → opaque → transparent → lines → self-managed) ensures correct depth sorting.
 - **Self-Managed Renderables**: `iRenderableBase` base class supports ImGui and other UI overlays that manage their own pipeline state.

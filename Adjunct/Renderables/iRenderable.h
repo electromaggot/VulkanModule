@@ -97,7 +97,7 @@ struct iRenderable : iRenderableBase
 
 	MeshObject&			vertexObject;	// (retain for Recreate)
 	Customizer			customizer;
-	string&				name;
+	string				name;
 	bool				(*updateMethod)(GameClock&);
 	bool				ownsShaderModules;	// true if we created it, false if shared
 	const char*			pass;				// Render pass type (nullptr for primary, or "transparency"/"lines"/"shadow")
