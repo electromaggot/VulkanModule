@@ -102,9 +102,19 @@ struct iRenderable : iRenderableBase
 	bool				ownsShaderModules;	// true if we created it, false if shared
 	const char*			pass;				// Render pass type (nullptr for primary, or "transparency"/"lines"/"shadow")
 
+	// Dynamic UBO support for efficient per-object transforms.
+	uint32_t			dynamicOffset = 0;
+	bool				hasDynamicOffset = false;
+
 
 	virtual iRenderable* newConcretion(CommandRecording* pRecordingMode) const = 0;
 	virtual void IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex = 0) = 0;
+
+	// Check if this renderable uses secondary command buffers.
+	virtual bool IsSecondaryCommandBuffer() const { return false; }
+
+	// Get secondary command buffer for a specific frame (only valid if IsSecondaryCommandBuffer() == true).
+	virtual VkCommandBuffer GetSecondaryCommandBuffer(int frameIndex) const { return VK_NULL_HANDLE; }
 
 	// Update uniform buffers for this renderable.
 	void UpdateUniformBuffers(int iNextImage)

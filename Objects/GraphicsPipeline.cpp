@@ -117,8 +117,8 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.pNext					= nullptr,
 		.flags					= 0,
 		.depthTestEnable		= VK_TRUE,
-		.depthWriteEnable		= static_cast<VkBool32>(customize & ALPHA_BLENDING ? VK_FALSE : VK_TRUE),  // Disable depth writes for transparent objects
-		.depthCompareOp			= VK_COMPARE_OP_LESS,
+		.depthWriteEnable		= static_cast<VkBool32>(customize & ALPHA_BLENDING ? VK_FALSE : VK_TRUE),  // Disable depth writes for transparent objects.
+		.depthCompareOp			= static_cast<VkCompareOp>(customize & DEPTH_LEQUAL ? VK_COMPARE_OP_LESS_OR_EQUAL : VK_COMPARE_OP_LESS),
 		.depthBoundsTestEnable	= VK_FALSE,
 		.stencilTestEnable		= VK_FALSE,
 		/*.front				= { },
@@ -127,7 +127,7 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.maxDepthBounds			= 1.0f*/
 	};
 
-	// Alpha blending: disabled by default, enabled via ALPHA_BLENDING customizer flag
+	// Alpha blending: disabled by default, enabled via ALPHA_BLENDING customizer flag.
 	VkPipelineColorBlendAttachmentState colorBlendAttachment = {
 		.blendEnable		 = static_cast<VkBool32>(customize & ALPHA_BLENDING ? VK_TRUE : VK_FALSE),
 		.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,

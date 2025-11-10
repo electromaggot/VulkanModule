@@ -47,10 +47,11 @@ struct PipelineKey
 
 private:
 	static int getPassOrder(const char* pass) {
-		if (pass == nullptr)					return 0;	// Opaque first
-		if (strcmp(pass, "transparency") == 0)	return 1;	// Transparent second
-		if (strcmp(pass, "lines") == 0)			return 2;	// Lines last (always on top)
-		return 1;											// Unknown passes with transparency
+		if (pass == nullptr)					return 1;	// Opaque second
+		if (strcmp(pass, "skybox") == 0)		return 0;	// Skybox first (background)
+		if (strcmp(pass, "transparency") == 0)	return 2;	// Transparent third
+		if (strcmp(pass, "lines") == 0)			return 3;	// Lines last (always on top)
+		return 2;											// Unknown passes with transparency
 	}
 
 	bool operator == (const PipelineKey& other) const {

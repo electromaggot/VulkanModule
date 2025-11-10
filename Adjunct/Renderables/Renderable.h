@@ -43,10 +43,6 @@ public:
 	//	skipPipelineBind: Set to true when using batched rendering (pipeline already bound by batch manager).
 	void IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex) override;
 	void IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex, bool skipPipelineBind);
-
-	// Dynamic UBO support for efficient per-object transforms.
-	uint32_t dynamicOffset = 0;
-	bool  hasDynamicOffset = false;
 };
 
 #endif	// Renderable_h
