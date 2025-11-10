@@ -121,7 +121,8 @@ VulkanModule is a reusable foundation for Vulkan graphics projects, providing ob
 
 **Adjunct/** - Higher-level abstractions:
 - `Renderables/` - Unified renderable system with pipeline batching optimization
-  - `Renderable` - Single unified class (replaces FixedRenderable/DynamicRenderable)
+  - `Renderable` - Single unified class for dynamic geometry (defaults to `UPON_EACH_FRAME` recording)
+  - `SecondaryRenderable` - Optimized for static geometry using secondary command buffers recorded once at initialization
   - `RenderBatchManager` - Pipeline batching system to minimize state changes
   - `iRenderableBase` - Base for self-managed renderables (ImGui)
   - `iRenderable` - Extends base with full pipeline/descriptor management
@@ -238,6 +239,64 @@ Renderable renderable(*drawable, vulkan, platform);
 - `iRenderable` checks `pSharedShaderModules` and uses it if provided, otherwise creates its own
 - `ownsShaderModules` flag prevents double-deletion
 - Reference counting ensures shaders persist until last user is destroyed
+
+### Secondary Command Buffers
+
+VulkanModule supports secondary command buffers for optimal rendering of static geometry that never changes. This provides significant performance benefits by recording draw commands once at initialization time instead of every frame.
+
+**Core Component:**
+- `SecondaryRenderable` (`Adjunct/Renderables/SecondaryRenderable.{h,cpp}`) - Renderable using secondary command buffers
+
+**When to Use:**
+
+**Use `SecondaryRenderable` for:**
+- Static geometry that never changes (skyboxes, static environment elements)
+- Geometry recorded once and reused every frame
+- Objects where command buffer recording CPU cost is significant
+
+**Use `Renderable` for:**
+- Dynamic geometry that changes frequently
+- Objects requiring per-frame updates
+- Most scene objects (default choice)
+
+**Usage Example:**
+
+```cpp
+// Define static geometry (e.g., skybox)
+DrawableSpecifier* drawable = new DrawableSpecifier(
+    skyboxMesh,
+    "Skybox",
+    "skybox"  // Render pass name
+);
+drawable->shaders = {
+    { VERTEX,   "skybox-vert.spv" },
+    { FRAGMENT, "skybox-frag.spv" }
+};
+
+// Create SecondaryRenderable (records commands once at init)
+SecondaryRenderable* skybox = new SecondaryRenderable(*drawable, vulkan, platform);
+
+// No per-frame recording needed - command buffer reused automatically
+```
+
+**Benefits:**
+- **Zero CPU overhead per frame** - command buffers recorded once, reused forever
+- **Optimal for static geometry** - skyboxes, static backgrounds, UI elements
+- **Automatic reuse** - no manual management required
+- **Full Recreate() support** - handles window resize/display changes automatically
+
+**Implementation Details:**
+- Inherits from `iRenderable` for compatibility with existing infrastructure
+- Records secondary command buffers at initialization time
+- Command buffers marked as `VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT`
+- Automatically re-recorded during `Recreate()` for window resize events
+- Works seamlessly with pipeline batching and render pass ordering
+
+**Performance Characteristics:**
+- **First frame**: Slight overhead for secondary command buffer recording
+- **Subsequent frames**: Near-zero CPU cost (only `vkCmdExecuteCommands()` call)
+- **Best for**: Geometry with 100+ draw calls that never changes
+- **Trade-off**: Slightly higher initial memory usage vs. primary command buffers
 
 ### GameClock - Frame Timing and FPS Tracking
 
