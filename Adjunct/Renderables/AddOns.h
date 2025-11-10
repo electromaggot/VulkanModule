@@ -36,6 +36,7 @@ struct AddOns
 	friend struct FixedRenderable;
 	friend struct DynamicRenderable;
 	friend struct Renderable;
+	friend struct SecondaryRenderable;
 	friend class  Renderables;
 
 

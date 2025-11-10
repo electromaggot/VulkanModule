@@ -24,7 +24,8 @@ enum Customizer
 	FRONT_CLOCKWISE		 = 0b00000100,	//		   i.e. NOT: VK_FRONT_FACE_COUNTER_CLOCKWISE
 	MODELED_FOR_DIRECT3D = 0b00001000,	// versus default, model created for OpenGL + Right-Handed (same as Vulkan)
 	ALPHA_BLENDING		 = 0b00010000,	// enable alpha blending for transparency (billboards, particles, etc.)
-	LINE_TOPOLOGY		 = 0b00100000	// use VK_PRIMITIVE_TOPOLOGY_LINE_LIST instead of TRIANGLE_LIST
+	LINE_TOPOLOGY		 = 0b00100000,	// use VK_PRIMITIVE_TOPOLOGY_LINE_LIST instead of TRIANGLE_LIST
+	DEPTH_LEQUAL		 = 0b01000000	// use VK_COMPARE_OP_LEQUAL instead of LESS (for skyboxes at far plane)
 };
 
 inline Customizer operator | (Customizer left, Customizer right)

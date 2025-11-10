@@ -65,15 +65,20 @@ void RenderBatchManager::recordBatches(VkCommandBuffer& commandBuffer, int buffe
 
 		// Draw all renderables in this batch.
 		for (auto* pRenderable : batch.renderables) {
-			// Cast to Renderable to access batched rendering method.
-			Renderable* renderable = static_cast<Renderable*>(pRenderable);
-			// Skip pipeline bind since we already bound it once for the entire batch.
-			renderable->IssueBindAndDrawCommands(commandBuffer, bufferIndex, true);
+			// Check if this is a secondary command buffer renderable.
+			if (pRenderable->IsSecondaryCommandBuffer()) {	// If so, execute the pre-recorded command buffer.
+				VkCommandBuffer secondaryCmdBuf = pRenderable->GetSecondaryCommandBuffer(bufferIndex);
+				vkCmdExecuteCommands(commandBuffer, 1, &secondaryCmdBuf);
+			} else {	// Otherwise, cast to Renderable for normal batched rendering.
+				Renderable* renderable = static_cast<Renderable*>(pRenderable);
+				// Skip pipeline bind since we already bound it once for the entire batch.
+				renderable->IssueBindAndDrawCommands(commandBuffer, bufferIndex, true);
+			}
 		}
 	}
 
 	// Last: Record self-managed renderables (e.g. ImGui) after all batched renderables.
-	// These manage their own pipeline state and must render last.
+	//	These manage their own pipeline state and must render last.
 	for (auto* pRenderable : selfManagedRenderables) {
 		pRenderable->IssueBindAndDrawCommands(commandBuffer, bufferIndex);
 	}
