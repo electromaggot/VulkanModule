@@ -1,3 +1,8 @@
+#ifndef IMGUI_DISABLE	// Deprecate this file along with: replacements/imgui_impl_vulkan.h
+	#include "../../External/imgui-src/imgui.h"
+						//	Because they break newer Xcode builds that include VulkanModule as a FOLDER but
+#else					//	want ImGui, since no way was found to exclude these header files from the build.
+						//	Later, VulkanModule will be refactored so that "optional GUI" is coded properly.
 //
 // imgui.h
 //	Dummy placeholder for Dear ImGui or other GUI system.
@@ -134,3 +139,5 @@ ImGuiIO ImGui::io;
 
 
 #endif	// imgui_h
+
+#endif	// IMGUI_DISABLE

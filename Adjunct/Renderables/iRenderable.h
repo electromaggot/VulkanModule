@@ -97,7 +97,7 @@ struct iRenderable : iRenderableBase
 
 	MeshObject&			vertexObject;	// (retain for Recreate)
 	Customizer			customizer;
-	string				name;
+	string&				name;
 	bool				(*updateMethod)(GameClock&);
 	bool				ownsShaderModules;	// true if we created it, false if shared
 	const char*			pass;				// Render pass type (nullptr for primary, or "transparency"/"lines"/"shadow")
@@ -200,7 +200,7 @@ public:
 
 	void Add(const iRenderableBase& renderable)
 	{
-		Add((iRenderable*) &renderable, UPON_EACH_FRAME);
+		Add((iRenderableBase*) &renderable, UPON_EACH_FRAME);
 	}
 	void Add(const iRenderable& renderable)
 	{
@@ -208,7 +208,7 @@ public:
 		iRenderable* pRenderable = renderable.newConcretion(&recordingMode);
 		Add(pRenderable, recordingMode);
 	}
-	void Add(iRenderable* pRenderable, CommandRecording recordingMode)
+	void Add(iRenderableBase* pRenderable, CommandRecording recordingMode)
 	{
 		size_t numRecordables = recordables.size();
 		int iRecordable = -1;
@@ -222,11 +222,18 @@ public:
 		} while (recordables[iRecordable].recordMode != recordingMode
 				 && recordingMode != ON_CHANGE_FLAGGED);  // <-- always gets its own exclusive CommandBuffer
 
-		recordables[iRecordable].pRenderables.push_back(pRenderable);
-		if (pRenderable->pass == nullptr) {
-			Log(RAW, "done: %s SPAWNED.", pRenderable->name.c_str());
+		recordables[iRecordable].pRenderables.push_back((iRenderable*)pRenderable);
+
+		// Only access iRenderable members (pass, name) for non-self-managed renderables
+		if (!pRenderable->isSelfManaged) {
+			iRenderable* renderable = static_cast<iRenderable*>(pRenderable);
+			if (renderable->pass == nullptr) {
+				Log(RAW, "done: %s SPAWNED.", renderable->name.c_str());
+			} else {
+				Log(RAW, "done: %s BOUND.", renderable->name.c_str());
+			}
 		} else {
-			Log(RAW, "done: %s BOUND.", pRenderable->name.c_str());
+			Log(RAW, "done: Self-managed renderable added.");
 		}
 	}
 
