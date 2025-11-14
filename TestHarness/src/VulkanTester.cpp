@@ -39,7 +39,7 @@ void VulkanTester::Init()
 
 void VulkanTester::loadRenderable(DrawableSpecifier& specified)
 {
-	vulkan.command.renderables.Add(FixedRenderable(specified, vulkan, platform));
+	vulkan.command.renderables.Add(Renderable(specified, vulkan, platform));
 
 	vulkan.command.PostInitPrepBuffers(vulkan);
 }
