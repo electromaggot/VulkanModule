@@ -36,7 +36,6 @@ public:
 
 private:
 	void preRender(void (*pfnLayOutGui)(DearImGui&), iPlatform& platform);
-	void uploadFonts(VkCommandPool commandPool, VkCommandBuffer commandBuffer, VkQueue queue);
 
 	VkCommandBuffer  allocateCommandBuffer(VkCommandPool commandPool, VkDevice device);
 	VkDescriptorPool createDescriptorPool(VkDevice device);
@@ -53,3 +52,9 @@ public:		// made available to MainGui(this):
 };
 
 #endif	// DearImGui_h
+
+
+/* DEV NOTE
+Font upload is now automatic in ImGui docking branch (2025), as the following was removed:
+	void uploadFonts(VkCommandPool commandPool, VkCommandBuffer commandBuffer, VkQueue queue);
+*/

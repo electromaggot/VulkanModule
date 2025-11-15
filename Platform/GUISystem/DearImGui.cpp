@@ -20,10 +20,10 @@ extern void MainGUI(DearImGui&);
 
 static void check_vk_result(VkResult err)
 {
-    if (err == 0) return;
-    printf("VkResult %d\n", err);
-    if (err < 0)
-        abort();
+	if (err == 0) return;
+	printf("VkResult %d\n", err);
+	if (err < 0)
+		abort();
 }
 
 static VkAllocationCallbacks*   g_Allocator = nullptr;
@@ -46,51 +46,51 @@ DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
 	guiWindow.FrameIndex	= 0;
 	guiWindow.ImageCount	= vulkan.swapchain.getNumImages();
 	guiWindow.SemaphoreIndex = 0;
-	guiWindow.Frames		 = NULL;
-	guiWindow.FrameSemaphores = NULL;
 
-    // Setup Dear ImGui context
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
+	// Setup Dear ImGui context.
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO();
 	(void) io;
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;		// Enable Keyboard Controls
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;		// Enable Gamepad Controls
 
-    // Setup Dear ImGui style
-    //ImGui::StyleColorsDark();
-    ImGui::StyleColorsClassic();
+	// Setup Dear ImGui style.
+	//ImGui::StyleColorsDark();
+	ImGui::StyleColorsClassic();
 
-    // Setup Platform/Renderer bindings
+	// Setup Platform/Renderer bindings.
 	platform.InitGUISystem();	// (e.g. for SDL, should in turn call ImGui_ImplSDL2_InitForVulkan(window);)
 
-    ImGui_ImplVulkan_InitInfo init_info = {
+	// Prep ImGui docking (see Note A at bottom).
+	ImGui_ImplVulkan_PipelineInfo pipelineInfo = {};
+	pipelineInfo.RenderPass = vulkan.renderPass.getVkRenderPass();
+	pipelineInfo.Subpass = 0;
+	pipelineInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+
+	ImGui_ImplVulkan_InitInfo init_info = {
+		.ApiVersion		= VK_API_VERSION_1_0,
 		.Instance		= vulkan.vulkan.getVkInstance(),
 		.PhysicalDevice	= vulkan.device.getGPU(),
 		.Device			= device,
 		.QueueFamily	= vulkan.device.Queues.getFamilyIndex(),
 		.Queue			= vulkan.device.Queues.getCurrent(),
-		.PipelineCache	= VK_NULL_HANDLE,
 		.DescriptorPool	= createDescriptorPool(device),
-		.MinImageCount	= 2,	//g_MinImageCount,
+		.DescriptorPoolSize = 0,  // Using pre-created descriptor pool.
+		.MinImageCount	= 2,
 		.ImageCount		= guiWindow.ImageCount,
-		.MSAASamples	= VK_SAMPLE_COUNT_1_BIT,
+		.PipelineCache	= VK_NULL_HANDLE,
+		.PipelineInfoMain = pipelineInfo,
+		.UseDynamicRendering = false,
 		.Allocator		= NULL,
 		.CheckVkResultFn = check_vk_result,
+		.MinAllocationSize = 0
 	};
-    ImGui_ImplVulkan_Init(&init_info, vulkan.renderPass.getVkRenderPass());
+	ImGui_ImplVulkan_Init(&init_info);
 
 	/// Although we set up Vulkan ourselves, Dear ImGui assigns its internal Vulkan-related operational variables here.
 	///  ...including things like its own shader modules and pipeline, which we must let it have independently
 	///  because it operates with its own render parameters, like 2D projection.
-
-	// Get our own CommandBuffer from the existing Pool, for existing Queue:
-	VkCommandPool commandPool	= vulkan.command.vkPool();
-	VkQueue		  graphicsQueue	= vulkan.device.Queues.getCurrent();
-
-	VkCommandBuffer commandBuffer = allocateCommandBuffer(commandPool, device);
-
-	uploadFonts(commandPool, commandBuffer, graphicsQueue);
 
 	iniFileName = FileSystem::AppLocalStorageDirectory() + io.IniFilename;
 	io.IniFilename = iniFileName.c_str();
@@ -109,13 +109,13 @@ DearImGui::DearImGui(const DearImGui& other)
 
 DearImGui::~DearImGui()					// (CommandBuffer should get destroyed when commandPool does.)
 {
-    err = vkDeviceWaitIdle(device);		// Cleanup
-    check_vk_result(err);
+	err = vkDeviceWaitIdle(device);		// Cleanup
+	check_vk_result(err);
 
-    ImGui_ImplVulkan_Shutdown();		// Free/destroy internals (like font/descriptor/pipeline
-    ImGui_ImplSDL2_Shutdown();			//	or SDL clipboard/mouseCursors) that ImGui allocated.
+	ImGui_ImplVulkan_Shutdown();		// Free/destroy internals (like font/descriptor/pipeline
+	ImGui_ImplSDL2_Shutdown();			//	or SDL clipboard/mouseCursors) that ImGui allocated.
 
-    ImGui::DestroyContext();
+	ImGui::DestroyContext();
 }
 
 
@@ -148,57 +148,6 @@ void DearImGui::IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int buf
 	auto drawData = ImGui::GetDrawData();
 	if (drawData)
 		ImGui_ImplVulkan_RenderDrawData(drawData, commandBuffer);
-}
-
-
-// Upload fonts using any command queue... but watch out, it'll kill one that's already set-up.
-//
-void DearImGui::uploadFonts(VkCommandPool commandPool, VkCommandBuffer commandBuffer, VkQueue queue)
-{
-    // Load Fonts
-    // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
-    // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
-    // - If the file cannot be loaded, the function will return NULL. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
-    // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
-    // - Read 'docs/FONTS.txt' for more instructions and details.
-    // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
-    //io.Fonts->AddFontDefault();
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
-    //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
-    //IM_ASSERT(font != NULL);
-
-	err = vkResetCommandPool(device, commandPool, 0);
-	check_vk_result(err);
-
-	VkCommandBufferBeginInfo beginfo = {
-		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-		.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
-	};
-	err = vkBeginCommandBuffer(commandBuffer, &beginfo);
-	check_vk_result(err);
-
-	bool fontsCreated = ImGui_ImplVulkan_CreateFontsTexture();	// Note that ImGui 1.90+ changed API:
-	if (! fontsCreated)									//	^ CreateFontsTexture no longer takes command buffer.
-		printf("Failed to create ImGui fonts texture\n");
-
-	VkSubmitInfo endInfo = {
-		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-		.commandBufferCount = 1,
-		.pCommandBuffers = &commandBuffer
-	};
-	err = vkEndCommandBuffer(commandBuffer);
-	check_vk_result(err);
-
-	err = vkQueueSubmit(queue, 1, &endInfo, VK_NULL_HANDLE);
-	check_vk_result(err);
-
-	err = vkDeviceWaitIdle(device);
-	check_vk_result(err);
-
-	ImGui_ImplVulkan_DestroyFontsTexture();						// Note: ImGui 1.90+ renamed this function.
 }
 
 VkCommandBuffer DearImGui::allocateCommandBuffer(VkCommandPool commandPool, VkDevice device)
@@ -245,3 +194,69 @@ VkDescriptorPool DearImGui::createDescriptorPool(VkDevice device)
 	check_vk_result(err);
 	return descriptorPool;
 }
+
+
+/* Note: Font upload is now automatic in ImGui docking branch (2025+)
+// Fonts are automatically uploaded on first NewFrame() call.
+// This function is no longer needed and has been commented out.
+void DearImGui::uploadFonts(VkCommandPool commandPool, VkCommandBuffer commandBuffer, VkQueue queue)
+{
+	// Load Fonts
+	// - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
+	// - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
+	// - If the file cannot be loaded, the function will return NULL. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
+	// - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
+	// - Read 'docs/FONTS.txt' for more instructions and details.
+	// - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
+	//io.Fonts->AddFontDefault();
+	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
+	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
+	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
+	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
+	//ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
+	//IM_ASSERT(font != NULL);
+
+	err = vkResetCommandPool(device, commandPool, 0);
+	check_vk_result(err);
+
+	VkCommandBufferBeginInfo beginfo = {
+		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+		.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+	};
+	err = vkBeginCommandBuffer(commandBuffer, &beginfo);
+	check_vk_result(err);
+
+	bool fontsCreated = ImGui_ImplVulkan_CreateFontsTexture();	// Note that ImGui 1.90+ changed API:
+	if (! fontsCreated)									//	^ CreateFontsTexture no longer takes command buffer.
+		printf("Failed to create ImGui fonts texture\n");
+
+	VkSubmitInfo endInfo = {
+		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+		.commandBufferCount = 1,
+		.pCommandBuffers = &commandBuffer
+	};
+	err = vkEndCommandBuffer(commandBuffer);
+	check_vk_result(err);
+
+	err = vkQueueSubmit(queue, 1, &endInfo, VK_NULL_HANDLE);
+	check_vk_result(err);
+
+	err = vkDeviceWaitIdle(device);
+	check_vk_result(err);
+
+	ImGui_ImplVulkan_DestroyFontsTexture();						// Note: ImGui 1.90+ renamed this function.
+}*/
+
+
+/* DEV NOTE - Specifics for ImGui docking branch API (2025+)
+
+ImVector fields removed in newer branch:
+	guiWindow.Frames		  = NULL;
+	guiWindow.FrameSemaphores = NULL;
+ 
+Note A - Updated initialization:
+	- RenderPass and MSAASamples moved into PipelineInfoMain.
+	- Init takes only one parameter now (no longer includes render pass parameter).
+	- Font upload is now automatic in newer ImGui (happens on first NewFrame() call).
+	  (The old uploadFonts() method is no longer needed (commented-out above.)
+*/
