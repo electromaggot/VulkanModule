@@ -17,6 +17,7 @@
 #include "PlatformSDL.h"
 
 #include "AppConstants.h"
+#include "imgui.h"	// for WantCaptureMouse and WantCaptureKeyboard flags
 #include <climits>	// (to build on Linux side)
 #include <cstdlib>	// for setenv on macOS
 
@@ -436,51 +437,56 @@ bool PlatformSDL::PollEvent(iControlScheme* pController)
 {
 	if (SDL_PollEvent(&event))
 	{
-		GUISystemProcessEvent(&event);
+		GUISystemProcessEvent(&event);		// Always pass events to ImGui first; it needs to see ALL events.
 		//printf("event %d : %d\n", event.type, event.window.event);
+
+		ImGuiIO& io = ImGui::GetIO();		// Get ImGui's input capture flags AFTER it processes the event.
+		bool imguiWantsMouse = io.WantCaptureMouse;
 
 		switch (event.type) {
 			case SDL_WINDOWEVENT:
 				process(event.window);
 				break;
 			case SDL_MOUSEMOTION:
-				mouseX = event.motion.x;	// handle mouse input passively
+				mouseX = event.motion.x;	// Always update mouse position (passive tracking).
 				mouseY = event.motion.y;
-				if (pController) {			// handle actively
+				if (pController && !imguiWantsMouse) {		// Only pass to controller if...
 					pController->handlePrimaryPressAndDrag(mouseX, mouseY);
 					pController->handleSecondaryPressAndDrag(mouseX, mouseY);
 				}
 				break;
 			case SDL_MOUSEBUTTONDOWN:
-				if (pController)
-					switch (event.button.button)
-					{
-					case SDL_BUTTON_LEFT:
-						pController->handlePrimaryPressDown(event.button.x, event.button.y);
-						break;
-					case SDL_BUTTON_RIGHT:
-						pController->handleSecondaryPressDown(event.button.x, event.button.y);
-						break;
-					}
-				else
+				if (pController) {
+					if (!imguiWantsMouse)					//	...if ImGui doesn't want mouse...
+						switch (event.button.button)
+						{
+						case SDL_BUTTON_LEFT:
+							pController->handlePrimaryPressDown(event.button.x, event.button.y);
+							break;
+						case SDL_BUTTON_RIGHT:
+							pController->handleSecondaryPressDown(event.button.x, event.button.y);
+							break;
+						}
+				} else
 					timePress = event.button.timestamp;
 				break;
 			case SDL_MOUSEBUTTONUP:
-				if (pController)
-					switch (event.button.button)
-					{
-					case SDL_BUTTON_LEFT:
-						pController->handlePrimaryPressUp(event.button.x, event.button.y);
-						break;
-					case SDL_BUTTON_RIGHT:
-						pController->handleSecondaryPressUp(event.button.x, event.button.y);
-						break;
-					}
-				else if (event.button.timestamp - timePress < MILLISECONDS_LONG_PRESS)
+				if (pController) {
+					if (!imguiWantsMouse)					//	...and same here...
+						switch (event.button.button)
+						{
+						case SDL_BUTTON_LEFT:
+							pController->handlePrimaryPressUp(event.button.x, event.button.y);
+							break;
+						case SDL_BUTTON_RIGHT:
+							pController->handleSecondaryPressUp(event.button.x, event.button.y);
+							break;
+						}
+				} else if (event.button.timestamp - timePress < MILLISECONDS_LONG_PRESS)
 					conveyPress = event.button.button;
 				break;
 			case SDL_MOUSEWHEEL:
-				if (pController)
+				if (pController && !imguiWantsMouse)		//	...and here too.
 					pController->handleMouseWheel(event.wheel.x, event.wheel.y);
 				break;
 			case SDL_MULTIGESTURE:
