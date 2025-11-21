@@ -115,14 +115,16 @@ void ShadowMap::createShadowImage()
 	};
 	vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
-	// Transition from UNDEFINED to DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+	// Transition from UNDEFINED to DEPTH_STENCIL_READ_ONLY_OPTIMAL:
+	// This matches the layout that shadow maps end in after rendering,
+	// ensuring consistency across all frames (including first use).
 	VkImageMemoryBarrier barrier = {
 		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
 		.pNext = nullptr,
 		.srcAccessMask		 = 0,
-		.dstAccessMask		 = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+		.dstAccessMask		 = VK_ACCESS_SHADER_READ_BIT,
 		.oldLayout			 = VK_IMAGE_LAYOUT_UNDEFINED,
-		.newLayout			 = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+		.newLayout			 = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
 		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 		.image				 = shadowImage,
@@ -138,7 +140,7 @@ void ShadowMap::createShadowImage()
 	vkCmdPipelineBarrier(
 		commandBuffer,
 		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-		VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 		0,
 		0, nullptr,
 		0, nullptr,
