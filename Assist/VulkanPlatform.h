@@ -34,7 +34,9 @@
 #ifndef VulkanPlatform_h
 #define VulkanPlatform_h
 
+#define VK_ENABLE_BETA_EXTENSIONS
 #include "vulkan/vulkan.h"
+#include "vulkan/vulkan_beta.h"
 
 #include "Logging.h"
 

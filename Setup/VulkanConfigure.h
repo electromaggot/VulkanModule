@@ -77,6 +77,7 @@ const StrPtr INSTANCE_EXTENSION_NAMES[] = {
 	#ifdef __APPLE__
 	,VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME	// Required for MoltenVK on macOS.
 	#endif
+	,VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME		//TJ_TODO: ensure Windows build doesn't need this moved up a line
 	//TJ_REMOVE_LATER for testing:
 	//,VK_EXT_DEPTH_RANGE_UNRESTRICTED_EXTENSION_NAME	//test: also won't be defined
 	//,VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME	//test: but will be
@@ -92,6 +93,7 @@ const bool REQUIRE_INSTANCE_EXTENSION[] = {
 	,true	// VK_KHR_PORTABILITY_ENUMERATION required for MoltenVK.
 	//,false  // VK_KHR_PORTABILITY_ENUMERATION is for MoltenVK, but not absolutely required if not supported.
 	#endif
+	,false
 };
 
 
@@ -118,11 +120,13 @@ const bool REQUIRE_INSTANCE_LAYER[] = {
 const StrPtr DEVICE_EXTENSION_NAMES[] = {
 //			 ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
 	SWAPCHAIN_EXTENSION
+	,VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME
 };
 const int N_DEVICE_EXTENSION_NAMES = N_ELEMENTS_IN_ARRAY(DEVICE_EXTENSION_NAMES);
 
 const bool REQUIRE_DEVICE_EXTENSION[] = {
 	true
+	,false
 };
 
 
