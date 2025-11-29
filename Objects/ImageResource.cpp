@@ -15,7 +15,12 @@ ImageResource::ImageResource(GraphicsDevice& graphicsDevice, Mipmaps* optionalMi
 		pMipmaps(optionalMipmaps)
 { }
 
-ImageResource::~ImageResource()  { destroy(); }
+ImageResource::~ImageResource()
+{
+	destroy();
+
+	Log(DEAD, "Destroyed: ImageResource (image, imageView, deviceMemory)");
+}
 
 void ImageResource::destroy()
 {

@@ -266,6 +266,7 @@ void ShadowMap::destroy()
 		vkFreeMemory(vkDevice, shadowImageMemory, nullptr);
 		shadowImageMemory = VK_NULL_HANDLE;
 	}
+	Log(DEAD, "Destroyed: ShadowMap (FrameBuffer,Sampler,ImageView,Image,Memory)");
 }
 
 uint32_t ShadowMap::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)

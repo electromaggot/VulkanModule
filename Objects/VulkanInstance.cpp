@@ -33,6 +33,8 @@ VulkanInstance::VulkanInstance(ValidationLayers& layers, iPlatform& platform)
 VulkanInstance::~VulkanInstance()
 {
 	vkDestroyInstance(instance, nullALLOC);
+
+	Log(DEAD, "Destroyed: VulkanInstance.");
 }
 
 

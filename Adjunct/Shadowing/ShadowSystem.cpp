@@ -58,7 +58,7 @@ ShadowSystem::~ShadowSystem()
 	shadowMaps.clear();
 
 	if (technique != SHADOW_TECHNIQUE_NONE) {
-		Log(NOTE, "ShadowSystem: Resources destroyed");
+		Log(DEAD, "ShadowSystem: Resources destroyed");
 	}
 }
 

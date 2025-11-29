@@ -56,6 +56,7 @@ PrimitiveBuffer::~PrimitiveBuffer()
 		vkFreeMemory(device, bufferMemory, nullALLOC);
 		bufferMemory = 0;
 	}
+	Log(DEAD, "Destroyed: PrimitiveBuffer (buffer, memory)");
 }
 
 

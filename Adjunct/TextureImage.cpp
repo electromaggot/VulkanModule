@@ -48,6 +48,7 @@ TextureImage::~TextureImage()
 		pStagingBuffer = nullptr;
 	}
 	// ~ImageResource() will thus vkDestroyImageView(imageView), vkDestroyImage(image), vkFreeMemory(deviceMemory);
+	Log(DEAD, "Destroyed: TextureImage (sampler, staging buffer)");
 }
 
 void TextureImage::ReGenerateMipmaps()
@@ -327,6 +328,8 @@ TextureImage::StagingBuffer::~StagingBuffer()
 		vkUnmapMemory(texture.device, stagedDeviceMemory);
 	vkDestroyBuffer(texture.device, vkBuffer, nullptr);
 	vkFreeMemory(texture.device, stagedDeviceMemory, nullptr);
+
+	Log(DEAD, "Destroyed: StagingBuffer (unmapMemory, buffer, memory)");
 }
 
 

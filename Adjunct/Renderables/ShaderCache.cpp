@@ -11,15 +11,14 @@
 #include "Logging.h"
 
 ShaderCache::ShaderCache(GraphicsDevice& device)
-	: graphicsDevice(device)
-{
-}
+	:	graphicsDevice(device)
+{ }
 
 ShaderCache::~ShaderCache()
 {
 	// Clean up any remaining cached shaders
 	for (auto& pair : shaderCache) {
-		Log(WARN, "ShaderCache: Deleting unreleased shader set: %s", pair.first.c_str());
+		Log(DEAD, "ShaderCache: Deleting unreleased shader set: %s", pair.first.c_str());
 		delete pair.second;
 	}
 	shaderCache.clear();
@@ -41,19 +40,19 @@ ShaderModules* ShaderCache::getOrCreate(const Shaders& shaders)
 {
 	std::string key = createKey(shaders);
 
-	// Check if already cached
+	// Check if already cached.
 	auto it = shaderCache.find(key);
 	if (it != shaderCache.end()) {
-		Log(NOTE, "ShaderCache: Reusing cached shaders: %s", key.c_str());
+		Log(RAW, " \t(reuse cache shaders ↪ %s)", key.c_str());
 		return it->second;
 	}
 
-	// Create new ShaderModules
-	Log(NOTE, "ShaderCache: Loading new shader set: %s", key.c_str());
+	// Create new ShaderModules.
+	Log(RAW, " \t(load new shader set → %s)", key.c_str());
 	ShaderModules* pShaderModules = new ShaderModules(const_cast<Shaders&>(shaders), graphicsDevice);
 
 	shaderCache[key] = pShaderModules;
-	refCounts[pShaderModules] = 0;  // Will be incremented by addRef()
+	refCounts[pShaderModules] = 0;  // Will be incremented by addRef().
 
 	return pShaderModules;
 }
@@ -87,10 +86,10 @@ void ShaderCache::release(ShaderModules* pShaderModules)
 	Log(LOW, "ShaderCache: Release -> refcount = %d", it->second);
 
 	if (it->second <= 0) {
-		// Find and remove from cache
+		// Find and remove from cache.
 		for (auto cacheIt = shaderCache.begin(); cacheIt != shaderCache.end(); ++cacheIt) {
 			if (cacheIt->second == pShaderModules) {
-				Log(NOTE, "ShaderCache: Deleting shader set: %s", cacheIt->first.c_str());
+				Log(DEAD, "ShaderCache: Deleting shader set: %s", cacheIt->first.c_str());
 				delete pShaderModules;
 				shaderCache.erase(cacheIt);
 				break;

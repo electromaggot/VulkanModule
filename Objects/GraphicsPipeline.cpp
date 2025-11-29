@@ -32,6 +32,7 @@ void GraphicsPipeline::destroy()
 {
 	vkDestroyPipeline(device, graphicsPipeline, nullALLOC);
 	vkDestroyPipelineLayout(device, pipelineLayout, nullALLOC);
+	Log(DEAD, "Destroyed: GraphicsPipeline (+ PipelineLayout)");
 }
 
 

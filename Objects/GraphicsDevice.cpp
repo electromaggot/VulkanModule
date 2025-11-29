@@ -37,6 +37,8 @@ GraphicsDevice::GraphicsDevice(WindowSurface& surface, VulkanInstance& instance,
 GraphicsDevice::~GraphicsDevice()
 {
 	vkDestroyDevice(logicalDevice, nullALLOC);
+
+	Log(DEAD, "Destroyed: GraphicsDevice");
 }
 
 

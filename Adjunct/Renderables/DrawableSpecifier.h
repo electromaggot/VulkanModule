@@ -46,9 +46,9 @@ public:
 	{		// other members, all vectors, should automatically construct empty
 		pass = passType;  // Store pass type for later reference
 		if (pass == nullptr) {
-			Log(RAW, "SPAWN %s...", drawbjectName);
+			Log(SAME, "SPAWN %s...", drawbjectName);
 		} else {
-			Log(RAW, " BIND %s %s...", drawbjectName, pass);
+			Log(SAME, " BIND %s %s...", drawbjectName, pass);
 		}
 	}
 
@@ -57,7 +57,7 @@ public:
 	{ }
 
 	~DrawableSpecifier() {
-		Log(RAW, "NUKED %s.", name.c_str());
+		Log(DEAD, "NUKED %s.", name.c_str());
 	}
 };
 
