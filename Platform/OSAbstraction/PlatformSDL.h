@@ -24,8 +24,7 @@
 #include "iPlatform.h"
 #include "ImageSDL.h"
 
-#include "imgui.h"
-#include "imgui_impl_sdl2.h"
+#include "imgui.h"		// (in turn #includes "imgui_impl_sdl2.h" for ImGui_ImplSDL2 calls below)
 
 
 class PlatformSDL : public iPlatform
@@ -76,7 +75,7 @@ public:
 	void InitGUISystem()		 { ImGui_ImplSDL2_InitForVulkan(pWindow); }
 	void GUISystemNewFrame()	 { ImGui_ImplSDL2_NewFrame(); }
 	void GUISystemProcessEvent(SDL_Event* pEvent)
-								 { ImGui_ImplSDL2_ProcessEvent(pEvent); }
+								 { ImGui_ImplSDL2_ProcessEvent((const SDL_Event*) pEvent); }
 	void RegisterForceRenderCallback(PFNResizeForceRender pfnForceRender, void* pObject) {
 									pfnResizeForceRender = pfnForceRender;
 									pRenderingObject = pObject;
