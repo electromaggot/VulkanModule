@@ -28,7 +28,7 @@ VulkanSetup::VulkanSetup(iPlatform& platform,
 		syncObjects(device),
 		command(* new CommandControl(framebuffers, device))		// initialize CommandPool
 {
-	Log(NOTE, "----V-U-L-K-A-N---R-E-A-D-Y----");
+	Log(GOAL, "----V-U-L-K-A-N---R-E-A-D-Y----");
 }
 
 // On the other hand, these later child objects will NOT leave scope and self-destruct,
