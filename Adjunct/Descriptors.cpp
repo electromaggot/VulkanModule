@@ -29,6 +29,7 @@ Descriptors::~Descriptors()
 {
 	destroy();
 	vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+	Log(DEAD, "Destroyed: Descriptors");
 }
 
 void Descriptors::create()

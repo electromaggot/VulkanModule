@@ -36,8 +36,12 @@ ShaderModules::ShaderModules(Shaders& shaders, GraphicsDevice& graphics)
 
 ShaderModules::~ShaderModules()
 {
+	size_t nModules = shaderModules.size();
+
 	for (auto& shaderModule : shaderModules)
 		vkDestroyShaderModule(device, shaderModule, nullALLOC);
+
+	Log(DEAD, "Destroyed: %u ShaderModules", nModules);
 }
 
 

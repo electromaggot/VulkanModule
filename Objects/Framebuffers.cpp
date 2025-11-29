@@ -19,7 +19,14 @@ Framebuffers::Framebuffers(Swapchain& swapchain, DepthBuffer& depthBuffer,
 		   renderPass.getVkRenderPass(), depthBuffer.getpImageView());
 }
 
-Framebuffers::~Framebuffers()  { destroy(); }
+Framebuffers::~Framebuffers()
+{
+	size_t nFramebuffers = framebuffers.size();
+
+	destroy();
+
+	Log(DEAD, "Destroyed: %u Framebuffers", nFramebuffers);
+}
 
 void Framebuffers::destroy()
 {
