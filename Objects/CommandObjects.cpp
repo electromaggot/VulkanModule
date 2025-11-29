@@ -31,6 +31,7 @@ CommandPool::CommandPool(GraphicsDevice& graphicsDevice)
 CommandPool::~CommandPool()
 {
 	vkDestroyCommandPool(device.getLogical(), vkCommandPool, nullALLOC);
+	Log(DEAD, "Destroyed: CommandPool");
 }
 
 
@@ -50,6 +51,8 @@ CommandBufferSet::~CommandBufferSet()
 {
 	freeVkCommandBuffers();
 	delete &event;
+
+	Log(DEAD, "Destroyed: CommandBufferSet");
 }
 
 void CommandBufferSet::allocateVkCommandBuffer()
@@ -141,6 +144,11 @@ CommandControl*	CommandControl::pSingleton = nullptr;
 
 CommandControl::~CommandControl()
 {
+	// CRITICAL: Clear renderables BEFORE destroying command pool and buffers!
+	// Renderables contain Vulkan objects (pipelines, descriptors, etc.) that
+	//	must be destroyed before the command pool and device are destroyed.
+	renderables.Clear();
+
 	Destroy();
 }
 

@@ -42,6 +42,7 @@ struct iRenderableBase
 	bool	isSelfManaged;	// if renderable object independently stores/handles its own pipeline/shaders/vertices/etc.
 
 	iRenderableBase() : isSelfManaged(true) { }		// (which defaults to true until specifically unset (see below))
+	virtual ~iRenderableBase() = default;			// Virtual destructor ensures proper cleanup of derived classes
 
 	virtual iRenderableBase* newConcretion(CommandRecording* pRecordingMode) const = 0;
 
@@ -184,17 +185,30 @@ public:
 	{
 		bool removeALL = pObjSpec == ALL;
 		for (auto& recordable : recordables) {
-			auto& renderables = recordable.pRenderables;
-			for (auto ppRenderable = renderables.begin();
-					  ppRenderable < renderables.end(); ++ppRenderable) {		// Must ITERATE over vector...
+			auto& renderables = recordable.pRenderables;	// iterate over vector:
+			for (auto ppRenderable = renderables.begin(); ppRenderable < renderables.end(); ) {
+				if (*ppRenderable == nullptr) {						// Check if pointer is valid before dereferencing,
+					ppRenderable = renderables.erase(ppRenderable);	//	as self-managed objects may delete elsewhere.
+					continue;
+				}
 				iRenderable& renderable = **ppRenderable;
-				if ((!removeALL && &renderable.vertexObject == &pObjSpec->mesh)
-				  || (removeALL && !renderable.isSelfManaged)) {
-					renderable.deleteConcretion();
-					renderables.erase(ppRenderable);							//	...in order to .erase().
-					return;//on 1st match. To never iterate past .end().
-				}			// Also, don't:  delete *ppRenderable;
-			}				//	since it came in as a reference.
+
+				if (removeALL && renderable.isSelfManaged) {		// Skip self-managed renderables when removing all,
+					++ppRenderable;									//	as they manage their own lifecycle
+					continue;
+				}
+				if ((!removeALL && &renderable.vertexObject == &pObjSpec->mesh)	 // Remove specific renderable or
+				  || (removeALL && !renderable.isSelfManaged))					 //	 non-self-managed when removing all.
+				{
+					renderable.deleteConcretion();		// Delete Vulkan resources (pipeline, descriptors, etc.).
+					delete *ppRenderable;				// Delete the renderable object itself (created by newConcretion()).
+					ppRenderable = renderables.erase(ppRenderable);	 // <-- erase() returns iterator to next element.
+					if (!removeALL)
+						return;	// on 1st match for specific removal.
+				} else {
+					++ppRenderable;
+				}
+			}
 		}
 	}
 
