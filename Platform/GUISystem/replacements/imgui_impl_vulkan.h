@@ -1,6 +1,4 @@
-#ifndef IMGUI_DISABLE	// Deprecate this file along with: stubs/imgui.h (See comment in that file as to why.)
-	#include "../../External/imgui-src/backends/imgui_impl_vulkan.h"
-#else
+#ifdef DEPRECATED_WILL_DELETE
 // dear imgui: Renderer Backend for Vulkan
 // This needs to be used along with a Platform Backend (e.g. GLFW, SDL, Win32, custom..)
 
@@ -131,4 +129,4 @@ struct ImGui_ImplVulkanH_Window
     }
 };
 
-#endif	// IMGUI_DISABLE
+#endif	// DEPRECATED_WILL_DELETE

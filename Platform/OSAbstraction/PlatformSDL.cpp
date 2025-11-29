@@ -437,11 +437,12 @@ bool PlatformSDL::PollEvent(iControlScheme* pController)
 {
 	if (SDL_PollEvent(&event))
 	{
-		GUISystemProcessEvent(&event);		// Always pass events to ImGui first; it needs to see ALL events.
+		// Pass events to ImGui first; it needs to see ALL events.	// Note: When IMGUI_DISABLE - in GUISystem/imgui.h -
+		GUISystemProcessEvent(&event);								//	stub implementations provide no-op.
 		//printf("event %d : %d\n", event.type, event.window.event);
 
-		ImGuiIO& io = ImGui::GetIO();		// Get ImGui's input capture flags AFTER it processes the event.
-		bool imguiWantsMouse = io.WantCaptureMouse;
+		ImGuiIO& io = ImGui::GetIO();				 // Get ImGui's input capture flags AFTER it processes the event,
+		bool imguiWantsMouse = io.WantCaptureMouse;	 // although if IMGUI_DISABLE, stub always returns false (no mouse capture).
 
 		switch (event.type) {
 			case SDL_WINDOWEVENT:
@@ -503,8 +504,8 @@ bool PlatformSDL::PollEvent(iControlScheme* pController)
 					// iOS soft keyboard seems to immediately follow KEYDOWN with KEYUP, which
 					//	confuses ImGui's attempt to track KeysDownDuration between those events.
 					//	Result: BACKSPACE doesn't seem to work on iOS.  This tries to hack it:
-					ImGuiIO& io = ImGui::GetIO();
-					int keyMapBackspace = io.KeyMap[ImGuiKey_Backspace];
+					ImGuiIO& io = ImGui::GetIO();							// (note that for IMGUI_DISABLE, stub
+					int keyMapBackspace = io.KeyMap[ImGuiKey_Backspace];	//	provides no-op/harmless assignments)
 					io.KeysDown[keyMapBackspace] = (event.key.keysym.scancode == SDL_SCANCODE_BACKSPACE);
 					//	...same seems to apply to RETURN key as well.
 					io.KeysDown[io.KeyMap[ImGuiKey_Enter]] = (event.key.keysym.scancode == SDL_SCANCODE_RETURN);

@@ -1,27 +1,31 @@
+
+#include "../imgui.h"	// See if IMGUI_DISABLEd -
+#ifndef IMGUI_DISABLE	//	- not disabled, compile real ImGui file:
+	#include "../../External/imgui-src/backends/imgui_impl_vulkan.cpp"
+#else	// - disabled: provide stub functions (& let compiler optimize these away)...
+
 //
-// imgui_impl_vulkan.cpp
-//	Dummy placeholder for Dear ImGui Vulkan backend.
+// imgui_impl_vulkan.cpp (stub version)
+//	No-op stub for Dear ImGui Vulkan backend when GUI disabled.
 //
 // Tadd Jensen 9 Nov 2023
 //	© 0000 (uncopyrighted; use at will)
 //
 #include "imgui_impl_vulkan.h"
+#include "imgui.h"
 
-bool ImGui_ImplVulkan_Init(ImGui_ImplVulkan_InitInfo* info, VkRenderPass render_pass)
-{
-	return true;
-}
 
-void ImGui_ImplVulkan_Shutdown()
-{ }
+bool ImGui_ImplVulkan_Init(ImGui_ImplVulkan_InitInfo* info)  { return true; }
 
-void ImGui_ImplVulkan_NewFrame()
-{ }
+void ImGui_ImplVulkan_Shutdown()			{ }
 
-bool ImGui_ImplVulkan_CreateFontsTexture()
-{
-	return true;
-}
+void ImGui_ImplVulkan_NewFrame()			{ }
 
-void ImGui_ImplVulkan_DestroyFontsTexture()
-{ }
+bool ImGui_ImplVulkan_CreateFontsTexture()	{ return true; }
+
+void ImGui_ImplVulkan_DestroyFontsTexture()	{ }
+
+void ImGui_ImplVulkan_RenderDrawData(ImDrawData* draw_data, VkCommandBuffer command_buffer)  { }
+
+
+#endif	// IMGUI_DISABLE

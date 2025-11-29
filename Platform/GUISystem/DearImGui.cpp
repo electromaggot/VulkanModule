@@ -8,14 +8,16 @@
 //	© 0000 (uncopyrighted; use at will)
 //
 #include "DearImGui.h"
+
+#ifndef IMGUI_DISABLE
+
+
 #include "FileSystem.h"
 #include "CommandObjects.h"
 
-#include "imgui.h"
-#include "imgui_impl_vulkan.h"
-#include "imgui_impl_sdl2.h"
-
 extern void MainGUI(DearImGui&);
+
+bool DearImGui::s_imguiShutdown = false;	// Static flag to prevent double-shutdown of shared ImGui context.
 
 
 static void check_vk_result(VkResult err)
@@ -33,6 +35,7 @@ DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
 	:	device(vulkan.device.getLogical())
 	  , platform(platform)
 {
+	Log(LOW, "DearImGui constructor: Starting ImGui initialization...");
 	ImGui_ImplVulkanH_Window guiWindow;
 	guiWindow.Width			= platform.pixelsWide;
 	guiWindow.Height		= platform.pixelsHigh;
@@ -50,6 +53,7 @@ DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
 	// Setup Dear ImGui context.
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
+	Log(LOW, "DearImGui constructor: ImGui context created successfully.");
 	ImGuiIO& io = ImGui::GetIO();
 	(void) io;
 	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;		// Enable Keyboard Controls
@@ -68,6 +72,9 @@ DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
 	pipelineInfo.Subpass = 0;
 	pipelineInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 
+	// Create and store descriptor pool for ImGui (we're responsible for destroying it).
+	descriptorPool = createDescriptorPool(device);
+
 	ImGui_ImplVulkan_InitInfo init_info = {
 		.ApiVersion		= VK_API_VERSION_1_0,
 		.Instance		= vulkan.vulkan.getVkInstance(),
@@ -75,7 +82,7 @@ DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
 		.Device			= device,
 		.QueueFamily	= vulkan.device.Queues.getFamilyIndex(),
 		.Queue			= vulkan.device.Queues.getCurrent(),
-		.DescriptorPool	= createDescriptorPool(device),
+		.DescriptorPool	= descriptorPool,
 		.DescriptorPoolSize = 0,  // Using pre-created descriptor pool.
 		.MinImageCount	= 2,
 		.ImageCount		= guiWindow.ImageCount,
@@ -87,6 +94,8 @@ DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
 		.MinAllocationSize = 0
 	};
 	ImGui_ImplVulkan_Init(&init_info);
+	//Log(LOW, "DearImGui constructor: Vulkan backend initialized successfully.");
+	Log(GOOD, "DearImGui enabled and initialized.");
 
 	/// Although we set up Vulkan ourselves, Dear ImGui assigns its internal Vulkan-related operational variables here.
 	///  ...including things like its own shader modules and pipeline, which we must let it have independently
@@ -100,11 +109,12 @@ DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
 //
 DearImGui::DearImGui(const DearImGui& other)
 	:	device(other.device)
+	  , descriptorPool(VK_NULL_HANDLE)	// Don't copy descriptor pool - only original owns it.
 	  , iniFileName(other.iniFileName)
 	  , platform(other.platform)
 {
-	// Copy constructor for renderables system - shares the same ImGui context.
-	// Note: This is a shallow copy that shares the ImGui context, not a deep copy.
+	/// Copy constructor for renderables system - shares the same ImGui context.  Note: This is a shallow copy that shares
+	///  the ImGui context, not a deep copy.  The original instance owns the descriptor pool and is responsible for destroying it.
 }
 
 DearImGui::~DearImGui()					// (CommandBuffer should get destroyed when commandPool does.)
@@ -112,15 +122,35 @@ DearImGui::~DearImGui()					// (CommandBuffer should get destroyed when commandP
 	err = vkDeviceWaitIdle(device);		// Cleanup
 	check_vk_result(err);
 
-	ImGui_ImplVulkan_Shutdown();		// Free/destroy internals (like font/descriptor/pipeline
-	ImGui_ImplSDL2_Shutdown();			//	or SDL clipboard/mouseCursors) that ImGui allocated.
+	/// CRITICAL: Only shutdown ImGui once!  Multiple DearImGui instances share the same context.  The copy constructor creates shallow
+	///  copies that share resources, but each destructor would try to shutdown ImGui, causing double-free errors and validation failures.
+	if (!s_imguiShutdown) {
+		s_imguiShutdown = true;
 
-	ImGui::DestroyContext();
+		ImGui_ImplVulkan_Shutdown();		// Free/destroy internals (like font/descriptor/pipeline
+		ImGui_ImplSDL2_Shutdown();			//	or SDL clipboard/mouseCursors) that ImGui allocated.
+
+		ImGui::DestroyContext();
+
+		// Destroy the descriptor pool we created for ImGui, which doesn't destroy
+		//	this because we passed it in... we're responsible for cleanup.
+		if (descriptorPool != VK_NULL_HANDLE) {
+			vkDestroyDescriptorPool(device, descriptorPool, g_Allocator);
+		}
+	}
 }
 
 
 bool DearImGui::Update(GameClock& time)
 {		// (Don't really need time or deltaSeconds, as Dear ImGui tracks its own time.)
+	#ifdef DEBUG_LOW
+		static bool firstCall = true;
+		if (firstCall) {
+			Log(RAW, "DearImGui::Update() called - rendering GUI");
+			firstCall = false;
+		}
+	#endif	// DEBUG_LOW
+
 	preRender(MainGUI, platform);
 	return true;
 }
@@ -196,6 +226,9 @@ VkDescriptorPool DearImGui::createDescriptorPool(VkDevice device)
 }
 
 
+#endif  // IMGUI_DISABLE
+
+
 /* Note: Font upload is now automatic in ImGui docking branch (2025+)
 // Fonts are automatically uploaded on first NewFrame() call.
 // This function is no longer needed and has been commented out.
@@ -253,7 +286,7 @@ void DearImGui::uploadFonts(VkCommandPool commandPool, VkCommandBuffer commandBu
 ImVector fields removed in newer branch:
 	guiWindow.Frames		  = NULL;
 	guiWindow.FrameSemaphores = NULL;
- 
+
 Note A - Updated initialization:
 	- RenderPass and MSAASamples moved into PipelineInfoMain.
 	- Init takes only one parameter now (no longer includes render pass parameter).

@@ -1,3 +1,7 @@
+#include "imgui.h"
+#ifdef IMGUI_DISABLE
+	#include "stubs/sDearImGui.h"	// (overrides all below)
+#endif
 //
 // DearImGui.h
 //	General App Chassis, Platform Layer, GUI System, Vulkan-centric
@@ -21,6 +25,9 @@ public:
 	DearImGui(const DearImGui& other);  	// copy constructor
 	~DearImGui();
 
+private:
+	static bool s_imguiShutdown;	// Track if ImGui has been shut down. (shared across all instances)
+
 		// METHODS
 
 	iRenderableBase* newConcretion(CommandRecording* pRecordingMode) const
@@ -43,9 +50,10 @@ private:
 		// MEMBERS
 
 	VkResult	err;
-	VkDevice&	device;			// (saved for destruction)
+	VkDevice&	device;				// (saved for destruction)
+	VkDescriptorPool descriptorPool;	// ImGui descriptor pool (must be destroyed manually)
 
-	string		iniFileName;	// https://github.com/ocornut/imgui/issues/454
+	string		iniFileName;		// https://github.com/ocornut/imgui/issues/454
 
 public:		// made available to MainGui(this):
 	iPlatform&	platform;
