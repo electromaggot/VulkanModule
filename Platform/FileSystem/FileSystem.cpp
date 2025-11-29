@@ -73,7 +73,8 @@ vector<char> FileSystem::readFile(const string& fileName, const char* subdirecto
 														  const char* showFileType)
 {
 	const string fullPath = ExeAccompaniedFullPath(fileName, subdirectoryName);
-	Log(RAW, "Read: %s - file: %s", showFileType, fullPath.c_str());
+	if (LogLimit(LOW))
+		Log(RAW, "Read: %s - file: %s", showFileType, fullPath.c_str());
 	return readFile(fullPath);
 }
 

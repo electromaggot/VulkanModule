@@ -39,8 +39,17 @@ void LogStartup()	// Provide a startup sanity check...
 }
 
 
-// Assumes..: enum Tier { ERROR, WARN, NOTE, RAW, SAME, LOW };
-const char* Prefix[] = { "ERROR! ", "Warning: ", "Note: ", "", "", "" };
+const bool useEmojis = true;
+
+const char* WordyPrefix[] = { "ERROR! ", "Warn: ", "Note: ", "", "", "GOAL! ", "Good: ", "Fail: ", "Dead: ", "" };	// 🛜 ☑️ ↪️ 🛠️ 🔥
+const char* EmojiPrefix[] = {	"❌ ",	  "⚠️ ",	"📋 ",	 "", "",  "🚀 ",	"✅ ",	  "🚫 ",	"💀 ",   "" };	// 🛑 🚨 ⛔ 💥 ☠️
+
+	// Assumes..: enum Tier { ERROR,	  WARN,		NOTE,  RAW, SAME, GOAL,		GOOD,	  FAIL,		DEAD,	LOW };
+const char** Prefix = useEmojis ? EmojiPrefix : WordyPrefix;
+
+Tier logThreshold = NOTE;
+
+bool LogLimit(Tier tier) { return logThreshold >= tier; }
 
 string logFileName;
 const char* pLogFileName = nullptr;
