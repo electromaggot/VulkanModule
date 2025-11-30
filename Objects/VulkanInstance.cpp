@@ -16,6 +16,7 @@
 
 //#undef __cpp_impl_three_way_comparison		//TJ: otherwise "spaceship operator" errors-out with: std::partial_ordering not supported
 #include "vulkan/vulkan.hpp"		// for error to_string(VkResult)
+#include "ResourceTracker.h"
 
 
 const auto	TARGET_VULKAN_API_VERSION = VK_API_VERSION_1_0;

@@ -9,6 +9,7 @@
 //
 #include "EventObjects.h"
 #include "VulkanSetup.h"
+#include "ResourceTracker.h"
 
 VkPipelineStageFlagBits DEFAULT_INTRA_STAGE = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
 

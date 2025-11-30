@@ -8,6 +8,7 @@
 //	© 0000 (uncopyrighted; use at will)
 //
 #include "ImageResource.h"
+#include "ResourceTracker.h"
 
 
 ImageResource::ImageResource(GraphicsDevice& graphicsDevice, Mipmaps* optionalMipmaps)

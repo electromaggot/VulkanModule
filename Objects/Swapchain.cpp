@@ -10,6 +10,7 @@
 #include "Swapchain.h"
 #include "VulkanSingleton.h"
 #include "Helpers.h"
+#include "ResourceTracker.h"
 
 
 Swapchain::Swapchain(GraphicsDevice& graphics, WindowSurface& surface)

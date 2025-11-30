@@ -13,6 +13,7 @@
 #include "iPlatform.h"
 #include "CommandObjects.h"
 #include "RenderSettings.h"
+#include "ResourceTracker.h"
 
 
 TextureImage::TextureImage(TextureSpec& texSpec, VkCommandPool& pool, GraphicsDevice& device,

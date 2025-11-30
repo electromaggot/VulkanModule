@@ -17,6 +17,7 @@
 #include "GraphicsDevice.h"
 #include "VulkanConfigure.h"
 #include "RenderSettings.h"
+#include "ResourceTracker.h"
 
 
 GraphicsDevice::GraphicsDevice(WindowSurface& surface, VulkanInstance& instance,

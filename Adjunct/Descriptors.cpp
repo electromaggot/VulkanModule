@@ -11,6 +11,7 @@
 //	© 0000 (uncopyrighted; use at will)
 //
 #include "Descriptors.h"
+#include "ResourceTracker.h"
 
 
 Descriptors::Descriptors(vector<DescribEd>& describeds, Swapchain& swapchain, GraphicsDevice& device)

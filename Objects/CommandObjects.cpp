@@ -9,6 +9,7 @@
 //
 #include "CommandObjects.h"
 #include "VulkanSingleton.h"
+#include "ResourceTracker.h"
 
 
 #pragma mark - CommandPool

@@ -9,6 +9,7 @@
 //
 #include "Framebuffers.h"
 #include "VulkanSingleton.h"
+#include "ResourceTracker.h"
 
 
 Framebuffers::Framebuffers(Swapchain& swapchain, DepthBuffer& depthBuffer,
