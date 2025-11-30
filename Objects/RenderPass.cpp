@@ -8,6 +8,7 @@
 //	© 0000 (uncopyrighted; use at will)
 //
 #include "RenderPass.h"
+#include "ResourceTracker.h"
 
 
 RenderPass::RenderPass(GraphicsDevice& graphicsDevice)

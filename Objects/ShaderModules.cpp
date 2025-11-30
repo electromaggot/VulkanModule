@@ -9,6 +9,7 @@
 //
 #include "ShaderModules.h"
 #include "PlatformSpecifics.h"	// (for __emplace_back on iOS, possibly)
+#include "ResourceTracker.h"
 
 
 ShaderModules::ShaderModules(GraphicsDevice& graphics)

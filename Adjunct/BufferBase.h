@@ -13,6 +13,7 @@
 
 #include "VulkanPlatform.h"
 #include "GraphicsDevice.h"
+#include "ResourceTracker.h"
 
 
 class BufferBase

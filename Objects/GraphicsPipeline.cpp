@@ -8,6 +8,7 @@
 //	© 0000 (uncopyrighted; use at will)
 //
 #include "GraphicsPipeline.h"
+#include "ResourceTracker.h"
 
 
 GraphicsPipeline::GraphicsPipeline(ShaderModules& shaders, iRenderPass& renderPass,

@@ -8,6 +8,7 @@
 //	© 0000 (uncopyrighted; use at will)
 //
 #include "SyncObjects.h"
+#include "ResourceTracker.h"
 
 
 SyncObjects::SyncObjects(GraphicsDevice& graphics)

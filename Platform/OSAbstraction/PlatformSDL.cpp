@@ -17,6 +17,7 @@
 #include "PlatformSDL.h"
 
 #include "AppConstants.h"
+#include "ResourceTracker.h"
 #include "imgui.h"	// for WantCaptureMouse and WantCaptureKeyboard flags
 #include <climits>	// (to build on Linux side)
 #include <cstdlib>	// for setenv on macOS
@@ -263,8 +264,10 @@ void PlatformSDL::createMultiMonitorWindows()
 }
 void PlatformSDL::createVulkanSurface(int iScreen, VkInstance instance, VkSurfaceKHR& surface)
 {
-	if (SDL_Vulkan_CreateSurface(screenInfos[iScreen].pWindow, instance, &surface))
+	if (SDL_Vulkan_CreateSurface(screenInfos[iScreen].pWindow, instance, &surface)) {
+		VK_TRACK_CREATE(VK_RESOURCE_SURFACE);	// SDL creates surface internally, manually track it.
 		return;
+	}
 	Fatal("Unable to Create Vulkan-compatible Surface using SDL: " + string(SDL_GetError()));
 }
 void PlatformSDL::destroyMultiMonitorWindows()
@@ -304,8 +307,10 @@ void PlatformSDL::querySupportedVulkanExtensions()
 //
 void PlatformSDL::CreateVulkanSurface(VkInstance instance, VkSurfaceKHR& surface)
 {
-	if (SDL_Vulkan_CreateSurface(pWindow, instance, &surface))
+	if (SDL_Vulkan_CreateSurface(pWindow, instance, &surface)) {
+		VK_TRACK_CREATE(VK_RESOURCE_SURFACE);	// SDL creates surface internally, manually track it.
 		return;
+	}
 	Fatal("Unable to Create Vulkan-compatible Surface using SDL: " + string(SDL_GetError()));
 }
 
