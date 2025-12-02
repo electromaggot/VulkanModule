@@ -11,11 +11,11 @@
 #include "Renderable.h"
 
 
-vector<iRenderable*> RenderBatchManager::buildBatches(const vector<iRenderable*>& renderables)
+vector<iRenderableBase*> RenderBatchManager::buildBatches(const vector<iRenderableBase*>& renderables)
 {
 	clear();
 
-	vector<iRenderable*> selfManagedRenderables;
+	vector<iRenderableBase*> selfManagedRenderables;
 
 	if (renderables.empty())
 		return selfManagedRenderables;
@@ -23,7 +23,7 @@ vector<iRenderable*> RenderBatchManager::buildBatches(const vector<iRenderable*>
 	// Group renderables by pass type AND pipeline using a map for efficient lookups;
 	//	preserves correct rendering order: opaque (nullptr) → transparent → lines
 	// Collect self-managed renderables separately (like ImGui) to render last.
-	std::map<PipelineKey, vector<iRenderable*>> pipelineGroups;
+	std::map<PipelineKey, vector<iRenderableBase*>> pipelineGroups;
 
 	for (auto* pRenderable : renderables) {
 		// Separate self-managed renderables - things like ImGui render last with their own state.
@@ -51,7 +51,7 @@ vector<iRenderable*> RenderBatchManager::buildBatches(const vector<iRenderable*>
 }
 
 void RenderBatchManager::recordBatches(VkCommandBuffer& commandBuffer, int bufferIndex,
-									   const vector<iRenderable*>& selfManagedRenderables)
+									   const vector<iRenderableBase*>& selfManagedRenderables)
 {
 	VkPipeline lastBoundPipeline = VK_NULL_HANDLE;
 
@@ -65,14 +65,22 @@ void RenderBatchManager::recordBatches(VkCommandBuffer& commandBuffer, int buffe
 
 		// Draw all renderables in this batch.
 		for (auto* pRenderable : batch.renderables) {
+			// Self-managed renderables should not be in batches, but check just in case.
+			if (pRenderable->isSelfManaged) {
+				continue;  // Skip self-managed renderables in batched rendering.
+			}
+
+			// Safe to cast to iRenderable* now; we've confirmed it's not self-managed.
+			iRenderable* renderable = static_cast<iRenderable*>(pRenderable);
+
 			// Check if this is a secondary command buffer renderable.
-			if (pRenderable->IsSecondaryCommandBuffer()) {	// If so, execute the pre-recorded command buffer.
-				VkCommandBuffer secondaryCmdBuf = pRenderable->GetSecondaryCommandBuffer(bufferIndex);
+			if (renderable->IsSecondaryCommandBuffer()) {	// If so, execute the pre-recorded command buffer.
+				VkCommandBuffer secondaryCmdBuf = renderable->GetSecondaryCommandBuffer(bufferIndex);
 				vkCmdExecuteCommands(commandBuffer, 1, &secondaryCmdBuf);
 			} else {	// Otherwise, cast to Renderable for normal batched rendering.
-				Renderable* renderable = static_cast<Renderable*>(pRenderable);
+				Renderable* concreteRenderable = static_cast<Renderable*>(renderable);
 				// Skip pipeline bind since we already bound it once for the entire batch.
-				renderable->IssueBindAndDrawCommands(commandBuffer, bufferIndex, true);
+				concreteRenderable->IssueBindAndDrawCommands(commandBuffer, bufferIndex, true);
 			}
 		}
 	}

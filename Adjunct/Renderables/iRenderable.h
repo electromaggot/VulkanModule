@@ -29,6 +29,10 @@
 #include "DrawableSpecifier.h"
 
 
+// A CommandBuffer object needs an array of Renderables that go into recording its VkCommandBuffer, with
+//	instructions how to draw them.  Originally we thought it was important "how often" it gets recorded, but
+//	as it turns out: 1) the buffer almost always needs to be rerecorded anyway, and 2) it's not very costly.
+// Therefore this enum will be retired, especially since option 1 is now done via Secondary CommandBuffer.
 enum CommandRecording {		// i.e. Request this CommandBuffer to be recorded:
 	AT_INIT_TIME_ONLY,		//  - once at initialization-time and not re-recorded before frames.
 	UPON_EACH_FRAME,		//  - repeatedly on every frame, and Reset before the next one.
@@ -98,7 +102,7 @@ struct iRenderable : iRenderableBase
 
 	MeshObject&			vertexObject;	// (retain for Recreate)
 	Customizer			customizer;
-	string&				name;
+	string				name;
 	bool				(*updateMethod)(GameClock&);
 	bool				ownsShaderModules;	// true if we created it, false if shared
 	const char*			pass;				// Render pass type (nullptr for primary, or "transparency"/"lines"/"shadow")
@@ -154,17 +158,8 @@ struct iRenderable : iRenderableBase
 };
 
 
-// A CommandBuffer object needs an array of Renderables that go into recording its VkCommandBuffer.
-//	Also an indicator as to how often it gets (re)recorded.
-//	Note that because one Buffer may share contributions from multiple Renderables, those must be
-//	tracked until all their initializations complete, before the VkCommandBuffer can be recorded.
+// Renderables management class - stores normal and self-managed renderables in separate type-safe vectors.
 //
-struct CommandRecordable {
-	CommandRecording	 recordMode;
-	vector<iRenderable*> pRenderables;
-};
-
-
 class Renderables
 {
 	friend class CommandControl;
@@ -172,7 +167,7 @@ class Renderables
 public:
 	~Renderables()
 	{
-		Clear();	// (in case one or more objects are self-managed, don't blanket: delete[] pRenderable;)
+		Clear();
 	}
 
 	DrawableSpecifier* ALL = nullptr;
@@ -181,124 +176,133 @@ public:
 		Remove(ALL);
 	}
 
+	// Remove renderables - simplified with type-safe vectors: no casting, no defensive checks.
+	//
 	void Remove(DrawableSpecifier* pObjSpec)
 	{
-		bool removeALL = pObjSpec == ALL;
-		for (auto& recordable : recordables) {
-			auto& renderables = recordable.pRenderables;	// iterate over vector:
-			for (auto ppRenderable = renderables.begin(); ppRenderable < renderables.end(); ) {
-				if (*ppRenderable == nullptr) {						// Check if pointer is valid before dereferencing,
-					ppRenderable = renderables.erase(ppRenderable);	//	as self-managed objects may delete elsewhere.
-					continue;
-				}
-				iRenderable& renderable = **ppRenderable;
+		bool removeALL = (pObjSpec == ALL);
 
-				if (removeALL && renderable.isSelfManaged) {		// Skip self-managed renderables when removing all,
-					++ppRenderable;									//	as they manage their own lifecycle
-					continue;
-				}
-				if ((!removeALL && &renderable.vertexObject == &pObjSpec->mesh)	 // Remove specific renderable or
-				  || (removeALL && !renderable.isSelfManaged))					 //	 non-self-managed when removing all.
-				{
-					renderable.deleteConcretion();		// Delete Vulkan resources (pipeline, descriptors, etc.).
-					delete *ppRenderable;				// Delete the renderable object itself (created by newConcretion()).
-					ppRenderable = renderables.erase(ppRenderable);	 // <-- erase() returns iterator to next element.
-					if (!removeALL)
-						return;	// on 1st match for specific removal.
-				} else {
-					++ppRenderable;
-				}
+		// Remove from normal renderables (type-safe iteration).
+		for (auto it = pNormalRenderables.begin(); it != pNormalRenderables.end(); ) {
+			iRenderable* pRenderable = *it;
+
+			if (removeALL || &pRenderable->vertexObject == &pObjSpec->mesh) {
+				Log(GOOD, "Removing: %s", pRenderable->name.c_str());
+				pRenderable->deleteConcretion();
+				delete pRenderable;
+				it = pNormalRenderables.erase(it);
+				if (!removeALL)
+					return;
+			} else {
+				++it;
 			}
 		}
+		// Self-managed renderables are NEVER removed; they manage own lifecycle.
 	}
 
+	// Add methods - public API unchanged for backward compatibility.
+	//
 	void Add(const iRenderableBase& renderable)
 	{
 		Add((iRenderableBase*) &renderable, UPON_EACH_FRAME);
 	}
+
 	void Add(const iRenderable& renderable)
 	{
 		CommandRecording recordingMode;
 		iRenderable* pRenderable = renderable.newConcretion(&recordingMode);
 		Add(pRenderable, recordingMode);
 	}
-	void Add(iRenderableBase* pRenderable, CommandRecording recordingMode)
-	{
-		size_t numRecordables = recordables.size();
-		int iRecordable = -1;
-		do {
-			++iRecordable;
-			if (iRecordable >= numRecordables) {
-				recordables.emplace_back();
-				recordables.back().recordMode = recordingMode;
-				break;
-			}
-		} while (recordables[iRecordable].recordMode != recordingMode
-				 && recordingMode != ON_CHANGE_FLAGGED);  // <-- always gets its own exclusive CommandBuffer
 
-		recordables[iRecordable].pRenderables.push_back((iRenderable*)pRenderable);
-
-		// Only access iRenderable members (pass, name) for non-self-managed renderables
-		if (!pRenderable->isSelfManaged) {
-			iRenderable* renderable = static_cast<iRenderable*>(pRenderable);
-			if (renderable->pass == nullptr) {
-				Log(RAW, "done: %s SPAWNED.", renderable->name.c_str());
-			} else {
-				Log(RAW, "done: %s BOUND.", renderable->name.c_str());
-			}
-		} else {
-			Log(RAW, "done: Self-managed renderable added.");
-		}
-	}
-
-
-	// This is where all Renderables get their Update() methods called.  It is optional, if a Renderable doesn't
-	//	move, animate, or otherwise change.  This is custom-set per Renderable and is separate from any gxActions
-	//	that may have also been applied to the Renderable.
-	//	Returning true indicates overall Update "succeeded" and requests caller to refresh, because
-	//	at least one Renderable's Update() requested the refresh.
+	// Update all renderables, both normal and self-managed.
+	//	That is, this is where all Renderables get their Update() methods called.  It is optional, if a Renderable
+	//	doesn't move, animate, or otherwise change.  This is custom-set per Renderable and is separate from gxActions
+	//	that may have also been applied to the Renderable.  Returning true indicates overall Update "succeeded" and
+	//	requests caller to refresh, because at least one Renderable's Update() requested the refresh.
 	//
 	bool Update(GameClock& time)
 	{
-		bool result, requestRefresh = false;
-		for (CommandRecordable& recordable : recordables)
-			for (iRenderable* pRenderable : recordable.pRenderables) {
-				result = pRenderable->Update(time);
-				requestRefresh = result || requestRefresh;
-			}
+		bool requestRefresh = false;
+
+		for (iRenderable* pRenderable : pNormalRenderables) {			// Update normal renderables.
+			bool result = pRenderable->Update(time);
+			requestRefresh = result || requestRefresh;
+		}
+
+		for (iRenderableBase* pRenderable : pSelfManagedRenderables) {	// Update self-managed renderables.
+			bool result = pRenderable->Update(time);
+			requestRefresh = result || requestRefresh;
+		}
 		return requestRefresh;
 	}
 
+	// Update uniform buffers; only normal renderables have UBOs.
+	//
 	void UpdateUniformBuffers(int iNextImage)
 	{
-		for (auto& recordable : recordables)
-			for (auto& pRenderable : recordable.pRenderables) {
-				if (!pRenderable->isSelfManaged) {
-					AddOns& addOns = pRenderable->addOns;
-					if (addOns.described.size() > 0)
-						for (int index = 0; index < addOns.pUniformBuffers.size(); ++index) {
-							// Skip dynamic UBOs (they are updated separately via DynamicUniformBuffer)
-							if (addOns.pUniformBuffers[index] == nullptr)
-								continue;
-							UniformBuffer& unibuf = *addOns.pUniformBuffers[index];
-							void* pUboData = addOns.ubos[index].pBytes;
-							size_t numBytes = addOns.ubos[index].byteSize;
-							assert(numBytes == unibuf.nbytesBufferObject);
-							unibuf.Update(iNextImage, pUboData, numBytes);
-						}
+		for (iRenderable* pRenderable : pNormalRenderables) {
+			AddOns& addOns = pRenderable->addOns;
+			if (addOns.described.size() > 0) {
+				for (int index = 0; index < addOns.pUniformBuffers.size(); ++index) {
+					if (addOns.pUniformBuffers[index] == nullptr)
+						continue;
+					UniformBuffer& unibuf = *addOns.pUniformBuffers[index];
+					void* pUboData = addOns.ubos[index].pBytes;
+					size_t numBytes = addOns.ubos[index].byteSize;
+					assert(numBytes == unibuf.nbytesBufferObject);
+					unibuf.Update(iNextImage, pUboData, numBytes);
 				}
 			}
+		}
 	}
 
+	// Recreate all renderables (for window resize).
+	//
 	void Recreate(VulkanSetup& vulkan)
 	{
-		for (auto& recordable : recordables)
-			for (auto& pRenderable : recordable.pRenderables)
-				pRenderable->Recreate(vulkan);
+		for (iRenderable* pRenderable : pNormalRenderables)
+			pRenderable->Recreate(vulkan);
+
+		for (iRenderableBase* pRenderable : pSelfManagedRenderables)
+			pRenderable->Recreate(vulkan);
 	}
 
+	// Getters for CommandControl to merge vectors.
+	const vector<iRenderable*>& getNormalRenderables() const { return pNormalRenderables; }
+	const vector<iRenderableBase*>& getSelfManagedRenderables() const { return pSelfManagedRenderables; }
+	size_t getNormalCount() const { return pNormalRenderables.size(); }
+	size_t getSelfManagedCount() const { return pSelfManagedRenderables.size(); }
+
 private:
-	vector<CommandRecordable> recordables;
+	// Typed vectors - eliminates type confusion and crashes
+	vector<iRenderable*> pNormalRenderables;
+	vector<iRenderableBase*> pSelfManagedRenderables;
+
+	// Internal routing method - single isSelfManaged check at add-time.
+	//
+	void Add(iRenderableBase* pRenderable, CommandRecording recordingMode)
+	{
+		if (pRenderable->isSelfManaged)
+			addSelfManaged(pRenderable);
+		else
+			addNormal(static_cast<iRenderable*>(pRenderable), recordingMode);
+	}
+
+	void addNormal(iRenderable* pRenderable, CommandRecording recordingMode)
+	{
+		pNormalRenderables.push_back(pRenderable);
+
+		if (pRenderable->pass == nullptr)
+			Log(RAW, "done: %s SPAWNED.", pRenderable->name.c_str());
+		else
+			Log(RAW, "done: %s BOUND.", pRenderable->name.c_str());
+	}
+
+	void addSelfManaged(iRenderableBase* pRenderable)
+	{
+		pSelfManagedRenderables.push_back(pRenderable);
+		Log(RAW, "done: Self-managed renderable added.");
+	}
 };
 
 
