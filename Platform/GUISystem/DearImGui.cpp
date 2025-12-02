@@ -32,7 +32,8 @@ static VkAllocationCallbacks*   g_Allocator = nullptr;
 
 
 DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
-	:	device(vulkan.device.getLogical())
+	:	iRenderableBase()  // Base constructor sets isSelfManaged = true
+	  , device(vulkan.device.getLogical())
 	  , platform(platform)
 {
 	Log(LOW, "DearImGui constructor: Starting ImGui initialization...");
@@ -108,7 +109,8 @@ DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
 // Copy constructor, useful e.g. for newConcretion() add to renderables.
 //
 DearImGui::DearImGui(const DearImGui& other)
-	:	device(other.device)
+	:	iRenderableBase(other)			// Copy base class (including isSelfManaged flag)
+	  , device(other.device)
 	  , descriptorPool(VK_NULL_HANDLE)	// Don't copy descriptor pool - only original owns it.
 	  , iniFileName(other.iniFileName)
 	  , platform(other.platform)

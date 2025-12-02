@@ -65,7 +65,7 @@ private:
 public:
 	void allocateVkCommandBuffer();
 	void freeVkCommandBuffers();
-	void recordCommands(vector<iRenderable*> pRenderables, VkFramebuffer& framebuffer,
+	void recordCommands(vector<iRenderableBase*> pRenderables, VkFramebuffer& framebuffer,
 						VkExtent2D& swapChainExtent, VkRenderPass& renderPass);
 		// getters
 	uint32_t	numBufferSets()	 {	return (uint32_t) vkCommandBuffers.size();	}
@@ -122,7 +122,7 @@ private:
 	CommandBufferSets	buffersByFrame;				// size == numFrames (Framebuffers.size())
 
 		// METHODS
-	void recordCommands(int iFrame, vector<iRenderable*> pRenderables, VulkanSetup& vulkan);
+	void recordCommands(int iFrame, vector<iRenderableBase*> pRenderables, VulkanSetup& vulkan);
 
 public:
 	void Create(Framebuffers& framebuffers);
@@ -131,6 +131,7 @@ public:
 	void PostInitPrepBuffers(VulkanSetup& vulkan);
 	void RecordRenderablesUponEachFrame(VulkanSetup& vulkan);
 	void RecordRenderablesForNextFrame(VulkanSetup& vulkan, int iNextFrame);
+	void BuildMergedVectorFromTypedSources(vector<iRenderableBase*>&);
 
 	vector<VkCommandBuffer>	BuffersForFrame(int iFrame) {
 		assert (numFrames > 0);

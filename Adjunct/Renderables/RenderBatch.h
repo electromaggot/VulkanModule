@@ -67,7 +67,7 @@ private:
 struct RenderableBatch
 {
 	PipelineKey key;
-	vector<iRenderable*> renderables;
+	vector<iRenderableBase*> renderables;
 };
 
 
@@ -81,12 +81,12 @@ public:
 	// Build batches from a list of renderables;
 	//	maintains relative order within each batch for correct transparency rendering.
 	// Returns self-managed renderables (like ImGui) that should be rendered last.
-	vector<iRenderable*> buildBatches(const vector<iRenderable*>& renderables);
+	vector<iRenderableBase*> buildBatches(const vector<iRenderableBase*>& renderables);
 
 	// Record all batches into command buffer with optimized pipeline binding.
 	//	selfManagedRenderables: Renderables that manage their own state record last.
 	void recordBatches(VkCommandBuffer& commandBuffer, int bufferIndex,
-					   const vector<iRenderable*>& selfManagedRenderables = {});
+					   const vector<iRenderableBase*>& selfManagedRenderables = {});
 
 	void clear();			// Clear all batches - call before rebuilding.
 

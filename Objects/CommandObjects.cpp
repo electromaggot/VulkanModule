@@ -80,7 +80,7 @@ void CommandBufferSet::freeVkCommandBuffers()
 	vkCommandBuffers.clear();
 }
 
-void CommandBufferSet::recordCommands(vector<iRenderable*> pBufferRenderables, VkFramebuffer& framebuffer,
+void CommandBufferSet::recordCommands(vector<iRenderableBase*> pBufferRenderables, VkFramebuffer& framebuffer,
 									  VkExtent2D& swapchainExtent, VkRenderPass& renderPass)
 {
 	VkClearValue clearValues[] = {
@@ -100,7 +100,7 @@ void CommandBufferSet::recordCommands(vector<iRenderable*> pBufferRenderables, V
 
 	// Build pipeline batches for optimized recording; reduces pipeline binds from O(N) to O(M).
 	// Returns self-managed renderables (like ImGui) to render last.
-	vector<iRenderable*> selfManagedRenderables = batchManager.buildBatches(pBufferRenderables);
+	vector<iRenderableBase*> selfManagedRenderables = batchManager.buildBatches(pBufferRenderables);
 
 	size_t numBufferSets = vkCommandBuffers.size();
 
@@ -171,34 +171,38 @@ void CommandControl::Destroy()
 //
 void CommandControl::PostInitPrepBuffers(VulkanSetup& vulkan)
 {
-	size_t numBufferSets = renderables.recordables.size();
+	vector<iRenderableBase*> mergedRenderables;
+	BuildMergedVectorFromTypedSources(mergedRenderables);
 
-	for (int iBufferSet = 0; iBufferSet < numBufferSets; ++iBufferSet) {
-		CommandRecordable& recordable = renderables.recordables[iBufferSet];
-		for (int iFrame = 0; iFrame < numFrames; ++iFrame)
-		{
-			buffersByFrame[iFrame].allocateVkCommandBuffer();
-
-			if (recordable.recordMode == AT_INIT_TIME_ONLY)
-				buffersByFrame[iFrame].recordCommands(recordable.pRenderables, vulkan.framebuffers[iFrame],
-													  vulkan.swapchain.getExtent(), vulkan.renderPass.getVkRenderPass());
-		}
+	for (int iFrame = 0; iFrame < numFrames; ++iFrame) {	// Allocate and record command buffers for all frames.
+		buffersByFrame[iFrame].allocateVkCommandBuffer();
+		buffersByFrame[iFrame].recordCommands(mergedRenderables, vulkan.framebuffers[iFrame],
+											  vulkan.swapchain.getExtent(), vulkan.renderPass.getVkRenderPass());
 	}
-	assert(numBufferSets == buffersByFrame[0].numBufferSets());
 }
 
-// (Re)Record those Renderables that specified UPON_EACH_FRAME.
+void CommandControl::BuildMergedVectorFromTypedSources(vector<iRenderableBase*>& mergedRenderables)
+{
+	mergedRenderables.reserve(renderables.getNormalCount() + renderables.getSelfManagedCount());
+
+	for (iRenderable* p : renderables.getNormalRenderables()) {				// Merge normal renderables.
+		mergedRenderables.push_back(p);
+	}
+	for (iRenderableBase* p : renderables.getSelfManagedRenderables()) {	// Merge self-managed renderables.
+		mergedRenderables.push_back(p);
+	}
+}
+
+// (Re)Record command buffers for next frame.
 //
 void CommandControl::RecordRenderablesForNextFrame(VulkanSetup& vulkan, int iNextFrame)
 {
-	size_t numBufferSets = renderables.recordables.size();
+	vector<iRenderableBase*> mergedRenderables;
+	BuildMergedVectorFromTypedSources(mergedRenderables);
 
-	for (int iBufferSet = 0; iBufferSet < numBufferSets; ++iBufferSet) {
-		CommandRecordable& recordable = renderables.recordables[iBufferSet];
-		if (recordable.recordMode == UPON_EACH_FRAME)
-			buffersByFrame[iNextFrame].recordCommands(recordable.pRenderables, vulkan.framebuffers[iNextFrame],
-													  vulkan.swapchain.getExtent(), vulkan.renderPass.getVkRenderPass());
-	}
+	// Record command buffer for next frame.
+	buffersByFrame[iNextFrame].recordCommands(mergedRenderables, vulkan.framebuffers[iNextFrame],
+											  vulkan.swapchain.getExtent(), vulkan.renderPass.getVkRenderPass());
 }
 
 
