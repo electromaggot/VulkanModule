@@ -80,8 +80,9 @@ void ResourceTracker::reportLeaks()
 
 	// Report results
 	if (totalLeaks == 0) {
-		Log(GOOD, "✅ ✅ Vulkan Resource Tracking: No leaks detected (all resources properly cleaned up)");
-		Log(GOOD, "   Total: %d created, %d destroyed", totalCreated, totalDestroyed);
+		Log(RAW, "🏆 Vulkan Resource Tracking: NO LEAKS detected, all resources properly cleaned up!");
+		Tier check = (totalCreated == totalDestroyed) ? GOOD : FAIL;
+		Log(check, " Total: %d created, %d destroyed", totalCreated, totalDestroyed);
 		return;
 	}
 

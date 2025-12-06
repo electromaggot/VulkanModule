@@ -143,3 +143,30 @@ This tracker is **complementary** to Vulkan validation layers:
 - **ResourceTracker:** Lightweight aggregate counts, shutdown summary only
 
 Use validation layers during development, keep ResourceTracker for quick leak detection during testing.
+
+## Special Cases and Known Limitations
+
+**Implicit Destructions (Automatically Handled):**
+- VkDescriptorSets are implicitly freed when their VkDescriptorPool is destroyed (Vulkan spec)
+- ResourceTracker accounts for this via pool-to-set-count mapping in `trkDestroyDescriptorPool()`
+- No manual tracking of `vkFreeDescriptorSets()` needed (function rarely used)
+
+**Third-Party Library Resources:**
+- SDL creates VkSurfaceKHR using platform-specific functions that bypass macro interception
+- Manually tracked in `PlatformSDL.cpp` after `SDL_Vulkan_CreateSurface()` calls
+- Similar pattern may be needed for other third-party Vulkan wrappers
+
+**deleteConcretion() Pattern:**
+- Renderables require two-stage cleanup: `deleteConcretion()` then `delete`
+- Missing `deleteConcretion()` causes massive leaks (pipeline, descriptors, buffers, memory)
+- See `VulkanModule/Adjunct/Renderables/iRenderable.h` for correct pattern
+
+## Current Status
+
+✅ **Zero leaks detected** in production codebase (as of November 30, 2024)
+✅ **Perfect accounting balance** (561 created = 561 destroyed in test scene)
+✅ **All edge cases handled** (implicit destruction, SDL resources, renderable cleanup)
+
+For detailed history of bugs found and fixed, see:
+- `docs/sessions/2024-11-30-resource-tracking-implementation.md` - Initial implementation
+- `docs/sessions/2024-11-30-resource-leak-fixes.md` - Bug fixes and zero-leak achievement

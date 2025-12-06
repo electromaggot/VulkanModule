@@ -18,6 +18,7 @@ static void logToFile(Tier, const char*);
 
 
 //#define DEBUG_LOW
+#define HIDE_DEAD	1	// change to 0 to show all destroyed objects
 
 
 #if defined(__APPLE__) && defined(__MACH__)
@@ -47,7 +48,7 @@ const char* EmojiPrefix[] = {	"❌ ",	  "⚠️ ",	"📋 ",	 "", "",  "🚀 ",	"
 	// Assumes..: enum Tier { ERROR,	  WARN,		NOTE,  RAW, SAME, GOAL,		GOOD,	  FAIL,		DEAD,	LOW };
 const char** Prefix = useEmojis ? EmojiPrefix : WordyPrefix;
 
-Tier logThreshold = NOTE;
+Tier logThreshold = (Tier) (DEAD - HIDE_DEAD);
 
 bool LogLimit(Tier tier) { return logThreshold >= tier; }
 
@@ -57,8 +58,9 @@ const char* pLogFileName = nullptr;
 
 void Log(Tier tier, string message) {
 	#ifndef DEBUG_LOW
-	if (tier == LOW)  return;
+		if (tier > logThreshold)  return;
 	#endif
+
 	cout << Prefix[tier] << message;
 	if (tier != SAME)  cout << ENDL;
 
@@ -69,7 +71,7 @@ void Log(Tier tier, string message) {
 void Log(Tier tier, const char* format, ...)
 {
 	#ifndef DEBUG_LOW
-	if (tier == LOW)  return;
+		if (tier > logThreshold)  return;
 	#endif
 
 	char buffer[1024];
