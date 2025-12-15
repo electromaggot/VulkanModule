@@ -49,9 +49,9 @@ private:
 	static int getPassOrder(const char* pass) {
 		if (pass == nullptr)					return 1;	// Opaque second
 		if (strcmp(pass, "skybox") == 0)		return 0;	// Skybox first (background)
-		if (strcmp(pass, "transparency") == 0)	return 2;	// Transparent third
-		if (strcmp(pass, "lines") == 0)			return 3;	// Lines last (always on top)
-		return 2;											// Unknown passes with transparency
+		if (strcmp(pass, "lines") == 0)			return 2;	// Lines third (opaque, before transparency)
+		if (strcmp(pass, "transparency") == 0)	return 3;	// Transparent last (alpha blending on top)
+		return 3;											// Unknown passes render last with transparency
 	}
 
 	bool operator == (const PipelineKey& other) const {
