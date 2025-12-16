@@ -118,7 +118,7 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.sType					= VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
 		.pNext					= nullptr,
 		.flags					= 0,
-		.depthTestEnable		= VK_TRUE,
+		.depthTestEnable		= static_cast<VkBool32>(customize & DISABLE_DEPTH_TEST ? VK_FALSE : VK_TRUE),  // Disable depth testing for always-on-top rendering.
 		.depthWriteEnable		= static_cast<VkBool32>(customize & ALPHA_BLENDING ? VK_FALSE : VK_TRUE),  // Disable depth writes for transparent objects.
 		.depthCompareOp			= static_cast<VkCompareOp>(customize & DEPTH_LEQUAL ? VK_COMPARE_OP_LESS_OR_EQUAL : VK_COMPARE_OP_LESS),
 		.depthBoundsTestEnable	= VK_FALSE,
