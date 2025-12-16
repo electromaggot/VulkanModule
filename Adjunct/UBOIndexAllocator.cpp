@@ -68,7 +68,7 @@ std::string UBOIndexAllocator::getDebugName(uint32_t index) const
 
 void UBOIndexAllocator::printAllocations() const
 {
-	Log(NOTE, "📋 UBO Index Allocations (%u/%u used):", getAllocatedCount(), maxIndices);
+	Log(GOOD, "UBO Index Allocations (%u/%u used):", getAllocatedCount(), maxIndices);
 
 	if (allocations.empty()) {
 		Log(NOTE, "   (no active allocations)");

@@ -25,7 +25,8 @@ enum Customizer
 	MODELED_FOR_DIRECT3D = 0b00001000,	// versus default, model created for OpenGL + Right-Handed (same as Vulkan)
 	ALPHA_BLENDING		 = 0b00010000,	// enable alpha blending for transparency (billboards, particles, etc.)
 	LINE_TOPOLOGY		 = 0b00100000,	// use VK_PRIMITIVE_TOPOLOGY_LINE_LIST instead of TRIANGLE_LIST
-	DEPTH_LEQUAL		 = 0b01000000	// use VK_COMPARE_OP_LEQUAL instead of LESS (for skyboxes at far plane)
+	DEPTH_LEQUAL		 = 0b01000000,	// use VK_COMPARE_OP_LEQUAL instead of LESS (for skyboxes at far plane)
+	DISABLE_DEPTH_TEST	 = 0b10000000	// disable depth testing (always visible, renders on top)
 };
 
 inline Customizer operator | (Customizer left, Customizer right)
