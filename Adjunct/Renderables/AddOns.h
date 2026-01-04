@@ -26,6 +26,7 @@
 #include "UniformBufferLiterals.h"
 #include "UniformBuffer.h"
 #include "TextureImage.h"
+#include "Customizer.h"
 
 class DrawableSpecifier;	// skirt circular reference including iRenderable.h
 
@@ -61,7 +62,7 @@ protected:
 
 		// METHODS
 
-	void createVertexAndOrIndexBuffers(MeshObject& meshObject);
+	void createVertexAndOrIndexBuffers(MeshObject& meshObject, Customizer customize = NONE);
 	void createDescribedItems(vector<UBO>& UBO, vector<TextureSpec>& textureSpecs,
 							  vector<VkDescriptorImageInfo>& runtimeTextures,
 							  vector<vector<VkDescriptorImageInfo>>& perFrameRuntimeTextures,

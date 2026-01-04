@@ -119,7 +119,7 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.pNext					= nullptr,
 		.flags					= 0,
 		.depthTestEnable		= static_cast<VkBool32>(customize & DISABLE_DEPTH_TEST ? VK_FALSE : VK_TRUE),  // Disable depth testing for always-on-top rendering.
-		.depthWriteEnable		= static_cast<VkBool32>(customize & ALPHA_BLENDING ? VK_FALSE : VK_TRUE),  // Disable depth writes for transparent objects.
+		.depthWriteEnable		= static_cast<VkBool32>((customize & ALPHA_BLENDING) || (customize & DISABLE_DEPTH_WRITE) ? VK_FALSE : VK_TRUE),  // Disable depth writes for transparent objects or terrain (HUD overlay).
 		.depthCompareOp			= static_cast<VkCompareOp>(customize & DEPTH_LEQUAL ? VK_COMPARE_OP_LESS_OR_EQUAL : VK_COMPARE_OP_LESS),
 		.depthBoundsTestEnable	= VK_FALSE,
 		.stencilTestEnable		= VK_FALSE,

@@ -27,6 +27,7 @@
 
 #include "AddOns.h"
 #include "DrawableSpecifier.h"
+#include "PrimitiveBuffer.h"	// for updateVertexData() inline method
 
 
 // A CommandBuffer object needs an array of Renderables that go into recording its VkCommandBuffer, with
@@ -117,6 +118,16 @@ struct iRenderable : iRenderableBase
 
 	// Check if this renderable uses secondary command buffers.
 	virtual bool IsSecondaryCommandBuffer() const { return false; }
+
+	// Update vertex buffer with new data.  For dynamic geometry: animated models, particles, waveforms...
+	//	CRITICAL: New data must be same size as original buffer, no reallocation.
+	//	Uses direct CPU memory mapping (host-visible buffers) → NO command buffers, extremely fast!
+	//	Industry-standard for 60fps dynamic geometry updates.
+	void updateVertexData(void* pNewVertexData, VkDeviceSize size)
+	{
+		if (addOns.pVertexBuffer)
+			addOns.pVertexBuffer->UpdateVertexBufferMapped(pNewVertexData, size);
+	}
 
 	// Get secondary command buffer for a specific frame (only valid if IsSecondaryCommandBuffer() == true).
 	virtual VkCommandBuffer GetSecondaryCommandBuffer(int frameIndex) const { return VK_NULL_HANDLE; }

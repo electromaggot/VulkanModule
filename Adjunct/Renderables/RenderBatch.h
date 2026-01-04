@@ -46,12 +46,14 @@ struct PipelineKey
 	}
 
 private:
+									//TODO: This little static is now quite application-specific; be open to reassess approach.
 	static int getPassOrder(const char* pass) {
-		if (pass == nullptr)					return 1;	// Opaque second
-		if (strcmp(pass, "skybox") == 0)		return 0;	// Skybox first (background)
-		if (strcmp(pass, "lines") == 0)			return 2;	// Lines third (opaque, before transparency)
-		if (strcmp(pass, "transparency") == 0)	return 3;	// Transparent last (alpha blending on top)
-		return 3;											// Unknown passes render last with transparency
+		if (pass == nullptr)					return 3;	// Opaque fourth: Ship, objects - test against (terrain) depth.
+		if (strcmp(pass, "skybox") == 0)		return 0;	// Skybox first: background.
+		if (strcmp(pass, "terrain") == 0)		return 1;	// Terrain second: writes depth for HUD (WaveformLine) overlay.
+		if (strcmp(pass, "lines") == 0)			return 2;	// Lines third: HUD overlays (terrain), no depth test/write.
+		if (strcmp(pass, "transparency") == 0)	return 4;	// Transparent last: alpha blending on top.
+		return 4;											// Unknown passes render last, with transparency.
 	}
 
 	bool operator == (const PipelineKey& other) const {

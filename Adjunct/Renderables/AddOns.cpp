@@ -13,13 +13,14 @@
 #include "DynamicUniformBuffer.h"
 
 #include "PrimitiveBuffer.h"
+#include "Customizer.h"
 
 
 AddOns::AddOns(DrawableSpecifier& drawable, VulkanSetup& setup, iPlatform& abstractPlatform)
 	:	vulkan(setup),
 		platform(abstractPlatform)
 {
-	createVertexAndOrIndexBuffers(drawable.mesh);
+	createVertexAndOrIndexBuffers(drawable.mesh, drawable.customize);
 	createDescribedItems(drawable.pUBOs, drawable.textures, drawable.runtimeTextures,
 						 drawable.perFrameRuntimeTextures, abstractPlatform);
 }
@@ -33,11 +34,22 @@ AddOns::~AddOns()
 
 #pragma mark - VERTEX / INDEX BUFFERS
 
-void AddOns::createVertexAndOrIndexBuffers(MeshObject& meshObject)
+void AddOns::createVertexAndOrIndexBuffers(MeshObject& meshObject, Customizer customize)
 {
 	if (meshObject.vertices) {
 		VkCommandPool commandPool = vulkan.command.vkPool();
-		pVertexBuffer = new PrimitiveBuffer(meshObject, commandPool, vulkan.device);
+
+		// Check if this is dynamic geometry, e.g. continuously updated waveforms, particles, animated models...
+		bool isDynamic = (customize & DYNAMIC_GEOMETRY) != 0;
+
+		if (isDynamic) {	// Create host-visible vertex buffer: CPU-mappable, no command buffers for updates.
+			pVertexBuffer = new PrimitiveBuffer(commandPool, vulkan.device);
+			VkDeviceSize bufferSize = meshObject.vertexBufferSize();
+			pVertexBuffer->CreateVertexBuffer(meshObject.vertices, bufferSize, true);  // hostVisible = true
+		} else {	// Create standard device-local vertex buffer: best GPU performance, uses staging for updates.
+			pVertexBuffer = new PrimitiveBuffer(meshObject, commandPool, vulkan.device);
+		}
+
 		if (meshObject.indices) {
 			if (meshObject.indexType == MeshDefaultIndexType) {
 				pIndexBuffer = new PrimitiveBuffer((IndexBufferDefaultIndexType*) meshObject.indices,
