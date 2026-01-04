@@ -69,6 +69,31 @@ void PrimitiveBuffer::CreateVertexBuffer(vector<VertexAbstract> vertices)
 							buffer, bufferMemory);
 }
 
+// Create host-visible vertex buffer for dynamic geometry, e.g. particles, animated models, waveforms...
+//	hostVisible = true:  CPU-accessible, fast updates via mapping → no command buffers!
+//	hostVisible = false: GPU-only, requires staging buffer for updates → one-time initialization.
+//
+void PrimitiveBuffer::CreateVertexBuffer(void* pVertexData, VkDeviceSize bufferSize, bool hostVisible)
+{
+	if (!hostVisible) {		// Use standard device-local staging buffer approach:
+		createDeviceLocalBuffer(pVertexData, bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, buffer, bufferMemory);
+		return;
+	}
+
+	// Create host-visible buffer, CPU-accessible for direct updates.
+	createGeneralBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+						buffer, bufferMemory);
+
+	void* pData;			// Map, copy initial data, unmap:
+	call = vkMapMemory(device, bufferMemory, 0, bufferSize, 0, &pData);
+	if (call != VK_SUCCESS)
+		Fatal("CreateVertexBuffer (host-visible) Map Memory FAILURE" + ErrStr(call));
+
+	memcpy(pData, pVertexData, (size_t)bufferSize);
+	vkUnmapMemory(device, bufferMemory);
+}
+
 void PrimitiveBuffer::CreateIndexBuffer(vector<IndexBufferDefaultIndexType> indices)
 {
 	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
@@ -76,6 +101,33 @@ void PrimitiveBuffer::CreateIndexBuffer(vector<IndexBufferDefaultIndexType> indi
 	createDeviceLocalBuffer(indices.data(), bufferSize,
 							VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 							buffer, bufferMemory);
+}
+
+// Update existing vertex buffer with new data, for dynamic geometry like animated models, particles, waveforms.
+//	Efficient for frequent updates - uses staging buffer to transfer new data to device-local buffer.
+//	CRITICAL: size must match original buffer size → no reallocation, just data update.
+//
+void PrimitiveBuffer::UpdateVertexBuffer(void* pNewVertexData, VkDeviceSize size)
+{
+	VkBuffer stagingBuffer;		// Create temporary staging buffer. (CPU-accessible)
+	VkDeviceMemory stagingMemory;
+	createGeneralBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+						stagingBuffer, stagingMemory);
+
+	void* pData;				// Map staging buffer, copy new vertex data, unmap:
+	call = vkMapMemory(device, stagingMemory, 0, size, 0, &pData);
+	if (call != VK_SUCCESS)
+		Fatal("UpdateVertexBuffer Map Memory FAILURE" + ErrStr(call));
+
+	memcpy(pData, pNewVertexData, (size_t)size);
+	vkUnmapMemory(device, stagingMemory);
+
+	// Copy staging buffer to existing device-local vertex buffer via Vulkan command:
+	copyBufferViaVulkan(stagingBuffer, buffer, size);
+
+	vkDestroyBuffer(device, stagingBuffer, nullALLOC);		// Clean up staging buffer.
+	vkFreeMemory(device, stagingMemory, nullALLOC);			//
 }
 
 
@@ -103,6 +155,24 @@ void PrimitiveBuffer::createDeviceLocalBuffer(void* pSourceData, VkDeviceSize si
 
 	vkDestroyBuffer(device, cpuSideBuffer, nullALLOC);
 	vkFreeMemory(device, cpuSideBufferMemory, nullALLOC);
+}
+
+// Fast update for host-visible vertex buffers, dynamic geometry like waveforms, particles, animated models.
+//	Direct CPU memory mapping → NO staging buffers, NO command buffers!
+//	Industry standard for 60fps dynamic geometry updates.
+//
+void PrimitiveBuffer::UpdateVertexBufferMapped(void* pNewVertexData, VkDeviceSize size)
+{
+	void* pData;					// Map GPU memory directly to CPU address space.
+	call = vkMapMemory(device, bufferMemory, 0, size, 0, &pData);
+	if (call != VK_SUCCESS)
+		Fatal("UpdateVertexBufferMapped Map Memory FAILURE" + ErrStr(call));
+
+	// Copy new vertex data directly → extremely fast, no GPU involvement.
+	memcpy(pData, pNewVertexData, (size_t)size);
+
+	// Unmap...  HOST_COHERENT flag means no manual flush needed → driver handles it.
+	vkUnmapMemory(device, bufferMemory);
 }
 
 void PrimitiveBuffer::copyBufferViaVulkan(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)

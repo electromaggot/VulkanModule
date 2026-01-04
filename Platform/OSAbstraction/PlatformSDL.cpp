@@ -173,7 +173,7 @@ void PlatformSDL::createVulkanCompatibleWindow()
 	if (!pWindow)
 		Fatal("Fail to Create Vulkan-compatible Window with SDL: " + string(SDL_GetError()));
 
-	// Log display information for performance diagnostics
+	// Log display information for performance diagnostics.
 	int displayIndex = SDL_GetWindowDisplayIndex(pWindow);
 	if (displayIndex >= 0) {
 		const char* displayName = SDL_GetDisplayName(displayIndex);
@@ -184,11 +184,11 @@ void PlatformSDL::createVulkanCompatibleWindow()
 				displayName ? displayName : "Unknown",
 				displayMode.w, displayMode.h, displayMode.refresh_rate);
 
-			// Helpful performance hint based on display type
+			// Helpful performance hint based on display type:
 			if (displayIndex > 0) {
-				Log(NOTE, "External display detected - FPS may be limited by display connection/vsync");
+				Log(WARN, "External display detected - FPS may be limited by display connection/vsync.");
 			} else {
-				Log(NOTE, "Built-in display - expect maximum performance");
+				Log(GOOD, "Built-in display - expect maximum performance.");
 			}
 		}
 	}

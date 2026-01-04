@@ -19,14 +19,16 @@
 enum Customizer
 {
 	NONE				 = 0,
-	WIREFRAME			 = 0b00000001,	// e.g. render with: VK_POLYGON_MODE _LINE instead of _FILL
-	SHOW_BACKFACES		 = 0b00000010,	// override default: VK_CULL_MODE_BACK_BIT with _NONE
-	FRONT_CLOCKWISE		 = 0b00000100,	//		   i.e. NOT: VK_FRONT_FACE_COUNTER_CLOCKWISE
-	MODELED_FOR_DIRECT3D = 0b00001000,	// versus default, model created for OpenGL + Right-Handed (same as Vulkan)
-	ALPHA_BLENDING		 = 0b00010000,	// enable alpha blending for transparency (billboards, particles, etc.)
-	LINE_TOPOLOGY		 = 0b00100000,	// use VK_PRIMITIVE_TOPOLOGY_LINE_LIST instead of TRIANGLE_LIST
-	DEPTH_LEQUAL		 = 0b01000000,	// use VK_COMPARE_OP_LEQUAL instead of LESS (for skyboxes at far plane)
-	DISABLE_DEPTH_TEST	 = 0b10000000	// disable depth testing (always visible, renders on top)
+	WIREFRAME			 = 0b00000001,	// Render with e.g. VK_POLYGON_MODE _LINE instead of _FILL.
+	SHOW_BACKFACES		 = 0b00000010,	// Override default: VK_CULL_MODE_BACK_BIT with _NONE.
+	FRONT_CLOCKWISE		 = 0b00000100,	//		   i.e. NOT: VK_FRONT_FACE_COUNTER_CLOCKWISE.
+	MODELED_FOR_DIRECT3D = 0b00001000,	// Versus default, model created for OpenGL + Right-Handed (same as Vulkan).
+	ALPHA_BLENDING		 = 0b00010000,	// Enable alpha blending for transparency, e.g. billboards, particles, etc.
+	LINE_TOPOLOGY		 = 0b00100000,	// Use VK_PRIMITIVE_TOPOLOGY_LINE_LIST instead of TRIANGLE_LIST.
+	DEPTH_LEQUAL		 = 0b01000000,	// Use VK_COMPARE_OP_LEQUAL instead of LESS, e.g. for skyboxes at far plane.
+	DISABLE_DEPTH_TEST	 = 0b10000000,	// Disable depth testing: always visible, renders on top.
+	DYNAMIC_GEOMETRY	 = 0b100000000,	// Use host-visible vertex buffer for frequent updates (no command buffers).
+	DISABLE_DEPTH_WRITE	 = 0b1000000000	// Disable depth writes, e.g. for a HUD-like overlay effect.
 };
 
 inline Customizer operator | (Customizer left, Customizer right)
