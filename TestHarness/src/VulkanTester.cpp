@@ -211,13 +211,20 @@ void VulkanTester::draw()
 			called = "Queue Present";
 		}
 	}
-	if (call == VK_ERROR_OUT_OF_DATE_KHR || call == VK_SUBOPTIMAL_KHR)
+	// Delegate swapchain recreation to the reusable VulkanModule helper.  (This harness has no
+	//	per-image tracking to reset; device loss just logs and quits — recovery policy is the app's.)
+	switch (vulkan.RecoverFromPresentResult(call))
 	{
-		vulkan.RecreateRenderingResources();
-		syncObjects.Recreate();
+		case FrameRecovery::Recreated:
+			break;
+		case FrameRecovery::DeviceLost:
+			Log(ERROR, "Vulkan device lost — exiting (test harness has no recovery policy).");
+			break;
+		case FrameRecovery::None:
+			if (call != VK_SUCCESS && call != VK_SUBOPTIMAL_KHR)
+				Log(ERROR, called + ErrStr(call));
+			break;
 	}
-	if (call != VK_SUCCESS && call != VK_SUBOPTIMAL_KHR)
-		Log(ERROR, called + ErrStr(call));
 
 	iCurrentFrame = (iCurrentFrame + 1) % syncObjects.MaxFramesInFlight;
 }
