@@ -11,8 +11,8 @@
 // Tadd Jensen 9 Nov 2023
 //	© 0000 (uncopyrighted; use at will)
 //
-#include "imgui_impl_vulkan.h"
-#include "imgui.h"
+#include "simgui_impl_vulkan.h"
+#include "simgui.h"
 
 
 bool ImGui_ImplVulkan_Init(ImGui_ImplVulkan_InitInfo* info)  { return true; }

@@ -90,7 +90,10 @@ void PrimitiveBuffer::CreateVertexBuffer(void* pVertexData, VkDeviceSize bufferS
 	if (call != VK_SUCCESS)
 		Fatal("CreateVertexBuffer (host-visible) Map Memory FAILURE" + ErrStr(call));
 
-	memcpy(pData, pVertexData, (size_t)bufferSize);
+	if (pVertexData)
+		memcpy(pData, pVertexData, (size_t) bufferSize);
+	else
+		memset(pData, 0, (size_t) bufferSize);
 	vkUnmapMemory(device, bufferMemory);
 }
 

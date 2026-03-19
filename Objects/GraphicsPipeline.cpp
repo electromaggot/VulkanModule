@@ -54,9 +54,10 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.sType	  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
 		.pNext	  = nullptr,
 		.flags	  = 0,
-		.topology = customize & POINT_TOPOLOGY ? VK_PRIMITIVE_TOPOLOGY_POINT_LIST
-				  : customize & LINE_TOPOLOGY ? VK_PRIMITIVE_TOPOLOGY_LINE_LIST
-				  : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+		.topology = (customize & LINE_TOPOLOGY)  ? VK_PRIMITIVE_TOPOLOGY_LINE_LIST
+				   : (customize & POINT_TOPOLOGY) ? VK_PRIMITIVE_TOPOLOGY_POINT_LIST
+				   : (customize & STRIP_TOPOLOGY) ? VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP
+				   : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
 		.primitiveRestartEnable = VK_FALSE
 	};
 
@@ -120,7 +121,7 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.pNext					= nullptr,
 		.flags					= 0,
 		.depthTestEnable		= static_cast<VkBool32>(customize & DISABLE_DEPTH_TEST ? VK_FALSE : VK_TRUE),  // Disable depth testing for always-on-top rendering.
-		.depthWriteEnable		= static_cast<VkBool32>(((customize & ALPHA_BLENDING) && !(customize & ALPHA_BLEND_DEPTH_WRITE)) || (customize & DISABLE_DEPTH_WRITE) ? VK_FALSE : VK_TRUE),  // Disable depth writes for transparent objects, unless ALPHA_BLEND_DEPTH_WRITE is set.
+		.depthWriteEnable		= static_cast<VkBool32>((((customize & ALPHA_BLENDING) || (customize & ADDITIVE_BLENDING)) && !(customize & ALPHA_BLEND_DEPTH_WRITE)) || (customize & DISABLE_DEPTH_WRITE) ? VK_FALSE : VK_TRUE),  // Disable depth writes for transparent/additive objects, unless ALPHA_BLEND_DEPTH_WRITE is set.
 		.depthCompareOp			= static_cast<VkCompareOp>(customize & DEPTH_LEQUAL ? VK_COMPARE_OP_LESS_OR_EQUAL : VK_COMPARE_OP_LESS),
 		.depthBoundsTestEnable	= VK_FALSE,
 		.stencilTestEnable		= VK_FALSE,
@@ -130,11 +131,13 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.maxDepthBounds			= 1.0f*/
 	};
 
-	// Alpha blending: disabled by default, enabled via ALPHA_BLENDING or ALPHA_BLEND_DEPTH_WRITE flags.
+	// Blending: disabled by default.
+	//   ALPHA_BLENDING / ALPHA_BLEND_DEPTH_WRITE: standard alpha blend (src_alpha, 1-src_alpha).
+	//   ADDITIVE_BLENDING: additive blend (src_alpha, ONE) — for fire, glow, sparks, etc.
 	VkPipelineColorBlendAttachmentState colorBlendAttachment = {
-		.blendEnable		 = static_cast<VkBool32>((customize & ALPHA_BLENDING) || (customize & ALPHA_BLEND_DEPTH_WRITE) ? VK_TRUE : VK_FALSE),
+		.blendEnable		 = static_cast<VkBool32>((customize & ALPHA_BLENDING) || (customize & ALPHA_BLEND_DEPTH_WRITE) || (customize & ADDITIVE_BLENDING) ? VK_TRUE : VK_FALSE),
 		.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
-		.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+		.dstColorBlendFactor = (customize & ADDITIVE_BLENDING) ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
 		.colorBlendOp		 = VK_BLEND_OP_ADD,
 		.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
 		.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
