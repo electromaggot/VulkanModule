@@ -42,6 +42,7 @@ protected:
 public:
 	bool	isWindowResized = false;
 	bool	isWindowHidden	= false;
+	bool	isFullScreen	= false;
 
 	int		pixelsWide = 0;		// Publicly-vulnerable but low-overhead convenience values,
 	int		pixelsHigh = 0;		//	especially if read every frame, avoid continuous heavy calls

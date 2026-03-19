@@ -198,6 +198,9 @@ void PlatformSDL::createVulkanCompatibleWindow()
 	windowX = winX;
 	windowY = winY;
 
+	if (settings.isFullScreen && !IsMobile)
+		pendingFullScreen = true;		// defer until run loop is active (macOS requires it)
+
 	//recordWindowGeometry();		// re-saves anything that had to be "corrected" above
 	//No, on 2nd thought, won't.  If re-run, will re-assign the same way.  If user tweaks, then it will save.
 	//(plus, the above seems to wipe out the saved credentials, which need to be pulled from Vault if that's to happen)
@@ -362,15 +365,42 @@ void PlatformSDL::SetWindowTitle(const char* title)
 		SDL_SetWindowTitle(pWindow, title);
 }
 
+// Detect fullscreen: SDL flags (SDL-initiated) or macOS native (green button).
+//	SDL2 doesn't track macOS native fullscreen with its own flags, and on notched
+//	MacBooks the window size is identical in windowed-maximized and native fullscreen,
+//	so query the NSWindow styleMask directly via a platform-specific helper.
+//
+#ifdef __APPLE__
+	extern "C" bool macOS_IsNativeFullScreen(SDL_Window* pWindow);
+	extern "C" void macOS_ExitNativeFullScreen(SDL_Window* pWindow);
+#endif
+
+bool PlatformSDL::detectFullScreen()
+{
+	if (SDL_GetWindowFlags(pWindow) & SDL_WINDOW_FULLSCREEN)
+		return true;
+
+#ifdef __APPLE__
+	return macOS_IsNativeFullScreen(pWindow);
+#else
+	return false;
+#endif
+}
+
 void PlatformSDL::recordWindowGeometry() // (with logging too)
 {
 	Log(SAME, "Note: Save Window Geometry: ");
 
+	isFullScreen = detectFullScreen();
+
 	AppSettings& settings = AppConstants.Settings;
-	settings.startingWindowWidth  = pixelsWide;
-	settings.startingWindowHeight = pixelsHigh;
-	settings.startingWindowX = windowX;
-	settings.startingWindowY = windowY;
+	settings.isFullScreen = isFullScreen;
+	if (!isFullScreen) {
+		settings.startingWindowWidth  = pixelsWide;
+		settings.startingWindowHeight = pixelsHigh;
+		settings.startingWindowX = windowX;
+		settings.startingWindowY = windowY;
+	}
 	settings.Save();
 }
 void PlatformSDL::rememberWindowSize(int wide, int high)
@@ -505,6 +535,12 @@ bool PlatformSDL::PollEvent(iControlScheme* pController)
 				}
 				break;
 			case SDL_KEYUP: {
+				// ESC (unshifted) exits fullscreen mode back to windowed.
+				if (event.key.keysym.sym == SDLK_ESCAPE
+						&& !(event.key.keysym.mod & (KMOD_LSHIFT | KMOD_RSHIFT))
+						&& detectFullScreen())
+					SDL_SetWindowFullscreen(pWindow, 0);
+
 				#if TARGET_OS_IOS
 					// iOS soft keyboard seems to immediately follow KEYDOWN with KEYUP, which
 					//	confuses ImGui's attempt to track KeysDownDuration between those events.
@@ -522,6 +558,34 @@ bool PlatformSDL::PollEvent(iControlScheme* pController)
 		}
 		return true;
 	}
+
+	// Event queue empty -- run loop is active, safe for deferred operations.
+
+	if (pendingFullScreen) {					// Restore fullscreen saved from prior session,
+		pendingFullScreen = false;				//	or switch from native to borderless fullscreen.
+		SDL_SetWindowFullscreen(pWindow,			//	Deferred: macOS requires the run loop to be active.
+								SDL_WINDOW_FULLSCREEN_DESKTOP);
+	}
+
+	// Detect fullscreen state changes (covers both SDL-initiated and macOS native).
+	bool currentlyFullScreen = detectFullScreen();
+	if (currentlyFullScreen != isFullScreen) {
+		isFullScreen = currentlyFullScreen;
+		Log(LOW, "Fullscreen state change: %s", isFullScreen ? "ENTER" : "EXIT");
+
+#ifdef __APPLE__
+		// If the user entered native fullscreen (green button), switch to borderless
+		//	fullscreen instead -- it's consistent (ESC exits) and doesn't show a menu
+		//	bar on mouse hover.  Exit native first, then apply borderless on next idle.
+		if (isFullScreen && !(SDL_GetWindowFlags(pWindow) & SDL_WINDOW_FULLSCREEN)) {
+			macOS_ExitNativeFullScreen(pWindow);
+			pendingFullScreen = true;
+		} else
+#endif
+		if (!IsMobile)
+			recordWindowGeometry();
+	}
+
 	return false;
 }
 
@@ -549,7 +613,7 @@ void PlatformSDL::process(SDL_WindowEvent& windowEvent)
 			isWindowHidden = false;
 			break;
 		case SDL_WINDOWEVENT_MAXIMIZED:
-		case SDL_WINDOWEVENT_RESTORED: // (from being maximized)
+		case SDL_WINDOWEVENT_RESTORED:
 			isWindowResized = true;
 			isWindowHidden = false;
 			break;
