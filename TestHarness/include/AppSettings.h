@@ -45,6 +45,8 @@ public:
 	int startingWindowHeight;
 	int startingWindowX;
 	int startingWindowY;
+
+	bool isFullScreen = false;
 };
 
 #endif	// AppSettings_h
