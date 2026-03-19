@@ -56,7 +56,9 @@ extern struct Constants
 	const int MaxSaneScreenWidth	= 7680 * 2;		// 8K x 2 values. Simply sanity-
 	const int MaxSaneScreenHeight	= 4320 * 2;		//	check on pixel-related ranges.
 
-	VkClearColorValue DefaultClearColor = { { 0.0f, 0.0f, 0.0f, 1.0f } };
+	VkClearColorValue DefaultClearColor = { { 0.0f, 0.0f, 0.0f, 1.0f } };		// Black
+	//VkClearColorValue DefaultClearColor = { { 0.4f, 0.6f, 0.85f, 1.0f } };	// Sky blue
+	//VkClearColorValue DefaultClearColor = { { 0.3f, 0.3f, 0.7f, 1.0f } };		// Deep sky blue
 
 	const bool SupportStereo3D		= false;
 
