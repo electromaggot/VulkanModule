@@ -103,6 +103,28 @@ void PrimitiveBuffer::CreateIndexBuffer(vector<IndexBufferDefaultIndexType> indi
 							buffer, bufferMemory);
 }
 
+// Create host-visible index buffer for dynamic geometry (same pattern as CreateVertexBuffer).
+//	hostVisible = true:  CPU-accessible, fast updates via mapping → no command buffers!
+//	hostVisible = false: GPU-only, requires staging buffer for updates.
+//
+void PrimitiveBuffer::CreateIndexBuffer(void* pIndexData, VkDeviceSize bufferSize, MeshIndexType indexType, bool hostVisible)
+{
+	if (!hostVisible) {		// Use standard device-local staging buffer approach:
+		createDeviceLocalBuffer(pIndexData, bufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, buffer, bufferMemory);
+		return;
+	}
+
+	// Create host-visible buffer, CPU-accessible for direct updates.
+	createGeneralBuffer(bufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+						buffer, bufferMemory);
+
+	void* pData;			// Map, copy initial data, unmap:
+	call = vkMapMemory(device, bufferMemory, 0, bufferSize, 0, &pData);
+	memcpy(pData, pIndexData, (size_t) bufferSize);
+	vkUnmapMemory(device, bufferMemory);
+}
+
 // Update existing vertex buffer with new data, for dynamic geometry like animated models, particles, waveforms.
 //	Efficient for frequent updates - uses staging buffer to transfer new data to device-local buffer.
 //	CRITICAL: size must match original buffer size → no reallocation, just data update.
@@ -170,6 +192,24 @@ void PrimitiveBuffer::UpdateVertexBufferMapped(void* pNewVertexData, VkDeviceSiz
 
 	// Copy new vertex data directly → extremely fast, no GPU involvement.
 	memcpy(pData, pNewVertexData, (size_t)size);
+
+	// Unmap...  HOST_COHERENT flag means no manual flush needed → driver handles it.
+	vkUnmapMemory(device, bufferMemory);
+}
+
+// Fast update for host-visible index buffers, dynamic terrain like visibility window scrolling.
+//	Direct CPU memory mapping → NO staging buffers, NO command buffers!
+//	Mirrors UpdateVertexBufferMapped() for index buffer updates.
+//
+void PrimitiveBuffer::UpdateIndexBufferMapped(void* pNewIndexData, VkDeviceSize size)
+{
+	void* pData;					// Map GPU memory directly to CPU address space.
+	call = vkMapMemory(device, bufferMemory, 0, size, 0, &pData);
+	if (call != VK_SUCCESS)
+		Fatal("UpdateIndexBufferMapped Map Memory FAILURE" + ErrStr(call));
+
+	// Copy new index data directly → extremely fast, no GPU involvement.
+	memcpy(pData, pNewIndexData, (size_t)size);
 
 	// Unmap...  HOST_COHERENT flag means no manual flush needed → driver handles it.
 	vkUnmapMemory(device, bufferMemory);

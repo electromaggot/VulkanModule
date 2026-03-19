@@ -96,16 +96,26 @@ void SecondaryRenderable::IssueBindAndDrawCommands(VkCommandBuffer& commandBuffe
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.getVkPipeline());
 
 	if (descriptors.exist()) {		// Bind descriptor sets:
+		// DIAGNOSTIC: Check for out-of-bounds or null descriptor set access.
+		auto& sets = descriptors.getSets();
+		if (bufferIndex < 0 || bufferIndex >= (int)sets.size()) {
+			Log(ERROR, "2NDARY DESCRIPTOR OOB: '%s' bufferIndex=%d sets.size()=%zu", name.c_str(), bufferIndex, sets.size());
+			return;
+		}
+		if (sets[bufferIndex] == VK_NULL_HANDLE) {
+			Log(ERROR, "2NDARY DESCRIPTOR NULL: '%s' bufferIndex=%d", name.c_str(), bufferIndex);
+			return;
+		}
 		if (hasDynamicOffset) {
 			// Bind descriptor with dynamic offset for per-object transforms via Dynamic UBO.
 			uint32_t dynamicOffsets[] = { dynamicOffset };
 			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
 									pipeline.getPipelineLayout(), 0, 1,
-									&descriptors.getSets()[bufferIndex], 1, dynamicOffsets);
+									&sets[bufferIndex], 1, dynamicOffsets);
 		} else {	// Standard descriptor binding without dynamic offset.
 			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
 									pipeline.getPipelineLayout(), 0, 1,
-									&descriptors.getSets()[bufferIndex], 0, nullptr);
+									&sets[bufferIndex], 0, nullptr);
 		}
 	}
 

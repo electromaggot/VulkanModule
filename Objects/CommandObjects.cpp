@@ -175,6 +175,8 @@ void CommandControl::PostInitPrepBuffers(VulkanSetup& vulkan)
 	BuildMergedVectorFromTypedSources(mergedRenderables);
 
 	for (int iFrame = 0; iFrame < numFrames; ++iFrame) {	// Allocate and record command buffers for all frames.
+		if (buffersByFrame[iFrame].numBufferSets() > 0)		// Free old buffers first (reload case: prevents accumulation).
+			buffersByFrame[iFrame].freeVkCommandBuffers();
 		buffersByFrame[iFrame].allocateVkCommandBuffer();
 		buffersByFrame[iFrame].recordCommands(mergedRenderables, vulkan.framebuffers[iFrame],
 											  vulkan.swapchain.getExtent(), vulkan.renderPass.getVkRenderPass());

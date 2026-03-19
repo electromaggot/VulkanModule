@@ -51,13 +51,20 @@ void AddOns::createVertexAndOrIndexBuffers(MeshObject& meshObject, Customizer cu
 		}
 
 		if (meshObject.indices) {
-			if (meshObject.indexType == MeshDefaultIndexType) {
-				pIndexBuffer = new PrimitiveBuffer((IndexBufferDefaultIndexType*) meshObject.indices,
-												   meshObject.indexCount,
-												   commandPool, vulkan.device);
-			} else {
-				pIndexBuffer = new PrimitiveBuffer(meshObject.indexType, meshObject.indices, meshObject.indexCount,
-												   commandPool, vulkan.device);
+			if (isDynamic) {	// Create host-visible index buffer for dynamic geometry
+				pIndexBuffer = new PrimitiveBuffer(commandPool, vulkan.device);
+				VkDeviceSize indexBufferSize = meshObject.indexCount *
+					(meshObject.indexType == MeshDefaultIndexType ? sizeof(IndexBufferDefaultIndexType) : sizeof(uint32_t));
+				pIndexBuffer->CreateIndexBuffer(meshObject.indices, indexBufferSize, meshObject.indexType, true); // ← hostVisible = true
+			} else {	// Create standard device-local index buffer
+				if (meshObject.indexType == MeshDefaultIndexType) {
+					pIndexBuffer = new PrimitiveBuffer((IndexBufferDefaultIndexType*) meshObject.indices,
+													   meshObject.indexCount,
+													   commandPool, vulkan.device);
+				} else {
+					pIndexBuffer = new PrimitiveBuffer(meshObject.indexType, meshObject.indices, meshObject.indexCount,
+													   commandPool, vulkan.device);
+				}
 			}
 		}
 	}

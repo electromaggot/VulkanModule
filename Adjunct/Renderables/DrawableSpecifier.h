@@ -33,6 +33,7 @@ public:
 	bool				(*updateMethod)(GameClock&) = nullptr;
 	ShaderModules*		pSharedShaderModules = nullptr;  // Optional: use cached shared shaders
 	const char*			pass = nullptr;  // Render pass type (nullptr for primary spawn, "transparency"/"lines"/"shadow" for subsequent passes)
+	int					renderOrder = 0;  // Stable sort order within same pass (lower = rendered first)
 };
 
 

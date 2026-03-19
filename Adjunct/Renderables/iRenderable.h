@@ -78,7 +78,8 @@ struct iRenderable : iRenderableBase
 			name(			specified.name),
 			updateMethod(	specified.updateMethod),
 			ownsShaderModules(!specified.pSharedShaderModules),
-			pass(			specified.pass)
+			pass(			specified.pass),
+			renderOrder(	specified.renderOrder)
 	{
 		isSelfManaged = false;
 	}
@@ -107,6 +108,7 @@ struct iRenderable : iRenderableBase
 	bool				(*updateMethod)(GameClock&);
 	bool				ownsShaderModules;	// true if we created it, false if shared
 	const char*			pass;				// Render pass type (nullptr for primary, or "transparency"/"lines"/"shadow")
+	int					renderOrder;		// Stable sort order within same pass (lower = rendered first)
 
 	// Dynamic UBO support for efficient per-object transforms.
 	uint32_t			dynamicOffset = 0;
@@ -123,10 +125,32 @@ struct iRenderable : iRenderableBase
 	//	CRITICAL: New data must be same size as original buffer, no reallocation.
 	//	Uses direct CPU memory mapping (host-visible buffers) → NO command buffers, extremely fast!
 	//	Industry-standard for 60fps dynamic geometry updates.
-	void updateVertexData(void* pNewVertexData, VkDeviceSize size)
+	//	IMPORTANT: Also updates vertexObject.vertexCount for correct draw calls.
+	void updateVertexData(void* pNewVertexData, VkDeviceSize size, size_t vertexSize)
 	{
-		if (addOns.pVertexBuffer)
+		if (addOns.pVertexBuffer) {
 			addOns.pVertexBuffer->UpdateVertexBufferMapped(pNewVertexData, size);
+
+			// Update vertex count for drawing: size in bytes / bytes per vertex
+			vertexObject.vertexCount = (uint32_t)(size / vertexSize);
+		}
+	}
+
+	// Update index buffer with new data.  For dynamic terrain: visibility window scrolling...
+	//	CRITICAL: New data must be same size as original buffer, no reallocation.
+	//	Uses direct CPU memory mapping (host-visible buffers) → NO command buffers, extremely fast!
+	//	Mirrors updateVertexData() pattern for index buffer updates.
+	//	IMPORTANT: Also updates vertexObject.indexCount for correct draw calls.
+	void updateIndexData(void* pNewIndexData, VkDeviceSize size)
+	{
+		if (addOns.pIndexBuffer) {
+			if (size > 0)
+				addOns.pIndexBuffer->UpdateIndexBufferMapped(pNewIndexData, size);
+
+			// Update index count for drawing: size in bytes / bytes per index
+			//	When size is 0, sets indexCount to 0 → renderable draws nothing.
+			vertexObject.indexCount = (uint32_t) size / sizeof(uint32_t);  // Assumes uint32_t indices.
+		}
 	}
 
 	// Get secondary command buffer for a specific frame (only valid if IsSecondaryCommandBuffer() == true).

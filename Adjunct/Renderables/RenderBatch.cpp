@@ -35,7 +35,7 @@ vector<iRenderableBase*> RenderBatchManager::buildBatches(const vector<iRenderab
 		// Cast to iRenderable to access pipeline and pass, available in all non-self-managed renderables.
 		iRenderable* renderable = static_cast<iRenderable*>(pRenderable);
 
-		PipelineKey key = { renderable->pass, renderable->pipeline.getVkPipeline() };
+		PipelineKey key = { renderable->pass, renderable->pipeline.getVkPipeline(), renderable->renderOrder };
 		pipelineGroups[key].push_back(pRenderable);
 	}
 
