@@ -30,36 +30,40 @@ struct PipelineKey
 {
 	const char* pass;		// Render pass type (nullptr, "transparency", "lines")
 	VkPipeline pipeline;
+	int renderOrder = 0;	// Stable sort order within same pass (lower = rendered first)
 
 	// Comparison operator for std::map
-	// Sort by pass first (preserves opaque→transparent→lines order), then by pipeline.
+	// Sort by pass first (preserves opaque → transparent → lines order), then
+	//	by renderOrder (stable, deterministic), then by pipeline (groups same shader).
 	bool operator<(const PipelineKey& other) const {
-		// Explicit ordering: nullptr (opaque) < "transparency" < "lines"
-		// This ensures correct depth ordering.
 		int passOrder = getPassOrder(pass);
 		int otherPassOrder = getPassOrder(other.pass);
 
 		if (passOrder != otherPassOrder)
 			return passOrder < otherPassOrder;
 
-		return pipeline < other.pipeline;	// If passes are equal, compare pipelines.
+		if (renderOrder != other.renderOrder)			// Stable tiebreaker within same pass.
+			return renderOrder < other.renderOrder;
+
+		return pipeline < other.pipeline;	// Groups renderables sharing the same pipeline.
 	}
 
 private:
-									//TODO: This little static is now quite application-specific; be open to reassess approach.
+							//TODO: This little static is now quite application-specific; be open to reassess approach.
 	static int getPassOrder(const char* pass) {
-		if (pass == nullptr)					return 3;	// Opaque fourth: Ship, objects - test against (terrain) depth.
+		if (pass == nullptr)					return 4;	// Opaque fifth: Ship, objects - test against terrain depth.
 		if (strcmp(pass, "skybox") == 0)		return 0;	// Skybox first: background.
-		if (strcmp(pass, "terrain") == 0)		return 1;	// Terrain second: writes depth for HUD (WaveformLine) overlay.
-		if (strcmp(pass, "lines") == 0)			return 2;	// Lines third: HUD overlays (terrain), no depth test/write.
-		if (strcmp(pass, "transparency") == 0)	return 4;	// Transparent last: alpha blending on top.
-		return 4;											// Unknown passes render last, with transparency.
+		if (strcmp(pass, "floor") == 0)			return 1;	// Floor second: splitGrid renders before terrain.
+		if (strcmp(pass, "terrain") == 0)		return 2;	// Terrain third: alpha-blends on top of floor.
+		if (strcmp(pass, "lines") == 0)			return 3;	// Lines fourth: HUD overlays, no depth test/write.
+		if (strcmp(pass, "transparency") == 0)	return 5;	// Transparent last: alpha blending on top.
+		return 5;											// Unknown passes render last, with transparency.
 	}
 
 	bool operator == (const PipelineKey& other) const {
 		bool passEqual = (pass == other.pass) ||
 						 (pass != nullptr && other.pass != nullptr && strcmp(pass, other.pass) == 0);
-		return passEqual && (pipeline == other.pipeline);
+		return passEqual && (renderOrder == other.renderOrder) && (pipeline == other.pipeline);
 	}
 };
 
