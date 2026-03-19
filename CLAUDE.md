@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Known Design Debt
+
+### AppConstants coupling
+VulkanModule internals directly `#include "AppConstants.h"`, a header that each consuming application must provide. Affected files include `PlatformSDL.cpp`, `VulkanSingleton.h`, `Logging.cpp`, `VulkanInstance.cpp`, `Framebuffers.cpp`, `Swapchain.cpp`, `FileSystemSDL.h`, and `iPlatform.h`.
+
+This inverts the correct dependency direction: a reusable library should not reach up into its consumer for configuration. The right fix is to define an `AppConfig` or `VulkanConfig` struct (or equivalent) inside VulkanModule, accept it through the `VulkanSetup` constructor, and remove all direct references to `AppConstants`. Consuming projects would then populate that struct from their own `AppConstants` (or any other source) before calling `VulkanSetup`. The struct contains consumer-specific per-app values like window title, clear color, dimensions, app name, etc. which are meant to be overridden but have typical default values.
+
+Deferred because multiple projects currently depend on VulkanModule and rely on the existing `AppConstants` convention.
+
 ## Building and Running
 
 ### Prerequisites

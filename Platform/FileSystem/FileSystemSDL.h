@@ -48,4 +48,38 @@ protected:	// (discourage standalone (non-derived) instantiation)
 
 		return dirnameAppLocalStorage;
 	}
+
+	static std::string failsafeDataDir()
+	{
+		std::string homeDir;
+		#ifdef _WIN32
+			const char* appData = std::getenv("APPDATA");
+			if (appData) {
+				homeDir = std::string(appData) + "\\TuneTrip";
+			} else {
+				homeDir = ".tunetrip";
+			}
+		#elif defined(__APPLE__)
+			const char* home = std::getenv("HOME");
+			if (home) {
+				homeDir = std::string(home) + "/Library/Application Support/TuneTrip";
+			} else {
+				homeDir = ".tunetrip";
+			}
+		#else
+			// Linux/Unix: use XDG_DATA_HOME or ~/.local/share
+			const char* xdgData = std::getenv("XDG_DATA_HOME");
+			if (xdgData) {
+				homeDir = std::string(xdgData) + "/tunetrip";
+			} else {
+				const char* home = std::getenv("HOME");
+				if (home) {
+					homeDir = std::string(home) + "/.local/share/tunetrip";
+				} else {
+					homeDir = ".tunetrip";
+				}
+			}
+		#endif
+		return homeDir;
+	}
 };
