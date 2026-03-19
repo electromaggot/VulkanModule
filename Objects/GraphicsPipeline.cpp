@@ -8,7 +8,6 @@
 //	© 0000 (uncopyrighted; use at will)
 //
 #include "GraphicsPipeline.h"
-#include "ResourceTracker.h"
 
 
 GraphicsPipeline::GraphicsPipeline(ShaderModules& shaders, iRenderPass& renderPass,
@@ -55,7 +54,9 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.sType	  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
 		.pNext	  = nullptr,
 		.flags	  = 0,
-		.topology = customize & LINE_TOPOLOGY ? VK_PRIMITIVE_TOPOLOGY_LINE_LIST : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+		.topology = customize & POINT_TOPOLOGY ? VK_PRIMITIVE_TOPOLOGY_POINT_LIST
+				  : customize & LINE_TOPOLOGY ? VK_PRIMITIVE_TOPOLOGY_LINE_LIST
+				  : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
 		.primitiveRestartEnable = VK_FALSE
 	};
 
@@ -119,7 +120,7 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.pNext					= nullptr,
 		.flags					= 0,
 		.depthTestEnable		= static_cast<VkBool32>(customize & DISABLE_DEPTH_TEST ? VK_FALSE : VK_TRUE),  // Disable depth testing for always-on-top rendering.
-		.depthWriteEnable		= static_cast<VkBool32>((customize & ALPHA_BLENDING) || (customize & DISABLE_DEPTH_WRITE) ? VK_FALSE : VK_TRUE),  // Disable depth writes for transparent objects or terrain (HUD overlay).
+		.depthWriteEnable		= static_cast<VkBool32>(((customize & ALPHA_BLENDING) && !(customize & ALPHA_BLEND_DEPTH_WRITE)) || (customize & DISABLE_DEPTH_WRITE) ? VK_FALSE : VK_TRUE),  // Disable depth writes for transparent objects, unless ALPHA_BLEND_DEPTH_WRITE is set.
 		.depthCompareOp			= static_cast<VkCompareOp>(customize & DEPTH_LEQUAL ? VK_COMPARE_OP_LESS_OR_EQUAL : VK_COMPARE_OP_LESS),
 		.depthBoundsTestEnable	= VK_FALSE,
 		.stencilTestEnable		= VK_FALSE,
@@ -129,9 +130,9 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.maxDepthBounds			= 1.0f*/
 	};
 
-	// Alpha blending: disabled by default, enabled via ALPHA_BLENDING customizer flag.
+	// Alpha blending: disabled by default, enabled via ALPHA_BLENDING or ALPHA_BLEND_DEPTH_WRITE flags.
 	VkPipelineColorBlendAttachmentState colorBlendAttachment = {
-		.blendEnable		 = static_cast<VkBool32>(customize & ALPHA_BLENDING ? VK_TRUE : VK_FALSE),
+		.blendEnable		 = static_cast<VkBool32>((customize & ALPHA_BLENDING) || (customize & ALPHA_BLEND_DEPTH_WRITE) ? VK_TRUE : VK_FALSE),
 		.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
 		.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
 		.colorBlendOp		 = VK_BLEND_OP_ADD,

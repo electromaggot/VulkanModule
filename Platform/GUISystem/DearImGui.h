@@ -1,4 +1,3 @@
-#include "imgui.h"
 #ifdef IMGUI_DISABLE
 	#include "stubs/sDearImGui.h"	// (overrides all below)
 #endif
