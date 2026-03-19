@@ -16,13 +16,13 @@
 
 const StrPtr SHADER_SUBDIRECTORY  = "shaders/compiled/";
 
-const StrPtr TEXTURE_SUBDIRECTORY = "assets/textures/";
+const StrPtr TEXTURE_SUBDIRECTORY = "assets/texture/";
 
-const StrPtr MODEL_SUBDIRECTORY = "assets/models/";
+const StrPtr MODEL_SUBDIRECTORY	  = "assets/model/";
 
-const StrPtr FONT_SUBDIRECTORY = "assets/fonts/";
+const StrPtr FONT_SUBDIRECTORY	  = "assets/font/";
 
-const StrPtr TERRAIN_SUBDIRECTORY = "assets/terrains/";
+const StrPtr TERRAIN_SUBDIRECTORY = "assets/terrain/";
 
 
 // Directory hierarchy project-specific conventions

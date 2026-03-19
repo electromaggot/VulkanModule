@@ -13,6 +13,8 @@
 #include "Logging.h"
 #include "AppConstants.h"
 #include "FileSystem.h"
+#include <ctime>
+#include <iomanip>
 
 static void logToFile(Tier, const char*);
 
@@ -34,6 +36,13 @@ static void logToFile(Tier, const char*);
 
 void LogStartup()	// Provide a startup sanity check...
 {					//		but can be a bit tricky, see DEV NOTE below.
+	// Log timestamp at startup
+	std::time_t now = std::time(nullptr);
+	std::tm* localTime = std::localtime(&now);
+	char timeBuffer[64];
+	std::strftime(timeBuffer, sizeof(timeBuffer), "%Y-%m-%d %H:%M:%S %Z", localTime);
+	Log(RAW, "STARTED %s", timeBuffer);
+
 	Log(RAW, "RUNNING %s", AppConstants.getExePath());
 	Log(RAW, "STORAGE %s", FileSystem::AppLocalStorageDirectory().c_str());
 	Log(RAW, "CONFIGS %s", AppConstants.Settings.filePath.c_str());

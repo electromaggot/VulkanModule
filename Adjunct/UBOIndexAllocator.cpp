@@ -17,7 +17,7 @@ UBOIndexAllocator::UBOIndexAllocator(uint32_t maxIndices)
 	:	maxIndices(maxIndices)
 	  , nextIndex(0)
 {
-	Log(NOTE, "UBOIndexAllocator created with capacity for %u indices", maxIndices);
+	Log(NOTE, "UBOIndexAllocator created with capacity for %u indices.", maxIndices);
 }
 
 uint32_t UBOIndexAllocator::allocate(const std::string& debugName)
@@ -27,7 +27,7 @@ uint32_t UBOIndexAllocator::allocate(const std::string& debugName)
 	if (! freeList.empty()) {			// Try to reuse a freed index first, lowest available.
 		index = freeList.top();
 		freeList.pop();
-		Log(LOW, "🔄 UBO index %u allocated (reused): %s", index, debugName.c_str());
+		Log(LOW, "🔄 UBO index %u allocated (reused): '%s'", index, debugName.c_str());
 	}
 	else {								// Otherwise, allocate next sequential index.
 		if (nextIndex >= maxIndices) {
@@ -36,7 +36,7 @@ uint32_t UBOIndexAllocator::allocate(const std::string& debugName)
 									 std::to_string(maxIndices) + ")");
 		}
 		index = nextIndex++;
-		Log(LOW, "➕ UBO index %u allocated (new): %s", index, debugName.c_str());
+		Log(LOW, "➕ UBO index %u allocated (new): '%s'", index, debugName.c_str());
 	}
 
 	allocations[index] = debugName;		// Store allocation with debug name.
@@ -55,7 +55,7 @@ void UBOIndexAllocator::free(uint32_t index)
 	allocations.erase(it);
 	freeList.push(index);
 
-	Log(LOW, "➖ UBO index %u freed: %s", index, debugName.c_str());
+	Log(LOW, "➖ UBO index %u freed: '%s'", index, debugName.c_str());
 }
 
 std::string UBOIndexAllocator::getDebugName(uint32_t index) const
@@ -97,6 +97,6 @@ void UBOIndexAllocator::printAllocations() const
 			oss << freeIndices[i];
 		}
 		oss << "]";
-		Log(NOTE, "%s", oss.str().c_str());
+		Log(NOTE, "'%s'", oss.str().c_str());
 	}
 }

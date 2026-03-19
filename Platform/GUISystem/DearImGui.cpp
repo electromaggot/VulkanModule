@@ -45,7 +45,7 @@ DearImGui::DearImGui(VulkanSetup& vulkan, iPlatform& platform)
 	guiWindow.SurfaceFormat = vulkan.device.getProfile().selectedSurfaceFormat;
 	guiWindow.RenderPass	= vulkan.renderPass.getVkRenderPass();
 	guiWindow.PresentMode	= VK_PRESENT_MODE_MAX_ENUM_KHR;
-	guiWindow.ClearEnable	= false;	// <-- This keeps GUI from clearing screen before it draws!
+	//guiWindow.ClearEnable	= false;	// <-- This keeps GUI from clearing screen before it draws! // COMMENTED OUT: ImGui version mismatch
 	guiWindow.ClearValue	= VkClearValue();
 	guiWindow.FrameIndex	= 0;
 	guiWindow.ImageCount	= vulkan.swapchain.getNumImages();
