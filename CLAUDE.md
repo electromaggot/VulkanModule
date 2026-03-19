@@ -137,6 +137,7 @@ VulkanModule is a reusable foundation for Vulkan graphics projects, providing ob
 
 **Platform/** - Platform abstraction layer:
 - `OSAbstraction/PlatformSDL` - SDL2 window/input handling (primary platform)
+- `OSAbstraction/MacOSFullScreen.mm` - macOS native fullscreen detection/control (Obj-C++)
 - `FileSystem/` - File I/O with conventions for shader/texture/model paths
 - `ImageHandling/` - Image loading via SDL_image or STB
 
@@ -339,13 +340,94 @@ bool fpsUpdated = gameClock.wasFPSUpdated();    // True if FPS recalculated this
   - **Shift+ESC** - Quit application (requires modifier to prevent accidental quits)
   - **SDL_QUIT** - Window manager quit event
   - **Window close button** - User closes window
-  - Note: ESC alone reserved for canceling edit operations in editor mode
+- Keyboard handling:
+  - **ESC** (unshifted) - Exits fullscreen back to windowed mode
+  - **Shift+ESC** - Quits application
 
 **macOS-Specific:**
 - MoltenVK configuration for maximum performance
 - vsync disabled at Metal layer when possible
 - Async queue submits enabled
 - Note: macOS compositor may still enforce vsync on external displays
+
+### Window Geometry Persistence
+
+PlatformSDL automatically saves and restores window position, size, and fullscreen state across sessions. The app's `AppSettings` class provides the persistence backend.
+
+**How it works:**
+- `PlatformSDL::recordWindowGeometry()` is called automatically on window move/resize events
+- Saves to `AppConstants.Settings` (the app's `AppSettings` instance) and calls `Settings.Save()`
+- On startup, `PlatformSDL::createVulkanCompatibleWindow()` reads saved values from `AppSettings` to position/size the window, and validates against all connected displays
+- Window position is validated across all monitors; falls back to centered on primary if the saved position is off-screen
+
+**iPlatform public member:**
+- `bool isFullScreen` - Tracks current fullscreen state (updated automatically)
+
+**What gets saved (fields required in the app's `AppSettings` class):**
+```cpp
+int startingWindowWidth;       // Window width (windowed mode)
+int startingWindowHeight;      // Window height (windowed mode)
+int startingWindowX;           // Window X position (windowed mode)
+int startingWindowY;           // Window Y position (windowed mode)
+bool isFullScreen = false;     // Whether to restore fullscreen on next launch
+```
+
+When fullscreen is active, only `isFullScreen` is updated -- the windowed dimensions are preserved so the correct window size is restored when leaving fullscreen.
+
+### Fullscreen Support
+
+PlatformSDL provides borderless fullscreen (`SDL_WINDOW_FULLSCREEN_DESKTOP`) with automatic save/restore and macOS native fullscreen interception.
+
+**Behavior:**
+
+| Action | Result |
+|--------|--------|
+| Green button (macOS) | Native fullscreen detected, automatically switched to borderless fullscreen |
+| ESC (unshifted) | Exits fullscreen back to windowed mode |
+| Shift+ESC | Quits application (from any state) |
+| Quit while fullscreen | Saves `isFullScreen: true` + last windowed geometry |
+| Launch with saved fullscreen | Borderless fullscreen applied on first idle poll |
+
+**macOS native fullscreen detection** (`Platform/OSAbstraction/MacOSFullScreen.mm`):
+
+SDL2 does not track macOS native fullscreen (green title-bar button) with its own flags. On notched MacBooks, the window size is identical in windowed-maximized and native fullscreen, making size-based detection impossible. The solution queries `NSWindow styleMask & NSWindowStyleMaskFullScreen` directly via `SDL_GetWindowWMInfo`.
+
+When native fullscreen is detected, PlatformSDL:
+1. Exits native fullscreen via `[NSWindow toggleFullScreen:]`
+2. Applies borderless fullscreen (`SDL_WINDOW_FULLSCREEN_DESKTOP`) on the next idle poll
+
+This provides consistent behavior: ESC always exits fullscreen, no menu bar appears on mouse hover, and the state is properly saved/restored.
+
+**Deferred fullscreen restore:**
+
+`SDL_SetWindowFullscreen()` requires the macOS Cocoa run loop to be active, so it cannot be called during window creation. PlatformSDL sets a `pendingFullScreen` flag during `createVulkanCompatibleWindow()` and applies fullscreen on the first idle `PollEvent()` call (when the event queue is empty and the run loop is pumping).
+
+**CMake requirements for consuming projects:**
+
+```cmake
+# Enable Obj-C++ compilation (required for MacOSFullScreen.mm)
+project(MyProject CXX OBJCXX)
+
+# Add the .mm source file (Apple only)
+if(APPLE)
+    list(APPEND Platform_OSAbstraction
+        "Vulkan/Platform/OSAbstraction/MacOSFullScreen.mm"
+    )
+endif()
+
+# Link the Cocoa framework (Apple only)
+if(APPLE)
+    find_library(COCOA_FRAMEWORK Cocoa)
+    list(APPEND ADDITIONAL_LIBRARY_DEPENDENCIES ${COCOA_FRAMEWORK})
+endif()
+```
+
+**AppSettings requirements:**
+
+The app's `AppSettings` class must have:
+- `bool isFullScreen = false;` member
+- `Save()` that persists `isFullScreen` to storage
+- `Retrieve()` that loads `isFullScreen` from storage (called from constructor)
 
 ### Shadow Mapping
 
