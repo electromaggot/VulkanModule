@@ -49,6 +49,8 @@ private:
 	Uint32	timePress	= 0;
 	const Uint32 MILLISECONDS_LONG_PRESS = 300;		// about 1/3rd second, arbitrary
 
+	bool	pendingFullScreen = false;	// deferred fullscreen restore (macOS needs run loop active)
+
 public:
 	int LastSavedPixelsWide = 0;
 	int	LastSavedPixelsHigh = 0;
@@ -87,6 +89,7 @@ private:
 	void recordWindowGeometry();
 	void rememberWindowSize(int wide, int high);
 	void recordWindowPosition(int x, int y);
+	bool detectFullScreen();
 	float getDisplayScaling();
 	float getDisplayDPI(int iDisplay = 0);
 
