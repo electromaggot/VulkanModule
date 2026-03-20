@@ -73,6 +73,9 @@ public:
 	void ShowSoftKeyboard(bool show = true);
 	int  WasSimplePress();
 
+	bool IsFullScreen()				 { return detectFullScreen(); }
+	void ExitFullScreen();
+
 	iImageSource& ImageSource()	 { return static_cast<iImageSource&>(image); }
 	void InitGUISystem()		 { ImGui_ImplSDL2_InitForVulkan(pWindow); }
 	void GUISystemNewFrame()	 { ImGui_ImplSDL2_NewFrame(); }

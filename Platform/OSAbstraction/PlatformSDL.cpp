@@ -387,6 +387,16 @@ bool PlatformSDL::detectFullScreen()
 #endif
 }
 
+void PlatformSDL::ExitFullScreen()
+{
+	if (SDL_GetWindowFlags(pWindow) & SDL_WINDOW_FULLSCREEN)
+		SDL_SetWindowFullscreen(pWindow, 0);
+#ifdef __APPLE__
+	else if (macOS_IsNativeFullScreen(pWindow))
+		macOS_ExitNativeFullScreen(pWindow);
+#endif
+}
+
 void PlatformSDL::recordWindowGeometry() // (with logging too)
 {
 	Log(SAME, "Note: Save Window Geometry: ");
