@@ -59,7 +59,7 @@ void VulkanInstance::createInstance(iPlatform& platform, ValidationLayers& layer
 	VkInstanceCreateInfo instInfo = {
 		.sType					 = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
 		.pNext					 = nullptr,
-		#ifdef __APPLE__
+		#if __APPLE__ && ! TARGET_OS_IPHONE
 		.flags					 = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR,  // Required for MoltenVK
 		#else
 		.flags					 = 0,
