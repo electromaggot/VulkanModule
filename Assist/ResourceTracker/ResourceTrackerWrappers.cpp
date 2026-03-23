@@ -264,15 +264,13 @@ void trkDestroyFramebuffer(VkDevice device, VkFramebuffer framebuffer,
 // Graphics Pipelines
 //
 
-VkResult trkCreateGraphicsPipelines(VkDevice device, VkPipelineCache pipelineCache,
-                                   uint32_t createInfoCount,
-                                   const VkGraphicsPipelineCreateInfo* pCreateInfos,
-                                   const VkAllocationCallbacks* pAllocator, VkPipeline* pPipelines)
+VkResult trkCreateGraphicsPipelines(VkDevice device, VkPipelineCache pipelineCache, uint32_t createInfoCount,
+									const VkGraphicsPipelineCreateInfo* pCreateInfos,
+									const VkAllocationCallbacks* pAllocator, VkPipeline* pPipelines)
 {
 	VkResult result = vkCreateGraphicsPipelines(device, pipelineCache, createInfoCount,
-	                                             pCreateInfos, pAllocator, pPipelines);
-	// Track each successfully created pipeline
-	if (result == VK_SUCCESS) {
+												pCreateInfos, pAllocator, pPipelines);
+	if (result == VK_SUCCESS) {		// Track each successfully created pipeline.
 		for (uint32_t i = 0; i < createInfoCount; i++)
 			VK_TRACK_CREATE(VK_RESOURCE_PIPELINE);
 	}
@@ -322,7 +320,7 @@ VkResult trkCreateShaderModule(VkDevice device, const VkShaderModuleCreateInfo* 
 }
 
 void trkDestroyShaderModule(VkDevice device, VkShaderModule shaderModule,
-                           const VkAllocationCallbacks* pAllocator)
+							const VkAllocationCallbacks* pAllocator)
 {
 	vkDestroyShaderModule(device, shaderModule, pAllocator);
 	VK_TRACK_DESTROY(VK_RESOURCE_SHADER_MODULE);
