@@ -35,6 +35,8 @@ public:
 			fpsUpdated(false)
 	{ }
 
+	virtual ~GameClock() = default;
+
 		// MEMBERS
 protected:
 	std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
@@ -57,7 +59,7 @@ public:
 		return duration<float, seconds::period>(currentTime - startTime).count();
 	}
 
-	inline void BeginNewFrame()
+	virtual void BeginNewFrame()
 	{
 		float elapsedToNow = secondsSinceGameStart();
 		durationLastFrame = elapsedToNow - elapsedToFrameStart;
@@ -77,17 +79,18 @@ public:
 		}
 	}
 
-		// getters
-	inline float deltaSeconds() {	// since previous frame
+		// getters — virtual to allow subclasses (e.g. SongClock) to provide
+		//	alternative time sources while keeping the same interface.
+	virtual float deltaSeconds() const {	// since previous frame (can be negative for song-time clocks)
 		return durationLastFrame;
 	}
-	inline float secondsElapsed() {	// since game start
+	virtual float secondsElapsed() const {	// since game/song start
 		return elapsedToFrameStart;
 	}
-	inline int getFPS() {			// current frames per second
+	inline int getFPS() const {				// current frames per second
 		return currentFPS;
 	}
-	inline bool wasFPSUpdated() {	// true if FPS was recalculated this frame
+	inline bool wasFPSUpdated() const {		// true if FPS was recalculated this frame
 		return fpsUpdated;
 	}
 };
