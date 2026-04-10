@@ -29,12 +29,15 @@ enum ShadowProjectionMode {
 
 // Shadow camera orientation mode - direction the shadow camera looks.
 enum ShadowCameraMode {
-	SHADOW_CAMERA_STRAIGHT_DOWN,      // Points down -Y axis (default, prevents clipping with wide FOV),
-									  //	perhaps mimics lamp with top reflector.
-	SHADOW_CAMERA_CUSTOM_DIRECTION,   // Uses custom direction vector (e.g. for spotlights), set via
-									  //	separate parameter.
-	SHADOW_CAMERA_LOOK_AT_ORIGIN      // Looks from light position toward scene origin.
+	SHADOW_CAMERA_CUSTOM_DIRECTION,   // Uses custom direction vector (e.g. directional/sun light or
+									  //	spotlights), set via separate parameter.
+	SHADOW_CAMERA_LOOK_AT_TARGET      // Looks from light position toward a specified target point
+									  //	(e.g. scene focus for point light shadows).
 };
 
+
+// *_CUSTOM_DIRECTION defaults to -Y direction, replacing former SHADOW_CAMERA_STRAIGHT_DOWN which
+//		was meant to prevent clipping with wide FOV, perhaps mimicking lamp with top reflector.
+// *_LOOK_AT_TARGET defaults to origin, similarly replacing the once SHADOW_CAMERA_LOOK_AT_ORIGIN.
 
 #endif // ShadowMappingTypes_h

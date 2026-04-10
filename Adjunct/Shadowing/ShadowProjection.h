@@ -20,67 +20,43 @@ class ShadowProjection		// Helper class for calculating shadow projection matric
 {
 public:
 	// Calculate recommended shadow map resolution based on FOV and camera mode.
-	// Wider FOV requires higher resolution to maintain shadow quality.
+	// Wider FOV requires higher resolution to maintain shadow quality and less pixelation.
 	// Returns recommended resolution (width and height are always equal for square shadow maps).
-	static uint32_t calculateRecommendedResolution(
-		float fovRadians,
-		ShadowCameraMode cameraMode,
-		ShadowProjectionMode projectionMode)
-	{
+	static uint32_t calculateRecommendedResolution(float fovRadians, ShadowCameraMode cameraMode,
+												   ShadowProjectionMode projectionMode) {
 		// Base resolution for standard 90° FOV.
 		const uint32_t BASE_RESOLUTION = 2048;
 
-		// Straight-down and custom cameras with wide FOV need higher resolution
-		//	to cover the larger area without losing detail.
-		if (cameraMode == SHADOW_CAMERA_STRAIGHT_DOWN || cameraMode == SHADOW_CAMERA_CUSTOM_DIRECTION) {
+		if (cameraMode == SHADOW_CAMERA_CUSTOM_DIRECTION) {
 			float fovDegrees = glm::degrees(fovRadians);
 
 			if (fovDegrees > 150.0f) {
-				return 4096;  // Very wide FOV (150°+): 4K shadow map
+				return 4096;  		// Very wide FOV (150°+): 4K shadow map
 			} else if (fovDegrees > 120.0f) {
-				return 3072;  // Wide FOV (120-150°): 3K shadow map
-			} else if (fovDegrees > 90.0f) {
-				return 2048;  // Standard-wide FOV (90-120°): 2K shadow map
+				return 3072;  		// Wide FOV (120-150°): 3K shadow map
 			} else {
-				return 2048;  // Narrow FOV (< 90°): Standard 2K
+				return 2048;  		// Standard or narrow FOV: 2K shadow map
 			}
 		}
-
-		// Look-at-origin mode with narrower effective FOV can use lower resolution:
-		if (cameraMode == SHADOW_CAMERA_LOOK_AT_ORIGIN) {
-			float fovDegrees = glm::degrees(fovRadians);
-
-			if (fovDegrees > 120.0f) {
-				return 2048;  // Wide: 2K
-			} else {
-				return 2048;  // Standard: 2K (original default)
-			}
-		}
-
 		return BASE_RESOLUTION;
 	}
 
 	// Calculate light-space matrix for shadow mapping.
 	// Parameters:
-	//   lightPosition: World-space position of the light source.
-	//   sceneCenter: World-space center point the light looks at (used for SHADOW_CAMERA_LOOK_AT_ORIGIN mode).
+	//   lightPosition: World-space position of the light source (or shadow camera position).
+	//   target: World-space point the shadow camera looks at (used for SHADOW_CAMERA_LOOK_AT_TARGET mode).
+	//           Defaults to origin for backward compatibility with Scenes.
 	//   projectionMode: SHADOW_ORTHOGRAPHIC or SHADOW_PERSPECTIVE
-	//   cameraMode: How shadow camera is oriented (straight down, custom direction, or look at origin).
+	//   cameraMode: How shadow camera is oriented (custom direction vector, or look at target point).
 	//   customDirection: Direction vector for SHADOW_CAMERA_CUSTOM_DIRECTION mode (ignored otherwise).
 	//   orthoSize: Half-width/height for orthographic projection (ignored for perspective).
 	//   fov: Field of view in radians for perspective projection (ignored for orthographic).
 	//   nearPlane: Near clipping plane distance.
 	//   farPlane: Far clipping plane distance.
-	static glm::mat4 calculateLightSpaceMatrix(
-		const glm::vec3& lightPosition,
-		const glm::vec3& sceneCenter,
-		ShadowProjectionMode projectionMode,
-		ShadowCameraMode cameraMode = SHADOW_CAMERA_STRAIGHT_DOWN,
-		const glm::vec3& customDirection = glm::vec3(0.0f, -1.0f, 0.0f),
-		float orthoSize = 15.0f,
-		float fov = glm::radians(90.0f),
-		float nearPlane = 0.1f,
-		float farPlane = 40.0f)
+	static glm::mat4 calculateLightSpaceMatrix(const glm::vec3& lightPosition, const glm::vec3& target,
+		ShadowProjectionMode projectionMode, ShadowCameraMode cameraMode = SHADOW_CAMERA_LOOK_AT_TARGET,
+		const glm::vec3& customDirection = glm::vec3(0.0f, -1.0f, 0.0f), float orthoSize = 15.0f,
+		float fov = glm::radians(90.0f), float nearPlane = 0.1f, float farPlane = 40.0f)
 	{
 		// Calculate light's view direction based on camera mode.
 		glm::vec3 lightDir;
@@ -88,31 +64,23 @@ public:
 		glm::vec3 up;
 
 		switch (cameraMode) {
-			case SHADOW_CAMERA_STRAIGHT_DOWN:
-				// Point straight down (-Y axis), like a lamp with top reflector.
-				lightDir = glm::vec3(0.0f, -1.0f, 0.0f);
+			case SHADOW_CAMERA_CUSTOM_DIRECTION:				// Use custom direction vector
+				lightDir = glm::normalize(customDirection);		//	 (e.g. directional/sun light).
 				targetPosition = lightPosition + lightDir;
 				break;
 
-			case SHADOW_CAMERA_CUSTOM_DIRECTION:
-				// Use custom direction vector:
-				lightDir = glm::normalize(customDirection);
-				targetPosition = lightPosition + lightDir;
-				break;
-
-			case SHADOW_CAMERA_LOOK_AT_ORIGIN:
-			default:
-				// Look at scene center from light position (original behavior).
-				lightDir = glm::normalize(sceneCenter - lightPosition);
-				targetPosition = sceneCenter;
+			case SHADOW_CAMERA_LOOK_AT_TARGET:			// Look at target point from light position.
+			default:					//	Default target is origin (backward compatible with Scenes).
+				lightDir = glm::normalize(target - lightPosition);
+				targetPosition = target;
 				break;
 		}
 
 		// Choose stable "up" vector to avoid gimbal lock when light crosses axes:
 		if (abs(lightDir.y) > 0.99f) {
-			up = glm::vec3(0.0f, 0.0f, 1.0f);  // Light nearly vertical, use Z-axis as up.
+			up = glm::vec3(0.0f, 0.0f, 1.0f);	// Light nearly vertical, use Z-axis as up.
 		} else {
-			up = glm::vec3(0.0f, 1.0f, 0.0f);  // Normal case, use Y-axis as up.
+			up = glm::vec3(0.0f, 1.0f, 0.0f);	// Normal case, use Y-axis as up.
 		}
 
 		glm::mat4 lightView = glm::lookAt(lightPosition, targetPosition, up);
@@ -129,10 +97,8 @@ public:
 			float aspect = 1.0f;  // Square shadow map
 			lightProj = glm::perspective(fov, aspect, nearPlane, farPlane);
 		}
-
 		return lightProj * lightView;
 	}
-
 };
 
 #endif // ShadowProjection_h

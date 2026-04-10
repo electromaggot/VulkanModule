@@ -20,46 +20,55 @@ ShadowSystem::ShadowSystem(VulkanSetup& vulkan, uint32_t numFrames,
 	:	technique(tech)
 		, projectionMode(projMode)
 		, cameraMode(camMode)
+		, resolution(resolution)
 		, shadowPass(nullptr)
 {
 	if (technique == SHADOW_TECHNIQUE_NONE) {	// No resources allocated - zero VRAM cost.
 		Log(NOTE, "ShadowSystem: Shadows DISABLED (zero VRAM allocation)");
 		return;
 	}
-
-	// Allocate shadow resources...
-	Log(NOTE, "ShadowSystem: Creating shadow resources with technique=%d, resolution=%ux%u",
-		technique, resolution, resolution);
-
-	// Create one shadow map per frame to prevent cross-frame race conditions:
-	for (uint32_t i = 0; i < numFrames; ++i) {
-		ShadowMap* shadowMap = new ShadowMap(vulkan.device, vulkan.command.getCommandPool(),
-											  resolution, resolution);
-		shadowMaps.push_back(shadowMap);
-	}
-	Log(NOTE, "ShadowSystem: Created %u shadow maps (one per frame)", numFrames);
-
-	// Create shadow pass (shares render pass from first shadow map) -
-	shadowPass = new ShadowPass(vulkan, *shadowMaps[0]);
-	Log(NOTE, "ShadowSystem: Shadow pass initialized");
+	createResources(vulkan, numFrames);
 }
 
 ShadowSystem::~ShadowSystem()
 {
-	// Clean up shadow resources...
+	destroyGpuResources();
+	if (technique != SHADOW_TECHNIQUE_NONE)
+		Log(DEAD, "ShadowSystem: Resources destroyed");
+}
+
+// Create the per-frame shadow maps + shadow pass.  Shared by the ctor and recreateGpuResources().
+void ShadowSystem::createResources(VulkanSetup& vulkan, uint32_t numFrames)
+{
+	Log(NOTE, "ShadowSystem: Creating shadow resources with technique=%d, resolution=%ux%u",
+		technique, resolution, resolution);
+
+	for (uint32_t i = 0; i < numFrames; ++i) {	// One shadow map per frame (no cross-frame races).
+		ShadowMap* shadowMap = new ShadowMap(vulkan.device, vulkan.command.getCommandPool(),
+											  resolution, resolution);
+		shadowMaps.push_back(shadowMap);
+	}
+	shadowPass = new ShadowPass(vulkan, *shadowMaps[0]);	// Shares render pass from first shadow map.
+	Log(NOTE, "ShadowSystem: Created %u shadow maps + shadow pass", numFrames);
+}
+
+void ShadowSystem::destroyGpuResources()
+{
 	if (shadowPass) {
 		delete shadowPass;
 		shadowPass = nullptr;
 	}
-
-	for (ShadowMap* shadowMap : shadowMaps) {
+	for (ShadowMap* shadowMap : shadowMaps)
 		delete shadowMap;
-	}
 	shadowMaps.clear();
+}
 
-	if (technique != SHADOW_TECHNIQUE_NONE) {
-		Log(DEAD, "ShadowSystem: Resources destroyed");
-	}
+void ShadowSystem::recreateGpuResources(VulkanSetup& vulkan, uint32_t numFrames)
+{
+	if (technique == SHADOW_TECHNIQUE_NONE)		// Disabled — nothing to recreate.
+		return;
+	destroyGpuResources();						// Idempotent (handles already-destroyed case).
+	createResources(vulkan, numFrames);
 }
 
 bool ShadowSystem::recordFrame(vector<iRenderable*>& renderables, uint32_t frameIndex)

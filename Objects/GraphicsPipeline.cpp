@@ -97,10 +97,10 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.polygonMode			 = customize & WIREFRAME ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL,
 		.cullMode	  = (VkFlags) (customize & SHOW_BACKFACES ? VK_CULL_MODE_NONE : VK_CULL_MODE_BACK_BIT),
 		.frontFace				 = frontFace,
-		.depthBiasEnable		 = VK_FALSE,
-		/*.depthBiasConstantFactor = 0.0f,
-		.depthBiasClamp			 = 0.0f,
-		.depthBiasSlopeFactor	 = 0.0f,*/
+		.depthBiasEnable		 = customize & DEPTH_BIAS ? VK_TRUE : VK_FALSE,
+		.depthBiasConstantFactor = customize & DEPTH_BIAS ? 4.0f : 0.0f,
+		.depthBiasClamp			 = customize & DEPTH_BIAS ? 0.0f : 0.0f,
+		.depthBiasSlopeFactor	 = customize & DEPTH_BIAS ? 1.5f : 0.0f,
 		.lineWidth				 = 1.0f
 	};
 
