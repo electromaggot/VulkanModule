@@ -34,7 +34,8 @@ enum Customizer
 
 	LINE_TOPOLOGY			= 0b100000000000,	// Use VK_PRIMITIVE_TOPOLOGY_LINE_LIST instead of TRIANGLE_LIST.
 	POINT_TOPOLOGY			= 0b1000000000000,	// Use VK_PRIMITIVE_TOPOLOGY_POINT_LIST; requires shader to write gl_PointSize.
-	STRIP_TOPOLOGY			= 0b10000000000000	// Use VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP instead of TRIANGLE_LIST.
+	STRIP_TOPOLOGY			= 0b10000000000000,	// Use VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP instead of TRIANGLE_LIST.
+	DEPTH_BIAS				= 0b100000000000000	// Enable slope-scaled depth bias (for shadow map depth pass).
 };
 
 inline Customizer operator | (Customizer left, Customizer right)

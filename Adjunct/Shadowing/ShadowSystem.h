@@ -34,7 +34,7 @@ public:
 	ShadowSystem(VulkanSetup& vulkan, uint32_t numFrames,
 				 ShadowTechnique technique, uint32_t resolution = 2048,
 				 ShadowProjectionMode projMode = SHADOW_PERSPECTIVE,
-				 ShadowCameraMode camMode = SHADOW_CAMERA_STRAIGHT_DOWN);
+				 ShadowCameraMode camMode = SHADOW_CAMERA_CUSTOM_DIRECTION);
 	~ShadowSystem();
 
 	// Query methods:
@@ -61,10 +61,19 @@ public:
 	ShadowProjectionMode getProjectionMode() const { return projectionMode; }
 	ShadowCameraMode getCameraMode() const { return cameraMode; }
 
+	// Device-loss recovery (in place, preserving object identity so cached ShadowSystem* stay valid):
+	//	destroyGpuResources() at WillSleep (device still valid), recreateGpuResources() at DidWake.
+	//	No-ops when shadows are disabled (SHADOW_TECHNIQUE_NONE).
+	void destroyGpuResources();
+	void recreateGpuResources(VulkanSetup& vulkan, uint32_t numFrames);
+
 private:
+	void createResources(VulkanSetup& vulkan, uint32_t numFrames);
+
 	ShadowTechnique technique;
 	ShadowProjectionMode projectionMode;
 	ShadowCameraMode cameraMode;
+	uint32_t resolution = 0;			// Saved so resources can be recreated after device loss.
 
 	// Resources (only allocated if technique != NONE)
 	vector<ShadowMap*> shadowMaps;		// One per frame to prevent cross-frame races
