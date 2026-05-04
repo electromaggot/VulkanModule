@@ -284,10 +284,10 @@ TextureImage::StagingBuffer::StagingBuffer(TextureImage& image)
 { }
 
 #define DEREFERENCE(textureImage)						\
-	ImageInfo&	  imageData = textureImage.imageInfo;	\
-	VkDeviceSize& nBytes	= imageData.numBytes;		\
-	int&		  width		= imageData.wide;			\
-	int&		  height	= imageData.high;
+	[[maybe_unused]]	ImageInfo&	  imageData = textureImage.imageInfo;	\
+	[[maybe_unused]]	VkDeviceSize& nBytes	= imageData.numBytes;		\
+	[[maybe_unused]]	int&		  width		= imageData.wide;			\
+	[[maybe_unused]]	int&		  height	= imageData.high;
 
 void TextureImage::StagingBuffer::CreateAndMapBuffer(VkDeviceSize& nBytes)
 {
@@ -308,7 +308,7 @@ void TextureImage::StagingBuffer::CopyInImageData(TextureSpec& spec)
 	if (! spec.flipVertical)
 		memcpy(pBytesStaged, pPixels, static_cast<size_t>(nBytes));
 	else {
-		size_t bytesPerRow = nBytes / width;	// (imageSize was calculated using pitch)
+		size_t bytesPerRow = nBytes / height;	// (imageSize was calculated using pitch)
 		char* pSource = pPixels;
 		char* pDestination = pBytesStaged + nBytes;
 		for (uint32_t iRow = height; iRow > 0; --iRow) {
