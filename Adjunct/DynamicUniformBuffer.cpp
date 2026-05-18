@@ -78,7 +78,9 @@ void DynamicUniformBuffer::destroy()
 	mappedMemory.clear();
 }
 
-void DynamicUniformBuffer::updateObjectTransform(uint32_t frameIndex, uint32_t objectIndex, const mat4& modelMatrix)
+void DynamicUniformBuffer::updateObjectTransform(uint32_t frameIndex, uint32_t objectIndex, const mat4& modelMatrix,
+												  float opacity, float effectFlags,
+												  float effectParam, float effectParam2)
 {
 	if (frameIndex >= framesInFlight || objectIndex >= maxObjects) {
 		return; // Invalid indices
@@ -91,8 +93,12 @@ void DynamicUniformBuffer::updateObjectTransform(uint32_t frameIndex, uint32_t o
 	uint8_t* bufferData = static_cast<uint8_t*>(mappedMemory[frameIndex]);
 	PerObjectData* objectData = reinterpret_cast<PerObjectData*>(bufferData + offset);
 
-	// Copy model matrix
+	// Copy model matrix, opacity, and effect flags
 	memcpy(objectData->model, glm::value_ptr(modelMatrix), sizeof(objectData->model));
+	objectData->opacity = opacity;
+	objectData->effectFlags = effectFlags;
+	objectData->effectParam = effectParam;
+	objectData->effectParam2 = effectParam2;
 }
 
 uint32_t DynamicUniformBuffer::getDynamicOffset(uint32_t objectIndex) const
