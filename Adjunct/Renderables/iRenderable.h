@@ -209,7 +209,8 @@ public:
 
 	void Clear() {
 		Remove(ALL);
-	}
+		pSelfManagedRenderables.clear();	// Drop references (not deleted — they manage own lifecycle).
+	}										//	 Callers re-add surviving ones via finalizeRenderables().
 
 	// Remove renderables - simplified with type-safe vectors: no casting, no defensive checks.
 	//
@@ -232,7 +233,23 @@ public:
 				++it;
 			}
 		}
-		// Self-managed renderables are NEVER removed; they manage own lifecycle.
+	}
+
+	int RemoveByName(const std::string& targetName)
+	{
+		int removed = 0;
+		for (auto it = pNormalRenderables.begin(); it != pNormalRenderables.end(); ) {
+			if ((*it)->name == targetName) {
+				Log(GOOD, "Removing by name: %s", (*it)->name.c_str());
+				(*it)->deleteConcretion();
+				delete *it;
+				it = pNormalRenderables.erase(it);
+				++removed;
+			} else {
+				++it;
+			}
+		}
+		return removed;
 	}
 
 	// Add methods - public API unchanged for backward compatibility.
