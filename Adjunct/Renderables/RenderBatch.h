@@ -51,11 +51,11 @@ struct PipelineKey
 private:
 							//TODO: This little static is now quite application-specific; be open to reassess approach.
 	static int getPassOrder(const char* pass) {
-		if (pass == nullptr)					return 4;	// Opaque fifth: Ship, objects - test against terrain depth.
+		if (pass == nullptr)					return 3;	// Opaque fourth: Vehicle, objects - test against terrain depth.
 		if (strcmp(pass, "skybox") == 0)		return 0;	// Skybox first: background.
 		if (strcmp(pass, "floor") == 0)			return 1;	// Floor second: splitGrid renders before terrain.
 		if (strcmp(pass, "terrain") == 0)		return 2;	// Terrain third: alpha-blends on top of floor.
-		if (strcmp(pass, "lines") == 0)			return 3;	// Lines fourth: HUD overlays, no depth test/write.
+		if (strcmp(pass, "lines") == 0)			return 4;	// Lines fifth: overlays on top of opaque geometry.
 		if (strcmp(pass, "transparency") == 0)	return 5;	// Transparent last: alpha blending on top.
 		return 5;											// Unknown passes render last, with transparency.
 	}
