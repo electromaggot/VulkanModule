@@ -29,26 +29,16 @@ const VkPresentModeKHR	VkPresentModeKHR_UNSET	= (VkPresentModeKHR) -1;
 struct DeviceProfile
 {
 	vector<StrPtr>	extensionNames;
-	bool			lacksRequiredExtensions;
-	VkPhysicalDeviceProperties	properties;
-	VkSurfaceFormatKHR			selectedSurfaceFormat;
-	VkPresentModeKHR			selectedPresentMode;
-	VkFormat					selectedDepthFormat;
-	string			description;
+	bool			lacksRequiredExtensions = false;
+	VkPhysicalDeviceProperties	properties = {};
+	VkSurfaceFormatKHR			selectedSurfaceFormat = { VkFormat_UNSET, VkColorSpaceKHR_UNSET };
+	VkPresentModeKHR			selectedPresentMode = VkPresentModeKHR_UNSET;
+	VkFormat					selectedDepthFormat = VK_FORMAT_UNDEFINED;
+	string			description = "unset";
 	// scoring:
-	uint64_t		totalScore;
-	RawScore		rawPerPassScore;
-	RawScore		surfaceSupportScore;
-
-	DeviceProfile() {
-		memset(this, 0, sizeof(DeviceProfile));
-		lacksRequiredExtensions = false;
-		selectedSurfaceFormat.format = VkFormat_UNSET;
-		selectedSurfaceFormat.colorSpace = VkColorSpaceKHR_UNSET;
-		selectedPresentMode = VkPresentModeKHR_UNSET;
-		selectedDepthFormat = VK_FORMAT_UNDEFINED;
-		description = "unset";
-	}
+	uint64_t		totalScore = 0;
+	RawScore		rawPerPassScore = 0;
+	RawScore		surfaceSupportScore = 0;
 };
 
 typedef DeviceProfile (&ProfilesReference)[];
