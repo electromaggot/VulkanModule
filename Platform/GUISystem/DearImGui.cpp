@@ -143,6 +143,64 @@ DearImGui::~DearImGui()					// (CommandBuffer should get destroyed when commandP
 }
 
 
+// Device-loss recovery: free ONLY ImGui's Vulkan (renderer) backend on the OLD (still-current) device.
+//	The SDL/platform backend is window-bound (unaffected by device loss) and MUST stay alive — the
+//	render loop keeps calling ImGui_ImplSDL2_ProcessEvent during the sleep window (that pump is also
+//	how the DidWake notification is delivered), which asserts if the SDL backend was shut down.  The
+//	ImGui + ImPlot contexts are likewise preserved, so docking layout and window state survive.
+void DearImGui::teardownVulkanBackend()
+{
+	// Save the main viewport's window association BEFORE shutdown nulls it (see header note), so we can
+	//	restore it on recreate — the kept-alive SDL backend won't, and input routing depends on it.
+	savedMainViewportPlatformHandle = ImGui::GetMainViewport()->PlatformHandle;
+
+	ImGui_ImplVulkan_Shutdown();		// Frees ImGui's pipeline, font texture, and descriptor sets.
+	if (descriptorPool != VK_NULL_HANDLE) {
+		vkDestroyDescriptorPool(device, descriptorPool, g_Allocator);
+		descriptorPool = VK_NULL_HANDLE;
+	}
+}
+
+// Device-loss recovery: rebuild ImGui's Vulkan (renderer) backend on the NEW device (the `device`
+//	reference already tracks the recreated logical device).  The SDL backend was kept alive, so only
+//	the renderer is re-initialized here.
+void DearImGui::recreateVulkanBackend(VulkanSetup& vulkan)
+{
+	descriptorPool = createDescriptorPool(device);
+
+	ImGui_ImplVulkan_PipelineInfo pipelineInfo = {};
+	pipelineInfo.RenderPass = vulkan.renderPass.getVkRenderPass();
+	pipelineInfo.Subpass = 0;
+	pipelineInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+
+	ImGui_ImplVulkan_InitInfo init_info = {
+		.ApiVersion		= VK_API_VERSION_1_0,
+		.Instance		= vulkan.vulkan.getVkInstance(),
+		.PhysicalDevice	= vulkan.device.getGPU(),
+		.Device			= device,
+		.QueueFamily	= vulkan.device.Queues.getFamilyIndex(),
+		.Queue			= vulkan.device.Queues.getCurrent(),
+		.DescriptorPool	= descriptorPool,
+		.DescriptorPoolSize = 0,
+		.MinImageCount	= 2,
+		.ImageCount		= (uint32_t) vulkan.swapchain.getNumImages(),
+		.PipelineCache	= VK_NULL_HANDLE,
+		.PipelineInfoMain = pipelineInfo,
+		.UseDynamicRendering = false,
+		.Allocator		= NULL,
+		.CheckVkResultFn = check_vk_result,
+		.MinAllocationSize = 0
+	};
+	ImGui_ImplVulkan_Init(&init_info);
+
+	// Restore the main viewport's window association that ImGui_ImplVulkan_Shutdown() nulled (see header).
+	//	Without this, ProcessEvent's FindViewportByPlatformHandle(windowID) returns NULL and mouse-button
+	//	events are silently dropped (motion still works via NewFrame's global-mouse-state fallback).
+	if (savedMainViewportPlatformHandle)
+		ImGui::GetMainViewport()->PlatformHandle = savedMainViewportPlatformHandle;
+}
+
+
 bool DearImGui::Update(GameClock& time)
 {		// (Don't really need time or deltaSeconds, as Dear ImGui tracks its own time.)
 	#ifdef DEBUG_LOW
