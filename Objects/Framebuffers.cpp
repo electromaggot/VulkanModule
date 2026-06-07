@@ -33,6 +33,7 @@ void Framebuffers::destroy()
 {
 	for (auto& framebuffer : framebuffers)
 		vkDestroyFramebuffer(device, framebuffer, nullALLOC);
+	framebuffers.clear();		// Idempotent for device-loss teardown.
 }
 
 

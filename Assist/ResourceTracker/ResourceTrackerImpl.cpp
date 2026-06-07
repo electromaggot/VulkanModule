@@ -83,6 +83,18 @@ void ResourceTracker::reportLeaks()
 		Log(RAW, "🏆 Vulkan Resource Tracking: NO LEAKS detected, all resources properly cleaned up!");
 		Tier check = (totalCreated == totalDestroyed) ? GOOD : FAIL;
 		Log(check, " Total: %d created, %d destroyed", totalCreated, totalDestroyed);
+		// "No leaks" only checks current() > 0 (over-creation); a created != destroyed total still means
+		//	an imbalance — including OVER-destruction (double-free), which leaves current() negative and is
+		//	otherwise invisible above.  When totals disagree, list every imbalanced type so it's findable.
+		if (totalCreated != totalDestroyed) {
+			for (int i = 0; i < VK_RESOURCE_TYPE_COUNT; i++) {
+				int delta = stats[i].current();		// created - destroyed
+				if (delta != 0)
+					Log(FAIL, "   %-26s %+d (%d created, %d destroyed)",
+						resourceTypeName((VulkanResourceType)i), delta,
+						stats[i].created, stats[i].destroyed);
+			}
+		}
 		return;
 	}
 

@@ -46,8 +46,13 @@ private:
 	DeviceQueues		queueFamilies;
 
 		// METHODS
-private:
+public:
+	// Two-phase device-loss recovery (sleep/wake): DestroyLogicalDevice() at WillSleep while the
+	//	device is still valid (after all children are destroyed), createLogicalDevice() at DidWake.
 	void createLogicalDevice(ValidationLayers& validation);
+	void DestroyLogicalDevice();
+
+private:
 	void determineDeviceExtensionSupport(VkPhysicalDevice* devices, int nDevices, DeviceAssessment& assays);
 
 	VkPhysicalDevice selectGPU(VkInstance& instance, VkSurfaceKHR& surface,
@@ -59,6 +64,12 @@ private:
 	int pickSpecifiedDevice(DeviceAssessment& deviceAssess, int nDevices);
 
 public:
+	// Device-loss recovery: destroy the lost logical device and recreate it in place (the same
+	//	GraphicsDevice object, a fresh VkDevice handle in `logicalDevice`).  physicalDevice, queue
+	//	family indices, and selected extensions all survive device loss, so this just re-runs
+	//	createLogicalDevice().  References returned by getLogical() track the reassigned member.
+	void RecreateLogicalDevice(ValidationLayers& validation);
+
 	bool IsImageFormatSupported(VkFormat format, VkImageTiling tiling = (VkImageTiling) -1);
 
 		// getters

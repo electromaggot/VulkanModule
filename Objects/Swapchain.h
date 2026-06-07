@@ -38,12 +38,12 @@ private:
 private:
 	void	create(VkSurfaceKHR& surface);
 	void	createImageViews();
-	void	destroy();
 
 	VkExtent2D	determineSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 	uint32_t	determineImageCount(const VkSurfaceCapabilitiesKHR& capabilities);
 public:
 	void	Recreate();
+	void	destroy();		// Public for device-loss teardown; idempotent (nulls handles).
 
 		// getters
 	vector<VkImageView>& getImageViews()	{ return imageViews; }

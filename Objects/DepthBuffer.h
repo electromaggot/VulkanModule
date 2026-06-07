@@ -34,6 +34,7 @@ private:
 	bool hasStencilComponent(VkFormat format);
 public:
 	void Recreate(Swapchain& swapchain);
+	void destroy() { ImageResource::destroy(); }	// Public for device-loss teardown (already idempotent).
 
 		// getters
 	VkImageView* getpImageView() {

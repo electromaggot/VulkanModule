@@ -38,9 +38,9 @@ private:
 private:
 	void create(vector<VkImageView>& swapchainImageViews, VkExtent2D& extent,
 				VkRenderPass renderPass, VkImageView* pDepthImageView);
-	void destroy();
 public:
 	void Recreate(Swapchain& swapchain, DepthBuffer& depthBuffer, RenderPass& renderPass);
+	void destroy();		// Public for device-loss teardown; idempotent (clears handles).
 
 		// getters
 	vector<VkFramebuffer>& getVkFramebuffers()	{ return framebuffers; }
