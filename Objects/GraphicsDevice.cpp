@@ -42,6 +42,19 @@ GraphicsDevice::~GraphicsDevice()
 	Log(DEAD, "Destroyed: GraphicsDevice");
 }
 
+void GraphicsDevice::DestroyLogicalDevice()
+{
+	vkDestroyDevice(logicalDevice, nullALLOC);
+	logicalDevice = VK_NULL_HANDLE;
+}
+
+void GraphicsDevice::RecreateLogicalDevice(ValidationLayers& validation)
+{
+	DestroyLogicalDevice();							// Lost device — tear it down,
+	createLogicalDevice(validation);				//	then rebuild (reuses surviving physicalDevice /
+	Log(NOTE, "Recreated: GraphicsDevice logical device.");	//	queue families / extensions; re-gathers queues).
+}
+
 
 bool GraphicsDevice::IsImageFormatSupported(VkFormat format, VkImageTiling tiling)
 {

@@ -32,10 +32,10 @@ private:
 private:
 	void	create();
 	void	create(VkFormat imageFormat, VkFormat depthFormat);
-	void	destroy();
 
 public:
 	void	Recreate() override;
+	void	destroy();		// Public for device-loss teardown; idempotent (nulls handle).
 
 		// getters
 	VkRenderPass& getVkRenderPass() override	{ return renderPass; }

@@ -37,6 +37,9 @@ public:
 	CommandPool(GraphicsDevice& graphicsDevice);
 	~CommandPool();
 
+	void create();				// Exposed for device-loss teardown/recovery (ctor/dtor call these).
+	void destroy();				//	destroy() is idempotent (nulls the handle).
+
 	VkCommandPool getVkCommandPool() const { return vkCommandPool; }
 
 private:

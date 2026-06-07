@@ -57,11 +57,26 @@ void SyncObjects::createSyncObjects()
 
 void SyncObjects::destroySyncObjects()
 {
+	// Idempotent for device-loss teardown: guard each vkDestroy on a non-null handle, not just null the
+	//	handle afterward — vkDestroy(NULL) is a spec no-op but the resource tracker still counts it, so a
+	//	following Recreate()'s destroy() would otherwise inflate the destroyed total (false leak/imbalance).
 	for (size_t iFrame = 0; iFrame < MaxFramesInFlight; ++iFrame) {
-		vkDestroyFence(device, inFlightFences[iFrame], nullALLOC);
-		vkDestroySemaphore(device, renderFinishedSemaphores[iFrame], nullALLOC);
-		vkDestroySemaphore(device, shadowCompleteSemaphores[iFrame], nullALLOC);
-		vkDestroySemaphore(device, imageAvailableSemaphores[iFrame], nullALLOC);
+		if (inFlightFences[iFrame] != VK_NULL_HANDLE) {
+			vkDestroyFence(device, inFlightFences[iFrame], nullALLOC);
+			inFlightFences[iFrame] = VK_NULL_HANDLE;
+		}
+		if (renderFinishedSemaphores[iFrame] != VK_NULL_HANDLE) {
+			vkDestroySemaphore(device, renderFinishedSemaphores[iFrame], nullALLOC);
+			renderFinishedSemaphores[iFrame] = VK_NULL_HANDLE;
+		}
+		if (shadowCompleteSemaphores[iFrame] != VK_NULL_HANDLE) {
+			vkDestroySemaphore(device, shadowCompleteSemaphores[iFrame], nullALLOC);
+			shadowCompleteSemaphores[iFrame] = VK_NULL_HANDLE;
+		}
+		if (imageAvailableSemaphores[iFrame] != VK_NULL_HANDLE) {
+			vkDestroySemaphore(device, imageAvailableSemaphores[iFrame], nullALLOC);
+			imageAvailableSemaphores[iFrame] = VK_NULL_HANDLE;
+		}
 	}
 }
 

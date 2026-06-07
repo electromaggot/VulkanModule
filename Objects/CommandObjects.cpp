@@ -17,6 +17,16 @@
 CommandPool::CommandPool(GraphicsDevice& graphicsDevice)
 	:	device(graphicsDevice)
 {
+	create();
+}
+CommandPool::~CommandPool()
+{
+	destroy();
+	Log(DEAD, "Destroyed: CommandPool");
+}
+
+void CommandPool::create()
+{
 	VkCommandPoolCreateInfo poolInfo = {
 		.sType	= VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 		.pNext	= nullptr,
@@ -29,10 +39,10 @@ CommandPool::CommandPool(GraphicsDevice& graphicsDevice)
 	if (call != VK_SUCCESS)
 		Fatal("Create Command Pool FAILURE" + ErrStr(call));
 }
-CommandPool::~CommandPool()
+void CommandPool::destroy()		// Idempotent for device-loss teardown.
 {
 	vkDestroyCommandPool(device.getLogical(), vkCommandPool, nullALLOC);
-	Log(DEAD, "Destroyed: CommandPool");
+	vkCommandPool = VK_NULL_HANDLE;
 }
 
 

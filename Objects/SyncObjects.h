@@ -24,6 +24,7 @@ public:
 	~SyncObjects();
 
 	void Recreate();
+	void destroy() { destroySyncObjects(); }	// Public for device-loss teardown; idempotent (nulls handles).
 
 		// MEMBERS
 public:

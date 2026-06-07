@@ -30,7 +30,10 @@ void RenderPass::create()
 
 void RenderPass::destroy()
 {
-	vkDestroyRenderPass(device.getLogical(), renderPass, nullALLOC);
+	if (renderPass != VK_NULL_HANDLE) {		// Idempotent for device-loss teardown.  Guard the call, not just
+		vkDestroyRenderPass(device.getLogical(), renderPass, nullALLOC);	//	the handle: vkDestroy(NULL) is a
+		renderPass = VK_NULL_HANDLE;		//	no-op but the resource tracker would still count it.
+	}
 }
 
 void RenderPass::Recreate()
