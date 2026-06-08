@@ -351,16 +351,57 @@ void MyApp::draw()
             called = "Queue Present";
         }
     }
-    if (call == VK_ERROR_OUT_OF_DATE_KHR || call == VK_SUBOPTIMAL_KHR)
+    // Delegate swapchain recreation to the library; decide device-loss policy yourself.
+    switch (vulkan.RecoverFromPresentResult(call))
     {
-        vulkan.RecreateRenderingResources();
-        syncObjects.Recreate();
+        case FrameRecovery::Recreated:
+            // Swapchain resources were rebuilt (resize / monitor move) — reset any per-image
+            //   tracking YOU own here (e.g. an imagesInFlight fence vector) since handles are new.
+            break;
+        case FrameRecovery::DeviceLost:
+            // The logical device is gone (e.g. GPU reset after sleep).  YOUR policy: relaunch the
+            //   app, attempt a full device + resource rebuild, or quit.  Don't keep rendering.
+            onDeviceLost();
+            break;
+        case FrameRecovery::None:
+            if (call != VK_SUCCESS && call != VK_SUBOPTIMAL_KHR)
+                Log(ERROR, called + ErrStr(call));
+            break;
     }
-    if (call != VK_SUCCESS && call != VK_SUBOPTIMAL_KHR)
-        Log(ERROR, called + ErrStr(call));
 
     iCurrentFrame = (iCurrentFrame + 1) % syncObjects.MaxFramesInFlight;
 }
+```
+
+**Device loss & swapchain recreation.** `VulkanSetup::RecoverFromPresentResult(VkResult)` is the
+reusable recovery helper: feed it the result of `vkAcquireNextImageKHR`/`vkQueuePresentKHR` each
+frame. It recreates the swapchain chain for `VK_ERROR_OUT_OF_DATE_KHR`/`VK_SUBOPTIMAL_KHR` (resize /
+monitor move) and returns `Recreated`. For `VK_ERROR_DEVICE_LOST` it returns `DeviceLost` **without**
+touching the swapchain — when the logical device is truly gone (a GPU reset after sleep on MoltenVK),
+`vkCreateSwapchainKHR` aborts on the dead device, so rebuilding there is fatal. Recovering from device
+loss is the app's policy: e.g. save state and relaunch the process, or rebuild the device and all GPU
+resources. **Important:** `vkAcquireNextImageKHR` only writes `iNextImage` on success, so gate any
+per-image bookkeeping (`imagesInFlight[iNextImage]`, fence resets) behind a successful acquire —
+indexing with the uninitialized value on `DEVICE_LOST` is an out-of-bounds read (SIGBUS).
+
+**In-process device recreation (macOS sleep/wake).** Reacting to `DEVICE_LOST` *after* the fact is
+hard (the device is already dead — `vkDestroyDevice` on it is UB). The robust path is to recover while
+the device is still valid, driven by OS sleep/wake notifications. VulkanModule provides the two halves:
+`VulkanSetup::TeardownForSleep(destroyAppResources)` (call at WillSleep — runs the app's GPU-teardown
+callback, then destroys swapchain/depth/renderpass/framebuffers/sync/command in reverse-dependency
+order, then `GraphicsDevice::DestroyLogicalDevice()`) and `RebuildAfterSleep(rebuildAppResources)`
+(call at DidWake — `createLogicalDevice()`, recreate the device-level objects, then the app's rebuild
+callback). `GraphicsDevice::RecreateLogicalDevice()` reassigns `logicalDevice` **in place**, so every
+holder that stored a `VkDevice&` (per the reference-to-stable-member convention) tracks the new handle
+automatically — no app-wide handle-refetch. Each object's public `destroy()` is idempotent (nulls its
+handle) **and must guard `vkDestroy*` on a non-null handle** — `vkDestroy*(VK_NULL_HANDLE)` is a Vulkan
+no-op but still increments the ResourceTracker, so an explicit teardown followed by a `Recreate()`'s
+internal `destroy()` would double-count. `RecoverFromDeviceLoss()` composes the two halves as a reactive
+net, but prefer the sleep/wake (still-valid-device) path. Consumer reference: LevelEdit's
+`docs/plans/sessions/2026-06-01-gpu-device-loss-sleep-wake-recovery.md`.
+
+```cpp
+// (end of draw example)
 
 void MyApp::handlePrimaryPressDown(int atX, int atY)
 {
