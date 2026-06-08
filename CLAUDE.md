@@ -429,7 +429,51 @@ if(APPLE)
     find_library(COCOA_FRAMEWORK Cocoa)
     list(APPEND ADDITIONAL_LIBRARY_DEPENDENCIES ${COCOA_FRAMEWORK})
 endif()
+
+# Compile Obj-C++ with ARC — see "Objective-C memory management" below.
+if(APPLE)
+    set_source_files_properties(
+        "Vulkan/Platform/OSAbstraction/MacOSFullScreen.mm"
+        PROPERTIES COMPILE_OPTIONS "-fobjc-arc"
+    )
+endif()
 ```
+
+### Objective-C memory management (ARC) — convention for `.mm` files
+
+**Build with ARC, and keep the source ARC-neutral anyway.** Both halves matter:
+
+**1. Both build systems must agree.** An Xcode target defaults to `CLANG_ENABLE_OBJC_ARC = YES`, while
+CMake compiles Obj-C++ *without* ARC unless told otherwise. The same `.mm` compiled one way in Xcode and
+the other in CMake broke the build once (Aug 2026, `macOS_SetSustainedPerformance`). Hence the
+`set_source_files_properties(... "-fobjc-arc")` above — consuming projects should mirror it.
+
+The non-ARC direction is the dangerous one, because it fails *silently*: a method returning an
+**autoreleased** object (`beginActivityWithOptions:reason:`, most `+arrayWith…`/`+stringWith…`
+constructors) stored in a static or long-lived variable dies at the next pool drain, leaving a dangling
+pointer and a quietly inert feature — no compile error, no crash until much later. ARC cannot get this
+wrong; hand-written retain/release can.
+
+**2. Write ARC-neutral source regardless.** VulkanModule is consumed by multiple projects whose build
+settings we don't control, so memory management here should compile correctly either way:
+
+```objc
+static id<NSObject> s_token = nil;      // __strong under ARC; hand-retained otherwise.
+
+s_token = [[NSProcessInfo processInfo] beginActivityWithOptions: opts reason: why];
+#if !__has_feature(objc_arc)
+    [s_token retain];                   // ARC does this implicitly via the strong static.
+#endif
+...
+#if !__has_feature(objc_arc)
+    [s_token release];
+#endif
+s_token = nil;                          // Under ARC, this assignment is what releases it.
+```
+
+Runtime behaviour is identical in both modes, so there is no divergence to reason about — only the
+spelling differs. ARC governs Objective-C object pointers only; **C++ code is entirely unaffected**, so
+enabling it costs a mixed C++/Obj-C codebase nothing.
 
 **AppSettings requirements:**
 
@@ -478,9 +522,8 @@ VulkanModule provides complete shadow mapping infrastructure for realistic shado
   - `SHADOW_ORTHOGRAPHIC`: Parallel light rays (sun/directional)
   - `SHADOW_PERSPECTIVE`: Radial light rays (point light)
 - **Camera orientation modes** (`ShadowCameraMode`):
-  - `SHADOW_CAMERA_STRAIGHT_DOWN`: Points straight down (-Y axis), prevents clipping with wide FOV
-  - `SHADOW_CAMERA_CUSTOM_DIRECTION`: Uses custom direction vector for spotlights
-  - `SHADOW_CAMERA_LOOK_AT_ORIGIN`: Looks from light toward scene center
+  - `SHADOW_CAMERA_CUSTOM_DIRECTION`: Uses custom direction vector (e.g. directional/sun light, spotlights). Default direction is -Y (straight down).
+  - `SHADOW_CAMERA_LOOK_AT_TARGET`: Looks from light position toward a specified target point. Defaults to origin for backward compatibility with Scenes.
 - **Dynamic resolution calculation**: `calculateRecommendedResolution()` scales shadow map based on FOV and camera mode
 - Handles gimbal lock avoidance automatically
 - Configurable ortho size, FOV, near/far planes
@@ -494,10 +537,10 @@ VulkanModule provides complete shadow mapping infrastructure for realistic shado
 
 // 1. Calculate optimal shadow map resolution based on FOV and camera mode
 float shadowFOV = glm::radians(170.0f);  // Wide FOV for maximum coverage
-ShadowCameraMode cameraMode = SHADOW_CAMERA_STRAIGHT_DOWN;
+ShadowCameraMode cameraMode = SHADOW_CAMERA_CUSTOM_DIRECTION;
 uint32_t optimalResolution = ShadowProjection::calculateRecommendedResolution(
     shadowFOV, cameraMode, SHADOW_PERSPECTIVE);
-// Returns 4096x4096 for 170° FOV with STRAIGHT_DOWN mode
+// Returns 4096x4096 for 170° FOV with CUSTOM_DIRECTION mode
 
 // 2. Create shadow map with dynamic resolution
 ShadowMap* shadowMap = new ShadowMap(vulkan.device, commandPool,
@@ -506,14 +549,14 @@ ShadowPass* shadowPass = new ShadowPass(vulkan, *shadowMap);
 
 // 3. Each frame, calculate light-space matrix with camera mode
 vec3 lightPos = light.getPosition();
-vec3 sceneCenter = vec3(0.0f, 0.0f, 0.0f);
+vec3 target = vec3(0.0f, 0.0f, 0.0f);   // Scene focus point (origin, or camera position for Trips)
 float fov = glm::radians(170.0f);
 float farPlane = 60.0f;
 
 shadowUBO.lightSpaceMatrix = ShadowProjection::calculateLightSpaceMatrix(
-    lightPos, sceneCenter, SHADOW_PERSPECTIVE,
-    SHADOW_CAMERA_STRAIGHT_DOWN,         // Camera orientation
-    glm::vec3(0.0f, -1.0f, 0.0f),       // customDirection (for CUSTOM_DIRECTION)
+    lightPos, target, SHADOW_PERSPECTIVE,
+    SHADOW_CAMERA_LOOK_AT_TARGET,        // Look toward target from light position
+    glm::vec3(0.0f, -1.0f, 0.0f),       // customDirection (for CUSTOM_DIRECTION mode)
     15.0f,                               // orthoSize (for ORTHOGRAPHIC)
     fov,                                 // Field of view
     0.1f,                                // nearPlane
@@ -537,9 +580,8 @@ enum ShadowProjectionMode {
 
 // Shadow camera orientation mode
 enum ShadowCameraMode {
-    SHADOW_CAMERA_STRAIGHT_DOWN,      // Points down -Y axis (default, prevents clipping)
-    SHADOW_CAMERA_CUSTOM_DIRECTION,   // Uses custom direction vector
-    SHADOW_CAMERA_LOOK_AT_ORIGIN      // Looks from light toward scene center
+    SHADOW_CAMERA_CUSTOM_DIRECTION,   // Uses custom direction vector (default -Y)
+    SHADOW_CAMERA_LOOK_AT_TARGET      // Looks from light toward target point (default origin)
 };
 
 // Quality/performance tunables (defaults)
@@ -566,30 +608,26 @@ const float SHADOW_BIAS = 0.0015f;        // Prevents shadow acne
 
 **Shadow Camera Orientation Modes:**
 
-- **SHADOW_CAMERA_STRAIGHT_DOWN** (default):
-  - Camera points straight down (-Y axis)
-  - Prevents shadow clipping at light's extreme positions
-  - Best for overhead lighting with wide FOV
-  - Natural for scenes with ground planes
-
 - **SHADOW_CAMERA_CUSTOM_DIRECTION**:
-  - Camera uses custom direction vector
-  - Useful for spotlights or directed lighting effects
+  - Camera uses custom direction vector (default -Y, i.e. straight down)
+  - Best for directional/sun lighting with orthographic projection
+  - Direction stays constant regardless of scene movement (parallel rays)
   - Specify direction via `customDirection` parameter
 
-- **SHADOW_CAMERA_LOOK_AT_ORIGIN**:
-  - Camera looks from light toward scene center
-  - Good for focused lighting on central scene elements
-  - May clip shadows at extremes with wide FOV
+- **SHADOW_CAMERA_LOOK_AT_TARGET**:
+  - Camera looks from light position toward a specified target point
+  - Target defaults to origin for backward compatibility with Scenes
+  - For Trips, pass the scene focus point (e.g. camera XZ position) so shadows track the action
+  - Best for point-light shadows with perspective projection
 
 **Dynamic Resolution Scaling:**
 
 `ShadowProjection::calculateRecommendedResolution()` automatically selects optimal shadow map resolution based on:
 - **FOV**: Wider FOV requires higher resolution to prevent pixelation
-- **Camera mode**: STRAIGHT_DOWN and CUSTOM_DIRECTION modes benefit from higher resolution
+- **Camera mode**: CUSTOM_DIRECTION mode benefits from higher resolution at wide FOV
 - **Projection mode**: Perspective typically needs higher resolution than orthographic
 
-Resolution guidelines (for STRAIGHT_DOWN/CUSTOM_DIRECTION):
+Resolution guidelines (for CUSTOM_DIRECTION):
 - FOV 150°+: 4096x4096 (4K shadow map)
 - FOV 120-150°: 3072x3072 (3K shadow map)
 - FOV 90-120°: 2048x2048 (2K shadow map, default)
@@ -611,16 +649,16 @@ PCF Kernel Radius:
 - 3 (7x7): 49 samples, slow, very soft shadows
 
 Shadow Bias:
-- Too low: "shadow acne" (dotted artifacts)
-- Too high: "peter panning" (detached shadows)
-- Default 0.0015f suitable for most scenes
+- Two-layer approach recommended: hardware depth bias on shadow pass pipeline (`DEPTH_BIAS` customizer flag) plus small fragment shader bias
+- Hardware bias (constant + slope factors) prevents self-shadowing at the GPU level
+- Fragment shader bias catches residuals (0.0003–0.0005 typical)
+- Too much total bias: "peter panning" (detached shadows)
 
 FOV Selection:
 - 90° or less: Standard, good quality with 2K shadow map
 - 90-120°: Standard-wide, may need 2-3K shadow map
 - 120-150°: Wide, requires 3K shadow map to prevent pixelation
 - 150°+: Very wide, requires 4K shadow map for sharp shadows
-- Wide FOV with STRAIGHT_DOWN mode prevents shadow clipping
 
 **UBO Bindings:**
 Applications using shadow mapping must follow these descriptor bindings:
