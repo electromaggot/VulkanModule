@@ -21,6 +21,9 @@
 #include "imgui.h"	// for WantCaptureMouse and WantCaptureKeyboard flags
 #include <climits>	// (to build on Linux side)
 #include <cstdlib>	// for setenv on macOS
+#ifdef __APPLE__
+ #include <unistd.h>	// for access()
+#endif
 
 
 PlatformSDL::PlatformSDL()
@@ -60,6 +63,31 @@ const char DEFAULT_HOME_INDICATOR_APPEARANCE = Hidden;
 //
 void PlatformSDL::initializeSDL()
 {
+#ifdef __APPLE__
+	// Ensure the Vulkan loader can find MoltenVK. Shell env vars often contain
+	// stale versioned Homebrew Cellar paths that break after `brew upgrade`.
+	// Only set if not already pointing to a valid file (don't override user choice).
+	auto ensureICD = [](const char* envVar) {
+		const char* current = getenv(envVar);
+		if (current && access(current, F_OK) == 0)
+			return;
+		static const char* candidates[] = {
+			"/opt/homebrew/share/vulkan/icd.d/MoltenVK_icd.json",
+			"/opt/homebrew/etc/vulkan/icd.d/MoltenVK_icd.json",
+			"/usr/local/share/vulkan/icd.d/MoltenVK_icd.json",
+			"/usr/local/etc/vulkan/icd.d/MoltenVK_icd.json",
+		};
+		for (auto path : candidates) {
+			if (access(path, F_OK) == 0) {
+				setenv(envVar, path, 1);
+				return;
+			}
+		}
+	};
+	ensureICD("VK_ICD_FILENAMES");
+	ensureICD("VK_DRIVER_FILES");
+#endif
+
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0)
 		Fatal("Fail to Initialize SDL: " + string(SDL_GetError()));
 
@@ -67,18 +95,34 @@ void PlatformSDL::initializeSDL()
 	SDL_SetHint(SDL_HINT_IOS_HIDE_HOME_INDICATOR, hintHomeIndicator);
 
 #ifdef __APPLE__
-	// Disable vsync at Metal layer for higher FPS (MoltenVK can enforce vsync despite Vulkan present mode)
-	SDL_SetHint(SDL_HINT_RENDER_VSYNC, "0");
-	// Request immediate updates to reduce latency
-	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");  // Nearest pixel sampling (faster)
+	// Vsync is NOT configured here.  MoltenVK derives CAMetalLayer.displaySyncEnabled from the
+	//	Vulkan present mode we select at swapchain creation, so PRESENT_MODE_PRECEDENCE
+	//	(VulkanConfigure.h) is the single place that decides paced-vs-unpaced.  Setting it here
+	//	too would just be a second, conflicting opinion.
+	// (Removed 4-Aug-2026: SDL_HINT_RENDER_VSYNC / SDL_HINT_RENDER_SCALE_QUALITY.  Those govern
+	//	SDL's 2D SDL_Renderer, which a Vulkan app never creates -- they were inert, and their
+	//	"vsync disabled" wording misrepresented what the app was actually doing.)
 
-	// MoltenVK-specific: Disable displaySyncEnabled on CAMetalLayer
-	// This prevents Metal from enforcing vsync at the compositor level
-	setenv("MVK_CONFIG_DISPLAY_WATERMARK", "0", 0);  // Also disable watermark for performance
-	setenv("MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS", "0", 0);  // Async queue submits for better performance
+	setenv("MVK_CONFIG_DISPLAY_WATERMARK", "0", 0);				// No debug watermark.
+	setenv("MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS", "0", 0);		// Async queue submits (throughput).
 
-	Log(NOTE, "macOS: Configured for maximum frame rate (vsync disabled at Metal layer)");
+	Log(NOTE, "macOS: MoltenVK configured; frame pacing follows the selected Vulkan present mode.");
 #endif
+}
+
+// Refresh rate (Hz) of the display this window is on; 0 if it can't be determined.
+//
+int PlatformSDL::GetDisplayRefreshHz() const
+{
+	if (!pWindow)
+		return 0;
+	int iDisplay = SDL_GetWindowDisplayIndex(pWindow);
+	if (iDisplay < 0)
+		return 0;
+	SDL_DisplayMode mode;
+	if (SDL_GetCurrentDisplayMode(iDisplay, &mode) != 0)
+		return 0;
+	return mode.refresh_rate;		// SDL reports 0 when the rate is unspecified/variable.
 }
 
 // Create a vulkan window; fatal throw on failure.
@@ -206,7 +250,7 @@ void PlatformSDL::createVulkanCompatibleWindow()
 	//(plus, the above seems to wipe out the saved credentials, which need to be pulled from Vault if that's to happen)
 
 //	if (! isMobilePlatform)		// we don't need this for full-screen or mobile (where called unnecessarily on device rotation)
-		SDL_AddEventWatch(realtimeResizingEventWatcher, this);
+	SDL_AddEventWatch(realtimeResizingEventWatcher, this);
 //TODO: had commented the above test, but not documented why. Later, justify resizeEventWatcher on mobile...
 //		   was it to actually catch and process the device rotation?
 }
@@ -370,9 +414,10 @@ void PlatformSDL::SetWindowTitle(const char* title)
 //	MacBooks the window size is identical in windowed-maximized and native fullscreen,
 //	so query the NSWindow styleMask directly via a platform-specific helper.
 //
-#ifdef __APPLE__
+#if __APPLE__ && ! TARGET_OS_IPHONE
 	extern "C" bool macOS_IsNativeFullScreen(SDL_Window* pWindow);
 	extern "C" void macOS_ExitNativeFullScreen(SDL_Window* pWindow);
+	// NOTE: Must include "MacOSFullScreen.mm" in Xcode project for these to resolve.
 #endif
 
 bool PlatformSDL::detectFullScreen()
@@ -380,7 +425,7 @@ bool PlatformSDL::detectFullScreen()
 	if (SDL_GetWindowFlags(pWindow) & SDL_WINDOW_FULLSCREEN)
 		return true;
 
-#ifdef __APPLE__
+#if __APPLE__ && ! TARGET_OS_IPHONE
 	return macOS_IsNativeFullScreen(pWindow);
 #else
 	return false;
@@ -391,7 +436,7 @@ void PlatformSDL::ExitFullScreen()
 {
 	if (SDL_GetWindowFlags(pWindow) & SDL_WINDOW_FULLSCREEN)
 		SDL_SetWindowFullscreen(pWindow, 0);
-#ifdef __APPLE__
+#if __APPLE__ && ! TARGET_OS_IPHONE
 	else if (macOS_IsNativeFullScreen(pWindow))
 		macOS_ExitNativeFullScreen(pWindow);
 #endif
@@ -499,6 +544,7 @@ bool PlatformSDL::PollEvent(iControlScheme* pController)
 				if (pController && !imguiWantsMouse) {		// Only pass to controller if...
 					pController->handlePrimaryPressAndDrag(mouseX, mouseY);
 					pController->handleSecondaryPressAndDrag(mouseX, mouseY);
+					pController->handleTertiaryPressAndDrag(mouseX, mouseY);
 				}
 				break;
 			case SDL_MOUSEBUTTONDOWN:
@@ -508,6 +554,9 @@ bool PlatformSDL::PollEvent(iControlScheme* pController)
 						{
 						case SDL_BUTTON_LEFT:
 							pController->handlePrimaryPressDown(event.button.x, event.button.y);
+							break;
+						case SDL_BUTTON_MIDDLE:
+							pController->handleTertiaryPressDown(event.button.x, event.button.y);
 							break;
 						case SDL_BUTTON_RIGHT:
 							pController->handleSecondaryPressDown(event.button.x, event.button.y);
@@ -523,6 +572,9 @@ bool PlatformSDL::PollEvent(iControlScheme* pController)
 						{
 						case SDL_BUTTON_LEFT:
 							pController->handlePrimaryPressUp(event.button.x, event.button.y);
+							break;
+						case SDL_BUTTON_MIDDLE:
+							pController->handleTertiaryPressUp(event.button.x, event.button.y);
 							break;
 						case SDL_BUTTON_RIGHT:
 							pController->handleSecondaryPressUp(event.button.x, event.button.y);
@@ -583,7 +635,7 @@ bool PlatformSDL::PollEvent(iControlScheme* pController)
 		isFullScreen = currentlyFullScreen;
 		Log(LOW, "Fullscreen state change: %s", isFullScreen ? "ENTER" : "EXIT");
 
-#ifdef __APPLE__
+#if __APPLE__ && ! TARGET_OS_IPHONE
 		// If the user entered native fullscreen (green button), switch to borderless
 		//	fullscreen instead -- it's consistent (ESC exits) and doesn't show a menu
 		//	bar on mouse hover.  Exit native first, then apply borderless on next idle.
