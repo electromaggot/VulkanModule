@@ -52,6 +52,12 @@ private:
 	bool	pendingFullScreen = false;	// deferred fullscreen restore (macOS needs run loop active)
 
 public:
+	// Refresh rate (Hz) of the display the window currently occupies; 0 if unknown.
+	//	Needed for frame pacing: on a vsync-locked presentation, motion must advance in whole
+	//	refresh intervals, so an app has to know how long one is.  Queried live rather than
+	//	cached — dragging the window to another monitor can change it.
+	int GetDisplayRefreshHz() const;
+
 	int LastSavedPixelsWide = 0;
 	int	LastSavedPixelsHigh = 0;
 
