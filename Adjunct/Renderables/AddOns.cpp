@@ -13,14 +13,16 @@
 #include "DynamicUniformBuffer.h"
 
 #include "PrimitiveBuffer.h"
+#include "Customizer.h"
 
 
 AddOns::AddOns(DrawableSpecifier& drawable, VulkanSetup& setup, iPlatform& abstractPlatform)
 	:	vulkan(setup),
 		platform(abstractPlatform)
 {
-	createVertexAndOrIndexBuffers(drawable.mesh);
-	createDescribedItems(drawable.pUBOs, drawable.textures, abstractPlatform);
+	createVertexAndOrIndexBuffers(drawable.mesh, drawable.customize);
+	createDescribedItems(drawable.pUBOs, drawable.textures, drawable.runtimeTextures,
+						 drawable.perFrameRuntimeTextures, abstractPlatform);
 }
 
 AddOns::~AddOns()
@@ -32,19 +34,37 @@ AddOns::~AddOns()
 
 #pragma mark - VERTEX / INDEX BUFFERS
 
-void AddOns::createVertexAndOrIndexBuffers(MeshObject& meshObject)
+void AddOns::createVertexAndOrIndexBuffers(MeshObject& meshObject, Customizer customize)
 {
 	if (meshObject.vertices) {
 		VkCommandPool commandPool = vulkan.command.vkPool();
-		pVertexBuffer = new PrimitiveBuffer(meshObject, commandPool, vulkan.device);
+
+		// Check if this is dynamic geometry, e.g. continuously updated waveforms, particles, animated models...
+		bool isDynamic = (customize & DYNAMIC_GEOMETRY) != 0;
+
+		if (isDynamic) {	// Create host-visible vertex buffer: CPU-mappable, no command buffers for updates.
+			pVertexBuffer = new PrimitiveBuffer(commandPool, vulkan.device);
+			VkDeviceSize bufferSize = meshObject.vertexBufferSize();
+			pVertexBuffer->CreateVertexBuffer(meshObject.vertices, bufferSize, true);  // hostVisible = true
+		} else {	// Create standard device-local vertex buffer: best GPU performance, uses staging for updates.
+			pVertexBuffer = new PrimitiveBuffer(meshObject, commandPool, vulkan.device);
+		}
+
 		if (meshObject.indices) {
-			if (meshObject.indexType == MeshDefaultIndexType) {
-				pIndexBuffer = new PrimitiveBuffer((IndexBufferDefaultIndexType*) meshObject.indices,
-												   meshObject.indexCount,
-												   commandPool, vulkan.device);
-			} else {
-				pIndexBuffer = new PrimitiveBuffer(meshObject.indexType, meshObject.indices, meshObject.indexCount,
-												   commandPool, vulkan.device);
+			if (isDynamic) {	// Create host-visible index buffer for dynamic geometry
+				pIndexBuffer = new PrimitiveBuffer(commandPool, vulkan.device);
+				VkDeviceSize indexBufferSize = meshObject.indexCount *
+					(meshObject.indexType == MeshDefaultIndexType ? sizeof(IndexBufferDefaultIndexType) : sizeof(uint32_t));
+				pIndexBuffer->CreateIndexBuffer(meshObject.indices, indexBufferSize, meshObject.indexType, true); // ← hostVisible = true
+			} else {	// Create standard device-local index buffer
+				if (meshObject.indexType == MeshDefaultIndexType) {
+					pIndexBuffer = new PrimitiveBuffer((IndexBufferDefaultIndexType*) meshObject.indices,
+													   meshObject.indexCount,
+													   commandPool, vulkan.device);
+				} else {
+					pIndexBuffer = new PrimitiveBuffer(meshObject.indexType, meshObject.indices, meshObject.indexCount,
+													   commandPool, vulkan.device);
+				}
 			}
 		}
 	}
@@ -76,6 +96,8 @@ void AddOns::Recreate(MeshObject& meshObject)
 //	make sure each INDEX matches its "layout(binding = <INDEX>)" in your Shader...
 //																					// e.g. :
 void AddOns::createDescribedItems(vector<UBO>& UBOs, vector<TextureSpec>& textureSpecs,
+								  vector<VkDescriptorImageInfo>& runtimeTextures,
+								  vector<vector<VkDescriptorImageInfo>>& perFrameRuntimeTextures,
 								  iPlatform& platform)
 {
 	// Uniform Buffer Objects first (explicitly: the MVP UBO)
@@ -108,6 +130,17 @@ void AddOns::createDescribedItems(vector<UBO>& UBOs, vector<TextureSpec>& textur
 										// ^^^^^^ TODO: ^^^^^^^^ We don't have a mechanism (YET!) allowing an image to
 			}							//		be specified for the VERTEX STAGE, which could be helpful for something
 		}								//		like offseting vertices based on a depth map.
+	}
+
+	// Runtime textures (e.g., shadow maps) - already created, just add descriptors:
+	for (VkDescriptorImageInfo& imageInfo : runtimeTextures) {
+		described.emplace_back(imageInfo, VK_SHADER_STAGE_FRAGMENT_BIT);
+	}
+
+	// Per-frame runtime textures (e.g., shadow maps with frames-in-flight).
+	// Each texture binding has one image per swapchain frame to prevent cross-frame races.
+	for (vector<VkDescriptorImageInfo>& perFrameImageInfo : perFrameRuntimeTextures) {
+		described.emplace_back(perFrameImageInfo, VK_SHADER_STAGE_FRAGMENT_BIT);
 	}
 }
 

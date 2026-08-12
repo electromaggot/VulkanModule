@@ -8,20 +8,39 @@
 //	© 0000 (uncopyrighted; use at will)
 //
 #include "RenderPass.h"
+#include "ResourceTracker.h"
 
 
 RenderPass::RenderPass(GraphicsDevice& graphicsDevice)
-	:	device(graphicsDevice.getLogical())
+	:	device(graphicsDevice)
 {
-	DeviceProfile device = graphicsDevice.getProfile();
-	create(device.selectedSurfaceFormat.format, device.selectedDepthFormat);
+	create();
 }
 
 RenderPass::~RenderPass()
 {
-	vkDestroyRenderPass(device, renderPass, nullALLOC);
+	destroy();
 }
 
+void RenderPass::create()
+{
+	DeviceProfile profile = device.getProfile();
+	create(profile.selectedSurfaceFormat.format, profile.selectedDepthFormat);
+}
+
+void RenderPass::destroy()
+{
+	if (renderPass != VK_NULL_HANDLE) {		// Idempotent for device-loss teardown.  Guard the call, not just
+		vkDestroyRenderPass(device.getLogical(), renderPass, nullALLOC);	//	the handle: vkDestroy(NULL) is a
+		renderPass = VK_NULL_HANDLE;		//	no-op but the resource tracker would still count it.
+	}
+}
+
+void RenderPass::Recreate()
+{
+	destroy();
+	create();
+}
 
 void RenderPass::create(VkFormat imageFormat, VkFormat depthFormat = VK_FORMAT_UNDEFINED)
 {
@@ -59,11 +78,11 @@ void RenderPass::create(VkFormat imageFormat, VkFormat depthFormat = VK_FORMAT_U
 		.layout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
 	};
 
-	isDepthBufferUsed = (depthFormat != VK_FORMAT_UNDEFINED);					// (otherwise, the above two variables
+	useDepthBuffer = (depthFormat != VK_FORMAT_UNDEFINED);						// (otherwise, the above two variables
 	VkAttachmentDescription attachments[] { colorAttachment, depthAttachment };	//	and this array will be left to
 																				//	quietly disappear from the stack)
 	VkAttachmentDescription* pAttachments;	uint32_t nAttachments;
-	if (isDepthBufferUsed) {
+	if (isDepthBufferUsed()) {
 		pAttachments = attachments;
 		nAttachments = N_ELEMENTS_IN_ARRAY(attachments);
 	} else {
@@ -79,7 +98,7 @@ void RenderPass::create(VkFormat imageFormat, VkFormat depthFormat = VK_FORMAT_U
 		.colorAttachmentCount	 = 1,
 		.pColorAttachments		 = &colorAttachmentRef,
 		.pResolveAttachments	 = nullptr,
-		.pDepthStencilAttachment = isDepthBufferUsed ? &depthAttachmentRef : nullptr,
+		.pDepthStencilAttachment = isDepthBufferUsed() ? &depthAttachmentRef : nullptr,
 		.preserveAttachmentCount = 0,
 		.pPreserveAttachments	 = nullptr
 	};
@@ -90,12 +109,12 @@ void RenderPass::create(VkFormat imageFormat, VkFormat depthFormat = VK_FORMAT_U
 		.srcSubpass		 = VK_SUBPASS_EXTERNAL,
 		.dstSubpass		 = 0,
 		.srcStageMask	 = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-						 | (isDepthBufferUsed ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT : zero),
+						 | (isDepthBufferUsed() ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT : zero),
 		.dstStageMask	 = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-						 | (isDepthBufferUsed ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT : zero),
+						 | (isDepthBufferUsed() ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT : zero),
 		.srcAccessMask	 = 0,
 		.dstAccessMask	 = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
-						 | (isDepthBufferUsed ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT : zero),
+						 | (isDepthBufferUsed() ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT : zero),
 		.dependencyFlags = 0
 	};
 
@@ -111,7 +130,7 @@ void RenderPass::create(VkFormat imageFormat, VkFormat depthFormat = VK_FORMAT_U
 		.pDependencies	 = &dependency
 	};
 
-	call = vkCreateRenderPass(device, &renderPassInfo, nullALLOC, &renderPass);
+	call = vkCreateRenderPass(device.getLogical(), &renderPassInfo, nullALLOC, &renderPass);
 
 	if (call != VK_SUCCESS)
 		Fatal("Create Render Pass FAILURE" + ErrStr(call));

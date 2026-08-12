@@ -1,12 +1,16 @@
 Dear ImGui Drop-in Replacement Files
 ------------------------------------
 
+NOTE as of 7-Feb-2022 finally, ImGui **v1.87** FIXED the issue that this file addressed.  Therefore this code and `replacements`
+directory will subsequently be deleted.  These files can be ignored in the meantime if you're using ImGui version 1.87 or later.
+	(but first, TJ_TODO: attempt loading a 2nd texture in ImGui to ensure the fix works and is understood.)
+
 As of: **dear imgui, v1.80 WIP**  
 these Vulkan-specific implementation files provide the following additional capability:
 
 	//  [X] Renderer: User texture binding. Changes of ImTextureID ARE supported by this binding! See https://github.com/ocornut/imgui/pull/914
 	     ↑                                                         ↑↑↑
-	     These files insert the X here - and change from "aren't" this word.
+	     These files insert the X here - and change from "aren't" this word... from 'imgui_impl_vulkan.cpp's comments.
 
 That is, under Vulkan, `ImGui::Image(...)`, `ImGui::ImageButton(...)`, etc. didn't actually work.  All they did display would be the
 currently loaded font atlas, which was the first (and only) image loaded.  So changing `ImTextureID` had no effect (despite what it says

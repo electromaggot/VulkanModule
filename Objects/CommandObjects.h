@@ -25,6 +25,7 @@
 #include "Descriptors.h"
 
 #include "iRenderable.h"
+#include "RenderBatch.h"
 
 
 #pragma mark - COMMAND POOL
@@ -35,6 +36,12 @@ class CommandPool
 public:
 	CommandPool(GraphicsDevice& graphicsDevice);
 	~CommandPool();
+
+	void create();				// Exposed for device-loss teardown/recovery (ctor/dtor call these).
+	void destroy();				//	destroy() is idempotent (nulls the handle).
+
+	VkCommandPool getVkCommandPool() const { return vkCommandPool; }
+
 private:
 	VkCommandPool	 vkCommandPool;
 	GraphicsDevice&	 device;
@@ -55,12 +62,13 @@ public:
 private:
 	VkCommandBufferBeginInfo beginInfo;
 	Event&					 event;
+	RenderBatchManager		 batchManager;			// Pipeline batching for optimized recording.
 
 		// METHODS
 public:
 	void allocateVkCommandBuffer();
 	void freeVkCommandBuffers();
-	void recordCommands(vector<iRenderable*> pRenderables, VkFramebuffer& framebuffer,
+	void recordCommands(vector<iRenderableBase*> pRenderables, VkFramebuffer& framebuffer,
 						VkExtent2D& swapChainExtent, VkRenderPass& renderPass);
 		// getters
 	uint32_t	numBufferSets()	 {	return (uint32_t) vkCommandBuffers.size();	}
@@ -117,7 +125,7 @@ private:
 	CommandBufferSets	buffersByFrame;				// size == numFrames (Framebuffers.size())
 
 		// METHODS
-	void recordCommands(int iFrame, vector<iRenderable*> pRenderables, VulkanSetup& vulkan);
+	void recordCommands(int iFrame, vector<iRenderableBase*> pRenderables, VulkanSetup& vulkan);
 
 public:
 	void Create(Framebuffers& framebuffers);
@@ -126,6 +134,7 @@ public:
 	void PostInitPrepBuffers(VulkanSetup& vulkan);
 	void RecordRenderablesUponEachFrame(VulkanSetup& vulkan);
 	void RecordRenderablesForNextFrame(VulkanSetup& vulkan, int iNextFrame);
+	void BuildMergedVectorFromTypedSources(vector<iRenderableBase*>&);
 
 	vector<VkCommandBuffer>	BuffersForFrame(int iFrame) {
 		assert (numFrames > 0);
@@ -137,14 +146,13 @@ public:
 
 		// getters
 	uint32_t				NumFrames()	{ return numFrames; }
+	CommandPool&			getCommandPool() { return commandPool; }
 
 	static GraphicsDevice&	device()	{ return pSingleton->commandPool.device; }
 	static VkCommandPool&	vkPool()	{ return pSingleton->commandPool.vkCommandPool; }
 };
 
-
 #endif // CommandObjects_h
-
 
 
 /* DEV NOTE

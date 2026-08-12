@@ -43,6 +43,8 @@ public:
 	virtual void handleMouseWheel(int spunX, int spunY)			{ }		// "can" assume zooming via mouse.
 	virtual void handlePinchSpread(float amount)				{ }		// Always means zoom via touch.
 	virtual void handleTwoFingerTwist(float angle)				{ }
+
+	virtual void update()										{ }		// Called every frame to update camera/state.
 };
 
 #endif	// iControlScheme_h

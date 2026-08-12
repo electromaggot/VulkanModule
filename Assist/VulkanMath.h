@@ -13,9 +13,12 @@
 #define VulkanMath_h
 
 
+const bool INVERT_Z = true;	// Temporary!  Flips world to +Z forward, left-handed.
+	// Will replace with Config system later, but definitely necessary global graphics engine setting.
+
 enum CoordinateSystem {
-	OPENGL_RIGHT_HANDED,
-	VULKAN_LEFT_HANDED
+	VULKAN_OPENGL_RIGHT_HANDED,		// +Z out of screen
+	DIRECT3D_UNITY_LEFT_HANDED		// +Z into screen  (which may be switched to, per 3D-world context)
 };
 
 
@@ -26,10 +29,10 @@ enum CoordinateSystem {
 #else
 	// (Make sure glm's base directory is in your project's header paths!)
 
-	//#define GLM_FORCE_LEFT_HANDED			// See note at file's end for why this is now excluded...
+	//#define GLM_FORCE_LEFT_HANDED			// See note at file's end for why this is excluded...
 	#define GLM_FORCE_RADIANS
 	#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
-	//#define GLM_FORCE_DEPTH_ZERO_TO_ONE	//	...and this too, for now.
+	#define GLM_FORCE_DEPTH_ZERO_TO_ONE		// Vulkan uses [0,1] depth range (OpenGL uses [-1,1])
 	#include <glm/glm.hpp>
 	#include <glm/gtc/matrix_transform.hpp>
 
@@ -50,8 +53,8 @@ enum CoordinateSystem {
 //	and have Clockwise-wound front-facing triangles.
 // At the same time, GLM_FORCE_LEFT_HANDED seems to invoke variants of the aforenamed
 //	methods, such as lookAtLH() vs. lookAtRH() or perspectiveLH() vs. perspectiveRH().
-//	Our engine allows models of either LH ("designed for Vulkan") or RH ("designed
-//	for OpenGL") based on the MODELED_FOR_VULKAN Customizer.h flag, which can
+//	Our engine allows models of either LH ("designed for Unity") or RH ("designed
+//	for OpenGL") based on the MODELED_FOR_DIRECT3D Customizer.h flag, which can
 //	selectively call either methods at run-time.  However GLM_FORCE_LEFT_HANDED
 //	is a compile-time #define, so henceforth applies to all rendering.
 // Therefore GLM_FORCE_LEFT_HANDED is excluded and its effect otherwise

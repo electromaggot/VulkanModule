@@ -27,8 +27,13 @@
 
 #include "AddOns.h"
 #include "DrawableSpecifier.h"
+#include "PrimitiveBuffer.h"	// for updateVertexData() inline method
 
 
+// A CommandBuffer object needs an array of Renderables that go into recording its VkCommandBuffer, with
+//	instructions how to draw them.  Originally we thought it was important "how often" it gets recorded, but
+//	as it turns out: 1) the buffer almost always needs to be rerecorded anyway, and 2) it's not very costly.
+// Therefore this enum will be retired, especially since option 1 is now done via Secondary CommandBuffer.
 enum CommandRecording {		// i.e. Request this CommandBuffer to be recorded:
 	AT_INIT_TIME_ONLY,		//  - once at initialization-time and not re-recorded before frames.
 	UPON_EACH_FRAME,		//  - repeatedly on every frame, and Reset before the next one.
@@ -42,6 +47,7 @@ struct iRenderableBase
 	bool	isSelfManaged;	// if renderable object independently stores/handles its own pipeline/shaders/vertices/etc.
 
 	iRenderableBase() : isSelfManaged(true) { }		// (which defaults to true until specifically unset (see below))
+	virtual ~iRenderableBase() = default;			// Virtual destructor ensures proper cleanup of derived classes
 
 	virtual iRenderableBase* newConcretion(CommandRecording* pRecordingMode) const = 0;
 
@@ -57,18 +63,23 @@ struct iRenderableBase
 //
 struct iRenderable : iRenderableBase
 {
-	iRenderable(DrawableSpecifier& specified, VulkanSetup& vulkan, iPlatform& platform)
+	iRenderable(DrawableSpecifier& specified, VulkanSetup& vulkan, iPlatform& platform,
+				iRenderPass* pCustomRenderPass = nullptr, VkExtent2D customExtent = { 0, 0 })
 		:	shaderModules(	specified.pSharedShaderModules ? *specified.pSharedShaderModules
 													: * new ShaderModules(specified.shaders, vulkan.device)),
 			addOns(			* new AddOns(specified, vulkan, platform)),
 			descriptors(	* new Descriptors(addOns.described, vulkan.swapchain, vulkan.device)),
-			pipeline(		* new GraphicsPipeline(shaderModules, vulkan.renderPass, vulkan.swapchain, vulkan.device,
-												   &specified.mesh.vertexType, &descriptors, specified.customize)),
+			pipeline(		* new GraphicsPipeline(shaderModules,
+												   (pCustomRenderPass != nullptr) ? *pCustomRenderPass : vulkan.renderPass,
+												   vulkan.swapchain, vulkan.device, &specified.mesh.vertexType,
+												   &descriptors, specified.customize, customExtent)),
 			vertexObject(	specified.mesh),
 			customizer(		specified.customize),
 			name(			specified.name),
 			updateMethod(	specified.updateMethod),
-			ownsShaderModules(!specified.pSharedShaderModules)
+			ownsShaderModules(!specified.pSharedShaderModules),
+			pass(			specified.pass),
+			renderOrder(	specified.renderOrder)
 	{
 		isSelfManaged = false;
 	}
@@ -93,13 +104,71 @@ struct iRenderable : iRenderableBase
 
 	MeshObject&			vertexObject;	// (retain for Recreate)
 	Customizer			customizer;
-	string&				name;
+	string				name;
 	bool				(*updateMethod)(GameClock&);
 	bool				ownsShaderModules;	// true if we created it, false if shared
+	const char*			pass;				// Render pass type (nullptr for primary, or "transparency"/"lines"/"shadow")
+	int					renderOrder;		// Stable sort order within same pass (lower = rendered first)
+
+	// Dynamic UBO support for efficient per-object transforms.
+	uint32_t			dynamicOffset = 0;
+	bool				hasDynamicOffset = false;
 
 
 	virtual iRenderable* newConcretion(CommandRecording* pRecordingMode) const = 0;
 	virtual void IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex = 0) = 0;
+
+	// Check if this renderable uses secondary command buffers.
+	virtual bool IsSecondaryCommandBuffer() const { return false; }
+
+	// Update vertex buffer with new data.  For dynamic geometry: animated models, particles, waveforms...
+	//	CRITICAL: New data must be same size as original buffer, no reallocation.
+	//	Uses direct CPU memory mapping (host-visible buffers) → NO command buffers, extremely fast!
+	//	Industry-standard for 60fps dynamic geometry updates.
+	//	IMPORTANT: Also updates vertexObject.vertexCount for correct draw calls.
+	void updateVertexData(void* pNewVertexData, VkDeviceSize size, size_t vertexSize)
+	{
+		if (addOns.pVertexBuffer) {
+			addOns.pVertexBuffer->UpdateVertexBufferMapped(pNewVertexData, size);
+
+			// Update vertex count for drawing: size in bytes / bytes per vertex
+			vertexObject.vertexCount = (uint32_t)(size / vertexSize);
+		}
+	}
+
+	// Update index buffer with new data.  For dynamic terrain: visibility window scrolling...
+	//	CRITICAL: New data must be same size as original buffer, no reallocation.
+	//	Uses direct CPU memory mapping (host-visible buffers) → NO command buffers, extremely fast!
+	//	Mirrors updateVertexData() pattern for index buffer updates.
+	//	IMPORTANT: Also updates vertexObject.indexCount for correct draw calls.
+	void updateIndexData(void* pNewIndexData, VkDeviceSize size)
+	{
+		if (addOns.pIndexBuffer) {
+			if (size > 0)
+				addOns.pIndexBuffer->UpdateIndexBufferMapped(pNewIndexData, size);
+
+			// Update index count for drawing: size in bytes / bytes per index
+			//	When size is 0, sets indexCount to 0 → renderable draws nothing.
+			vertexObject.indexCount = (uint32_t) size / sizeof(uint32_t);  // Assumes uint32_t indices.
+		}
+	}
+
+	// Get secondary command buffer for a specific frame (only valid if IsSecondaryCommandBuffer() == true).
+	virtual VkCommandBuffer GetSecondaryCommandBuffer(int frameIndex) const { return VK_NULL_HANDLE; }
+
+	// Update uniform buffers for this renderable.
+	void UpdateUniformBuffers(int iNextImage)
+	{
+		for (int index = 0; index < addOns.pUniformBuffers.size(); ++index) {
+			// Skip dynamic UBOs (updated separately via DynamicUniformBuffer)
+			if (addOns.pUniformBuffers[index] == nullptr)
+				continue;
+			UniformBuffer& unibuf = *addOns.pUniformBuffers[index];
+			void* pUboData = addOns.ubos[index].pBytes;
+			size_t numBytes = addOns.ubos[index].byteSize;
+			unibuf.Update(iNextImage, pUboData, numBytes);
+		}
+	}
 
 	virtual bool Update(GameClock& time)
 	{
@@ -124,17 +193,8 @@ struct iRenderable : iRenderableBase
 };
 
 
-// A CommandBuffer object needs an array of Renderables that go into recording its VkCommandBuffer.
-//	Also an indicator as to how often it gets (re)recorded.
-//	Note that because one Buffer may share contributions from multiple Renderables, those must be
-//	tracked until all their initializations complete, before the VkCommandBuffer can be recorded.
+// Renderables management class - stores normal and self-managed renderables in separate type-safe vectors.
 //
-struct CommandRecordable {
-	CommandRecording	 recordMode;
-	vector<iRenderable*> pRenderables;
-};
-
-
 class Renderables
 {
 	friend class CommandControl;
@@ -142,109 +202,159 @@ class Renderables
 public:
 	~Renderables()
 	{
-		Clear();	// (in case one or more objects are self-managed, don't blanket: delete[] pRenderable;)
+		Clear();
 	}
 
 	DrawableSpecifier* ALL = nullptr;
 
 	void Clear() {
 		Remove(ALL);
-	}
+		pSelfManagedRenderables.clear();	// Drop references (not deleted — they manage own lifecycle).
+	}										//	 Callers re-add surviving ones via finalizeRenderables().
 
+	// Remove renderables - simplified with type-safe vectors: no casting, no defensive checks.
+	//
 	void Remove(DrawableSpecifier* pObjSpec)
 	{
-		bool removeALL = pObjSpec == ALL;
-		for (auto& recordable : recordables) {
-			auto& renderables = recordable.pRenderables;
-			for (auto ppRenderable = renderables.begin();
-					  ppRenderable < renderables.end(); ++ppRenderable) {		// Must ITERATE over vector...
-				iRenderable& renderable = **ppRenderable;
-				if ((!removeALL && &renderable.vertexObject == &pObjSpec->mesh)
-				  || (removeALL && !renderable.isSelfManaged)) {
-					renderable.deleteConcretion();
-					renderables.erase(ppRenderable);							//	...in order to .erase().
-					return;//on 1st match. To never iterate past .end().
-				}			// Also, don't:  delete *ppRenderable;
-			}				//	since it came in as a reference.
+		bool removeALL = (pObjSpec == ALL);
+
+		// Remove from normal renderables (type-safe iteration).
+		for (auto it = pNormalRenderables.begin(); it != pNormalRenderables.end(); ) {
+			iRenderable* pRenderable = *it;
+
+			if (removeALL || &pRenderable->vertexObject == &pObjSpec->mesh) {
+				Log(GOOD, "Removing: %s", pRenderable->name.c_str());
+				pRenderable->deleteConcretion();
+				delete pRenderable;
+				it = pNormalRenderables.erase(it);
+				if (!removeALL)
+					return;
+			} else {
+				++it;
+			}
 		}
 	}
 
+	int RemoveByName(const std::string& targetName)
+	{
+		int removed = 0;
+		for (auto it = pNormalRenderables.begin(); it != pNormalRenderables.end(); ) {
+			if ((*it)->name == targetName) {
+				Log(GOOD, "Removing by name: %s", (*it)->name.c_str());
+				(*it)->deleteConcretion();
+				delete *it;
+				it = pNormalRenderables.erase(it);
+				++removed;
+			} else {
+				++it;
+			}
+		}
+		return removed;
+	}
+
+	// Add methods - public API unchanged for backward compatibility.
+	//
 	void Add(const iRenderableBase& renderable)
 	{
-		Add((iRenderable*) &renderable, UPON_EACH_FRAME);
+		Add((iRenderableBase*) &renderable, UPON_EACH_FRAME);
 	}
+
 	void Add(const iRenderable& renderable)
 	{
 		CommandRecording recordingMode;
 		iRenderable* pRenderable = renderable.newConcretion(&recordingMode);
 		Add(pRenderable, recordingMode);
 	}
-	void Add(iRenderable* pRenderable, CommandRecording recordingMode)
-	{
-		size_t numRecordables = recordables.size();
-		int iRecordable = -1;
-		do {
-			++iRecordable;
-			if (iRecordable >= numRecordables) {
-				recordables.emplace_back();
-				recordables.back().recordMode = recordingMode;
-				break;
-			}
-		} while (recordables[iRecordable].recordMode != recordingMode
-				 && recordingMode != ON_CHANGE_FLAGGED);  // <-- always gets its own exclusive CommandBuffer
 
-		recordables[iRecordable].pRenderables.push_back(pRenderable);
-		Log(RAW, "done: %s SPAWNED.", pRenderable->name.c_str());
-	}
-
-
-	// This is where all Renderables get their Update() methods called.  It is optional, if a Renderable doesn't
-	//	move, animate, or otherwise change.  This is custom-set per Renderable and is separate from any gxActions
-	//	that may have also been applied to the Renderable.
-	//	Returning true indicates overall Update "succeeded" and requests caller to refresh, because
-	//	at least one Renderable's Update() requested the refresh.
+	// Update all renderables, both normal and self-managed.
+	//	That is, this is where all Renderables get their Update() methods called.  It is optional, if a Renderable
+	//	doesn't move, animate, or otherwise change.  This is custom-set per Renderable and is separate from gxActions
+	//	that may have also been applied to the Renderable.  Returning true indicates overall Update "succeeded" and
+	//	requests caller to refresh, because at least one Renderable's Update() requested the refresh.
 	//
 	bool Update(GameClock& time)
 	{
-		bool result, requestRefresh = false;
-		for (CommandRecordable& recordable : recordables)
-			for (iRenderable* pRenderable : recordable.pRenderables) {
-				result = pRenderable->Update(time);
-				requestRefresh = result || requestRefresh;
-			}
+		bool requestRefresh = false;
+
+		for (iRenderable* pRenderable : pNormalRenderables) {			// Update normal renderables.
+			bool result = pRenderable->Update(time);
+			requestRefresh = result || requestRefresh;
+		}
+
+		for (iRenderableBase* pRenderable : pSelfManagedRenderables) {	// Update self-managed renderables.
+			bool result = pRenderable->Update(time);
+			requestRefresh = result || requestRefresh;
+		}
 		return requestRefresh;
 	}
 
+	// Update uniform buffers; only normal renderables have UBOs.
+	//
 	void UpdateUniformBuffers(int iNextImage)
 	{
-		for (auto& recordable : recordables)
-			for (auto& pRenderable : recordable.pRenderables) {
-				if (!pRenderable->isSelfManaged) {
-					AddOns& addOns = pRenderable->addOns;
-					if (addOns.described.size() > 0)
-						for (int index = 0; index < addOns.pUniformBuffers.size(); ++index) {
-							// Skip dynamic UBOs (they are updated separately via DynamicUniformBuffer)
-							if (addOns.pUniformBuffers[index] == nullptr)
-								continue;
-							UniformBuffer& unibuf = *addOns.pUniformBuffers[index];
-							void* pUboData = addOns.ubos[index].pBytes;
-							size_t numBytes = addOns.ubos[index].byteSize;
-							assert(numBytes == unibuf.nbytesBufferObject);
-							unibuf.Update(iNextImage, pUboData, numBytes);
-						}
+		for (iRenderable* pRenderable : pNormalRenderables) {
+			AddOns& addOns = pRenderable->addOns;
+			if (addOns.described.size() > 0) {
+				for (int index = 0; index < addOns.pUniformBuffers.size(); ++index) {
+					if (addOns.pUniformBuffers[index] == nullptr)
+						continue;
+					UniformBuffer& unibuf = *addOns.pUniformBuffers[index];
+					void* pUboData = addOns.ubos[index].pBytes;
+					size_t numBytes = addOns.ubos[index].byteSize;
+					assert(numBytes == unibuf.nbytesBufferObject);
+					unibuf.Update(iNextImage, pUboData, numBytes);
 				}
 			}
+		}
 	}
 
+	// Recreate all renderables (for window resize).
+	//
 	void Recreate(VulkanSetup& vulkan)
 	{
-		for (auto& recordable : recordables)
-			for (auto& pRenderable : recordable.pRenderables)
-				pRenderable->Recreate(vulkan);
+		for (iRenderable* pRenderable : pNormalRenderables)
+			pRenderable->Recreate(vulkan);
+
+		for (iRenderableBase* pRenderable : pSelfManagedRenderables)
+			pRenderable->Recreate(vulkan);
 	}
 
+	// Getters for CommandControl to merge vectors.
+	const vector<iRenderable*>& getNormalRenderables() const { return pNormalRenderables; }
+	const vector<iRenderableBase*>& getSelfManagedRenderables() const { return pSelfManagedRenderables; }
+	size_t getNormalCount() const { return pNormalRenderables.size(); }
+	size_t getSelfManagedCount() const { return pSelfManagedRenderables.size(); }
+
 private:
-	vector<CommandRecordable> recordables;
+	// Typed vectors - eliminates type confusion and crashes
+	vector<iRenderable*> pNormalRenderables;
+	vector<iRenderableBase*> pSelfManagedRenderables;
+
+	// Internal routing method - single isSelfManaged check at add-time.
+	//
+	void Add(iRenderableBase* pRenderable, CommandRecording recordingMode)
+	{
+		if (pRenderable->isSelfManaged)
+			addSelfManaged(pRenderable);
+		else
+			addNormal(static_cast<iRenderable*>(pRenderable), recordingMode);
+	}
+
+	void addNormal(iRenderable* pRenderable, CommandRecording recordingMode)
+	{
+		pNormalRenderables.push_back(pRenderable);
+
+		if (pRenderable->pass == nullptr)
+			Log(RAW, "done: %s SPAWNED.", pRenderable->name.c_str());
+		else
+			Log(RAW, "done: %s BOUND.", pRenderable->name.c_str());
+	}
+
+	void addSelfManaged(iRenderableBase* pRenderable)
+	{
+		pSelfManagedRenderables.push_back(pRenderable);
+		Log(RAW, "done: Self-managed renderable added.");
+	}
 };
 
 

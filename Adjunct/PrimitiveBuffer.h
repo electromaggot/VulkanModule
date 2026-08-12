@@ -41,6 +41,11 @@ private:
 public:
 	void	 CreateVertexBuffer(vector<VertexAbstract> vertices);
 	void	 CreateIndexBuffer(vector<IndexBufferDefaultIndexType> indices);
+	void	 CreateVertexBuffer(void* pVertexData, VkDeviceSize bufferSize, bool hostVisible); // hostVisible = true for dynamic geometry.
+	void	 CreateIndexBuffer(void* pIndexData, VkDeviceSize bufferSize, MeshIndexType indexType, bool hostVisible);	// "		"
+	void	 UpdateVertexBuffer(void* pNewVertexData, VkDeviceSize size);		// Update existing vertex buffer, only for host-visible buffers.
+	void	 UpdateVertexBufferMapped(void* pNewVertexData, VkDeviceSize size);	// Fast update for host-visible buffers, no command buffers.
+	void	 UpdateIndexBufferMapped(void* pNewIndexData, VkDeviceSize size);	// Fast update for host-visible index buffers, no command buffers.
 private:
 	void	 createDeviceLocalBuffer(void* pSourceData, VkDeviceSize size, VkBufferUsageFlags usage,
 									 VkBuffer& deviceBuffer, VkDeviceMemory& deviceMemory);

@@ -9,12 +9,23 @@
 //
 #include "CommandObjects.h"
 #include "VulkanSingleton.h"
+#include "ResourceTracker.h"
 
 
 #pragma mark - CommandPool
 
 CommandPool::CommandPool(GraphicsDevice& graphicsDevice)
 	:	device(graphicsDevice)
+{
+	create();
+}
+CommandPool::~CommandPool()
+{
+	destroy();
+	Log(DEAD, "Destroyed: CommandPool");
+}
+
+void CommandPool::create()
 {
 	VkCommandPoolCreateInfo poolInfo = {
 		.sType	= VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -28,9 +39,10 @@ CommandPool::CommandPool(GraphicsDevice& graphicsDevice)
 	if (call != VK_SUCCESS)
 		Fatal("Create Command Pool FAILURE" + ErrStr(call));
 }
-CommandPool::~CommandPool()
+void CommandPool::destroy()		// Idempotent for device-loss teardown.
 {
 	vkDestroyCommandPool(device.getLogical(), vkCommandPool, nullALLOC);
+	vkCommandPool = VK_NULL_HANDLE;
 }
 
 
@@ -50,6 +62,8 @@ CommandBufferSet::~CommandBufferSet()
 {
 	freeVkCommandBuffers();
 	delete &event;
+
+	Log(DEAD, "Destroyed: CommandBufferSet");
 }
 
 void CommandBufferSet::allocateVkCommandBuffer()
@@ -76,7 +90,7 @@ void CommandBufferSet::freeVkCommandBuffers()
 	vkCommandBuffers.clear();
 }
 
-void CommandBufferSet::recordCommands(vector<iRenderable*> pBufferRenderables, VkFramebuffer& framebuffer,
+void CommandBufferSet::recordCommands(vector<iRenderableBase*> pBufferRenderables, VkFramebuffer& framebuffer,
 									  VkExtent2D& swapchainExtent, VkRenderPass& renderPass)
 {
 	VkClearValue clearValues[] = {
@@ -94,9 +108,13 @@ void CommandBufferSet::recordCommands(vector<iRenderable*> pBufferRenderables, V
 		.pClearValues	 = clearValues
 	};
 
+	// Build pipeline batches for optimized recording; reduces pipeline binds from O(N) to O(M).
+	// Returns self-managed renderables (like ImGui) to render last.
+	vector<iRenderableBase*> selfManagedRenderables = batchManager.buildBatches(pBufferRenderables);
+
 	size_t numBufferSets = vkCommandBuffers.size();
 
-	for (int iBuffer = 0; iBuffer < numBufferSets; ++iBuffer)	//TJ_TODO: Re: repeat for every frame buffer, can't one same CommandBuffer be shared?
+	for (int iBuffer = 0; iBuffer < numBufferSets; ++iBuffer)
 	{
 		VkCommandBuffer& commandBuffer = vkCommandBuffers[iBuffer];
 
@@ -109,8 +127,8 @@ void CommandBufferSet::recordCommands(vector<iRenderable*> pBufferRenderables, V
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		for (auto pRenderable : pBufferRenderables)
-			pRenderable->IssueBindAndDrawCommands(commandBuffer, iBuffer);	// implemented by iRenderable subclass
+		// Record all batches with optimized pipeline binding, self-managed renderables last:
+		batchManager.recordBatches(commandBuffer, iBuffer, selfManagedRenderables);
 
 		vkCmdEndRenderPass(commandBuffer);
 
@@ -137,6 +155,11 @@ CommandControl*	CommandControl::pSingleton = nullptr;
 
 CommandControl::~CommandControl()
 {
+	// CRITICAL: Clear renderables BEFORE destroying command pool and buffers!
+	// Renderables contain Vulkan objects (pipelines, descriptors, etc.) that
+	//	must be destroyed before the command pool and device are destroyed.
+	renderables.Clear();
+
 	Destroy();
 }
 
@@ -158,34 +181,40 @@ void CommandControl::Destroy()
 //
 void CommandControl::PostInitPrepBuffers(VulkanSetup& vulkan)
 {
-	size_t numBufferSets = renderables.recordables.size();
+	vector<iRenderableBase*> mergedRenderables;
+	BuildMergedVectorFromTypedSources(mergedRenderables);
 
-	for (int iBufferSet = 0; iBufferSet < numBufferSets; ++iBufferSet) {
-		CommandRecordable& recordable = renderables.recordables[iBufferSet];
-		for (int iFrame = 0; iFrame < numFrames; ++iFrame)
-		{
-			buffersByFrame[iFrame].allocateVkCommandBuffer();
-
-			if (recordable.recordMode == AT_INIT_TIME_ONLY)
-				buffersByFrame[iFrame].recordCommands(recordable.pRenderables, vulkan.framebuffers[iFrame],
-													  vulkan.swapchain.getExtent(), vulkan.renderPass.getVkRenderPass());
-		}
+	for (int iFrame = 0; iFrame < numFrames; ++iFrame) {	// Allocate and record command buffers for all frames.
+		if (buffersByFrame[iFrame].numBufferSets() > 0)		// Free old buffers first (reload case: prevents accumulation).
+			buffersByFrame[iFrame].freeVkCommandBuffers();
+		buffersByFrame[iFrame].allocateVkCommandBuffer();
+		buffersByFrame[iFrame].recordCommands(mergedRenderables, vulkan.framebuffers[iFrame],
+											  vulkan.swapchain.getExtent(), vulkan.renderPass.getVkRenderPass());
 	}
-	assert(numBufferSets == buffersByFrame[0].numBufferSets());
 }
 
-// (Re)Record those Renderables that specified UPON_EACH_FRAME.
+void CommandControl::BuildMergedVectorFromTypedSources(vector<iRenderableBase*>& mergedRenderables)
+{
+	mergedRenderables.reserve(renderables.getNormalCount() + renderables.getSelfManagedCount());
+
+	for (iRenderable* p : renderables.getNormalRenderables()) {				// Merge normal renderables.
+		mergedRenderables.push_back(p);
+	}
+	for (iRenderableBase* p : renderables.getSelfManagedRenderables()) {	// Merge self-managed renderables.
+		mergedRenderables.push_back(p);
+	}
+}
+
+// (Re)Record command buffers for next frame.
 //
 void CommandControl::RecordRenderablesForNextFrame(VulkanSetup& vulkan, int iNextFrame)
 {
-	size_t numBufferSets = renderables.recordables.size();
+	vector<iRenderableBase*> mergedRenderables;
+	BuildMergedVectorFromTypedSources(mergedRenderables);
 
-	for (int iBufferSet = 0; iBufferSet < numBufferSets; ++iBufferSet) {
-		CommandRecordable& recordable = renderables.recordables[iBufferSet];
-		if (recordable.recordMode == UPON_EACH_FRAME)
-			buffersByFrame[iNextFrame].recordCommands(recordable.pRenderables, vulkan.framebuffers[iNextFrame],
-													  vulkan.swapchain.getExtent(), vulkan.renderPass.getVkRenderPass());
-	}
+	// Record command buffer for next frame.
+	buffersByFrame[iNextFrame].recordCommands(mergedRenderables, vulkan.framebuffers[iNextFrame],
+											  vulkan.swapchain.getExtent(), vulkan.renderPass.getVkRenderPass());
 }
 
 

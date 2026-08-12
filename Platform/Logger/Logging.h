@@ -25,10 +25,16 @@ enum Tier { ERROR,	// For: major problem, although non-fatal.
 			NOTE,	//		inform progress.	// This tier and below may be "noise" and filtered out.
 			RAW,	//	 Won't prefix line with tier-indicator-string (works well after SAME).
 			SAME,	//		like NOTE but no newline at line-end, keep next message on SAME line.
+			GOAL,
+			GOOD,
+			FAIL,
+			DEAD,
 			LOW };	//		low-level debugging, could be too verbose.
 
 extern void Log(Tier tier, string message);
 extern void Log(Tier tier, const char* format, ...);
+
+extern bool LogLimit(Tier tier);
 
 inline int Fatal(string message) { throw runtime_error("FATAL: " + message); }
 // (Inlined because if inside a non-void function, an otherwise-meaningless return value is required after it.)

@@ -10,6 +10,7 @@
 #include "Swapchain.h"
 #include "VulkanSingleton.h"
 #include "Helpers.h"
+#include "ResourceTracker.h"
 
 
 Swapchain::Swapchain(GraphicsDevice& graphics, WindowSurface& surface)
@@ -29,7 +30,11 @@ void Swapchain::destroy()
 	for (auto imageView : imageViews) {
 		vkDestroyImageView(logicalDevice, imageView, nullALLOC);
 	}
-	vkDestroySwapchainKHR(logicalDevice, swapchain, nullALLOC);
+	imageViews.clear();
+	if (swapchain != VK_NULL_HANDLE) {		// Idempotent: a following Recreate()'s destroy() then no-ops.
+		vkDestroySwapchainKHR(logicalDevice, swapchain, nullALLOC);	// (Guard the call, not just the handle:
+		swapchain = VK_NULL_HANDLE;			//	vkDestroy(NULL) is a no-op but the resource tracker still counts it.)
+	}
 }
 
 

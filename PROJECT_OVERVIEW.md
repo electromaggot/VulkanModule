@@ -87,11 +87,21 @@ High-level composition layer that manages dependency order and configuration:
 Application-focused components for content creation:
 
 #### Renderables System
-- **`iRenderable`** - Base interface for drawable objects.
-- **`FixedRenderable`** - Static geometry with optimized vertex buffers.
-- **`DynamicRenderable`** - Mutable geometry supporting real-time updates.
+- **`iRenderableBase`** - Base interface for all renderables (self-managed and standard).
+- **`iRenderable`** - Standard renderables with full pipeline/descriptor management (extends iRenderableBase).
+- **`Renderable`** - Unified renderable class for dynamic geometry (replaces previous Fixed/Dynamic split), defaults to per-frame recording.
+- **`SecondaryRenderable`** - Optimized renderable for static geometry using secondary command buffers recorded once at initialization for zero per-frame CPU overhead.
+- **`RenderBatchManager`** - Pipeline batching system that groups renderables by pass and pipeline to minimize state changes (O(N)→O(M) optimization).
+- **Pass-Based Rendering** - Explicit render order (shadow → opaque → transparent → lines → self-managed) ensures correct depth sorting.
 - **`MeshObject`** - 3D model representation with material support.
 - **`DrawableSpecifier`** - Rendering configuration and state.
+- **`Customizer`** - Bitfield flags for per-renderable pipeline customization:
+  - `WIREFRAME` - Polygon line mode for debug visualization.
+  - `SHOW_BACKFACES` - Disable backface culling for transparent geometry.
+  - `FRONT_CLOCKWISE` - Vulkan-native clockwise winding.
+  - `ALPHA_BLENDING` - Enable transparency with depth write disable.
+  - `LINE_TOPOLOGY` - Render as line list instead of triangles (perfect for glowing edges, wireframe overlays).
+  - Extensible for application-specific rendering modes.
 
 #### Vertex Pipeline
 - **`VertexAbstract`** - Base vertex interface with attribute binding.
@@ -107,6 +117,14 @@ Application-focused components for content creation:
 - **`ShaderCache`** - Shared shader module management with reference counting to eliminate redundant shader loading when multiple renderables use the same shaders.
 - **`BufferBase`** - Memory allocation strategies and buffer utilities.
 - **`CommandBufferBase`** - Command recording abstractions.
+
+#### Shadow Mapping System
+- **`ShadowSystem`** (`Adjunct/Shadowing/`) - Complete shadow mapping infrastructure with **zero VRAM cost** when disabled:
+  - **`ShadowSystem`** - Unified shadow management with per-frame shadow maps and automatic synchronization.
+  - **`ShadowMap`** - Depth-only shadow map resources with configurable resolution and PCF sampling.
+  - **`ShadowPass`** - Shadow pass command buffer recording with proper layout transitions.
+  - **`ShadowProjection`** - Reusable light-space matrix calculations with multiple projection and camera modes.
+  - **`ShadowMappingTypes`** - Modular type definitions for shadow techniques, projection modes, and camera orientations.
 
 ### 4. **Platform/** - Abstraction Layer
 Cross-platform compatibility and I/O systems:
@@ -165,6 +183,18 @@ This single initialization replaces hundreds of lines of typical Vulkan setup co
 ________________________________
 
 ***DOCUMENT REVISIONS***
+
+**Latest Updates (2025):**
+- **Renderables System Refactoring**: Unified `Renderable` class replaces FixedRenderable/DynamicRenderable split.
+- **Secondary Command Buffers**: Added `SecondaryRenderable` for optimal rendering of static geometry (skyboxes, environments) with zero per-frame CPU overhead.
+- **Pipeline Batching**: Added `RenderBatchManager` for O(N)→O(M) optimization by grouping renderables by pass and pipeline.
+- **Pass-Based Rendering**: Explicit render order (shadow → opaque → transparent → lines → self-managed) ensures correct depth sorting.
+- **Self-Managed Renderables**: `iRenderableBase` base class supports ImGui and other UI overlays that manage their own pipeline state.
+- Added **Customizer** bitfield flags system documentation for per-renderable pipeline customization.
+- Documented `LINE_TOPOLOGY` flag for line list rendering (glowing edges, wireframe overlays).
+- Enhanced transparency support documentation (`SHOW_BACKFACES`, `ALPHA_BLENDING`).
+
+**Previous Enhancements:**
 
 Added to TECHNICAL DETAILS section: comprehensive architectural insights and
   detailed component descriptions. The updated documentation now provides:

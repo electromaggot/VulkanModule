@@ -100,7 +100,7 @@ AUX_SOURCE_DIRECTORY("../Adjunct/" Vulkan_Adjunct)
 
 set(Vulkan_Adjunct_Renderables
     "../Adjunct/Renderables/AddOns.cpp"
-    "../Adjunct/Renderables/FixedRenderable.cpp"
+    "../Adjunct/Renderables/Renderable.cpp"
 )
 source_group("Vulkan\\Adjunct\\Renderables" FILES ${Vulkan_Adjunct_Renderables})
 
@@ -271,7 +271,7 @@ endif()
 if(NOT WIN32)
     add_custom_command(
         TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND test -L "build/textures" || (cd build && ln -s "../../graphics/assets/textures" 2>/dev/null || true)
+        COMMAND test -L "build/textures" || (cd build && ln -s "../../graphics/assets/texture" 2>/dev/null || true)
         COMMENT "Creating texture symlink"
     )
 endif()

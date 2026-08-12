@@ -19,17 +19,23 @@
 class DynamicUniformBuffer : BufferBase
 {
 public:
-	// Structure for per-object uniform data
+	// Structure for per-object uniform data (std140 layout)
 	struct PerObjectData {
-		alignas(16) float model[16];		// Model matrix
+		alignas(16) float model[16];		// Model matrix (64 bytes)
+		alignas(4)  float opacity;			// Object opacity for fade effects (default 1.0)
+		alignas(4)  float effectFlags;		// Bitfield for shader effects (default 0.0, app-defined meaning)
+		alignas(4)  float effectParam;		// General-purpose effect parameter (default 0.0, app-defined meaning)
+		alignas(4)  float effectParam2;		// Second effect parameter (default 0.0, app-defined meaning)
 	};
 
 	DynamicUniformBuffer(uint32_t maxObjects, uint32_t framesInFlight,
 						 GraphicsDevice& device);
 	~DynamicUniformBuffer();
 
-	// Update a specific object's transform
-	void updateObjectTransform(uint32_t frameIndex, uint32_t objectIndex, const mat4& modelMatrix);
+	// Update a specific object's transform, opacity, and optional effect flags/param
+	void updateObjectTransform(uint32_t frameIndex, uint32_t objectIndex, const mat4& modelMatrix,
+							   float opacity = 1.0f, float effectFlags = 0.0f,
+							   float effectParam = 0.0f, float effectParam2 = 0.0f);
 
 	// Get dynamic offset for a specific object
 	uint32_t getDynamicOffset(uint32_t objectIndex) const;
@@ -43,9 +49,10 @@ public:
 	// Recreate buffers (e.g., on window resize)
 	void Recreate(uint32_t maxObjects, uint32_t framesInFlight);
 
+	void destroy();		// Public for device-loss teardown (old device); idempotent (clears vectors).
+
 private:
 	void create();
-	void destroy();
 	uint32_t calculateAlignedSize(uint32_t size, uint32_t alignment);
 
 	// Buffer management

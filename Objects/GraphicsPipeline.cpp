@@ -10,15 +10,18 @@
 #include "GraphicsPipeline.h"
 
 
-GraphicsPipeline::GraphicsPipeline(ShaderModules& shaders, RenderPass& renderPass,
+GraphicsPipeline::GraphicsPipeline(ShaderModules& shaders, iRenderPass& renderPass,
 								   Swapchain& swapchain, GraphicsDevice& graphics,
 								   VertexAbstract* pVertex, Descriptors* pDescriptors,
-								   Customizer customize)
+								   Customizer customize, VkExtent2D customExtent)
 	:	device(graphics.getLogical())
 {
 	pVertex->vetIsValid();
 
-	create(shaders, pVertex, swapchain.getExtent(), renderPass, pDescriptors, customize);
+	// Use custom extent if provided (width != 0), otherwise use swapchain's own extent.
+	VkExtent2D extent = (customExtent.width != 0) ? customExtent : swapchain.getExtent();
+
+	create(shaders, pVertex, extent, renderPass, pDescriptors, customize);
 }
 
 GraphicsPipeline::~GraphicsPipeline()
@@ -29,11 +32,12 @@ void GraphicsPipeline::destroy()
 {
 	vkDestroyPipeline(device, graphicsPipeline, nullALLOC);
 	vkDestroyPipelineLayout(device, pipelineLayout, nullALLOC);
+	Log(DEAD, "Destroyed: GraphicsPipeline (+ PipelineLayout)");
 }
 
 
 void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVertex,
-							  VkExtent2D swapchainExtent, RenderPass& renderPass,
+							  VkExtent2D swapchainExtent, iRenderPass& renderPass,
 							  Descriptors* pDescriptors, Customizer customize)
 {
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
@@ -50,7 +54,10 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.sType	  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
 		.pNext	  = nullptr,
 		.flags	  = 0,
-		.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+		.topology = (customize & LINE_TOPOLOGY)  ? VK_PRIMITIVE_TOPOLOGY_LINE_LIST
+				   : (customize & POINT_TOPOLOGY) ? VK_PRIMITIVE_TOPOLOGY_POINT_LIST
+				   : (customize & STRIP_TOPOLOGY) ? VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP
+				   : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
 		.primitiveRestartEnable = VK_FALSE
 	};
 
@@ -76,6 +83,11 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.pScissors		= &scissor
 	};
 
+	// Simplest way to INVERT_Z is VK_FRONT_FACE_CLOCKWISE, since Vulkan is COUNTER_CLOCKWISE.
+	//	However `customize` allows that swap on per-model basis, so INVERT_Z reverses that:
+	VkFrontFace frontFace = ((customize & FRONT_CLOCKWISE) ^ INVERT_Z) ?		// (*) note at bottom
+							VK_FRONT_FACE_CLOCKWISE : VK_FRONT_FACE_COUNTER_CLOCKWISE;
+
 	VkPipelineRasterizationStateCreateInfo rasterizer = {
 		.sType	= VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
 		.pNext	= nullptr,
@@ -84,12 +96,11 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.rasterizerDiscardEnable = VK_FALSE,
 		.polygonMode			 = customize & WIREFRAME ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL,
 		.cullMode	  = (VkFlags) (customize & SHOW_BACKFACES ? VK_CULL_MODE_NONE : VK_CULL_MODE_BACK_BIT),
-		.frontFace				 = customize & FRONT_CLOCKWISE ? VK_FRONT_FACE_CLOCKWISE
-														: VK_FRONT_FACE_COUNTER_CLOCKWISE,	// (*) note below
-		.depthBiasEnable		 = VK_FALSE,
-		/*.depthBiasConstantFactor = 0.0f,
-		.depthBiasClamp			 = 0.0f,
-		.depthBiasSlopeFactor	 = 0.0f,*/
+		.frontFace				 = frontFace,
+		.depthBiasEnable		 = customize & DEPTH_BIAS ? VK_TRUE : VK_FALSE,
+		.depthBiasConstantFactor = customize & DEPTH_BIAS ? 4.0f : 0.0f,
+		.depthBiasClamp			 = customize & DEPTH_BIAS ? 0.0f : 0.0f,
+		.depthBiasSlopeFactor	 = customize & DEPTH_BIAS ? 1.5f : 0.0f,
 		.lineWidth				 = 1.0f
 	};
 
@@ -109,9 +120,9 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.sType					= VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
 		.pNext					= nullptr,
 		.flags					= 0,
-		.depthTestEnable		= VK_TRUE,
-		.depthWriteEnable		= VK_TRUE,
-		.depthCompareOp			= VK_COMPARE_OP_LESS,
+		.depthTestEnable		= static_cast<VkBool32>(customize & DISABLE_DEPTH_TEST ? VK_FALSE : VK_TRUE),  // Disable depth testing for always-on-top rendering.
+		.depthWriteEnable		= static_cast<VkBool32>((((customize & ALPHA_BLENDING) || (customize & ADDITIVE_BLENDING)) && !(customize & ALPHA_BLEND_DEPTH_WRITE)) || (customize & DISABLE_DEPTH_WRITE) ? VK_FALSE : VK_TRUE),  // Disable depth writes for transparent/additive objects, unless ALPHA_BLEND_DEPTH_WRITE is set.
+		.depthCompareOp			= static_cast<VkCompareOp>(customize & DEPTH_LEQUAL ? VK_COMPARE_OP_LESS_OR_EQUAL : VK_COMPARE_OP_LESS),
 		.depthBoundsTestEnable	= VK_FALSE,
 		.stencilTestEnable		= VK_FALSE,
 		/*.front				= { },
@@ -120,14 +131,17 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.maxDepthBounds			= 1.0f*/
 	};
 
+	// Blending: disabled by default.
+	//   ALPHA_BLENDING / ALPHA_BLEND_DEPTH_WRITE: standard alpha blend (src_alpha, 1-src_alpha).
+	//   ADDITIVE_BLENDING: additive blend (src_alpha, ONE) — for fire, glow, sparks, etc.
 	VkPipelineColorBlendAttachmentState colorBlendAttachment = {
-		.blendEnable		 = VK_FALSE,
-		/*.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
-		.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+		.blendEnable		 = static_cast<VkBool32>((customize & ALPHA_BLENDING) || (customize & ALPHA_BLEND_DEPTH_WRITE) || (customize & ADDITIVE_BLENDING) ? VK_TRUE : VK_FALSE),
+		.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+		.dstColorBlendFactor = (customize & ADDITIVE_BLENDING) ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
 		.colorBlendOp		 = VK_BLEND_OP_ADD,
 		.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
 		.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
-		.alphaBlendOp		 = VK_BLEND_OP_ADD,*/
+		.alphaBlendOp		 = VK_BLEND_OP_ADD,
 		.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
 						| VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
 	};
@@ -137,8 +151,8 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.flags	= 0,
 		.logicOpEnable		= VK_FALSE,
 		.logicOp			= VK_LOGIC_OP_COPY,
-		.attachmentCount	= 1,
-		.pAttachments		= &colorBlendAttachment,
+		.attachmentCount	= static_cast<uint32_t>(renderPass.hasColorAttachment() ? 1 : 0),
+		.pAttachments		= renderPass.hasColorAttachment() ? &colorBlendAttachment : nullptr,
 		.blendConstants		= { 0.0f, 0.0f, 0.0f, 0.0f }
 	};
 
@@ -169,7 +183,7 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.pViewportState		 = &viewportState,
 		.pRasterizationState = &rasterizer,
 		.pMultisampleState	 = &multisampling,
-		.pDepthStencilState	 = renderPass.isDepthBufferUsed ? &depthStencil : nullptr,
+		.pDepthStencilState	 = renderPass.isDepthBufferUsed() ? &depthStencil : nullptr,
 		.pColorBlendState	 = &colorBlending,
 		.pDynamicState		 = nullptr,
 		.layout				 = pipelineLayout,
@@ -185,7 +199,7 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		Fatal("FAIL on Create Graphics Pipeline" + ErrStr(call));
 }
 
-void GraphicsPipeline::Recreate(ShaderModules& shaders, RenderPass& renderPass, Swapchain& swapchain,
+void GraphicsPipeline::Recreate(ShaderModules& shaders, iRenderPass& renderPass, Swapchain& swapchain,
 								VertexAbstract* pVertex, Descriptors* pDescriptors, Customizer customize)
 {
 	destroy();

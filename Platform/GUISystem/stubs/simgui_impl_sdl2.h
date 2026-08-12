@@ -1,5 +1,5 @@
 //
-// imgui_impl_sdl.h
+// simgui_impl_sdl2.h
 //	Dummy placeholder for Dear ImGui or other GUI system.
 //
 // If you want to actually add Dear ImGui to your project, remove from it the
@@ -8,17 +8,19 @@
 // Created 3/17/20 by Tadd Jensen
 //	© 0000 (uncopyrighted; use at will)
 //
-#ifndef imgui_impl_sdl_h
-#define imgui_impl_sdl_h
+#ifndef imgui_impl_sdl2_h
+#define imgui_impl_sdl2_h
 
 #include <SDL.h>
 
 
-void ImGui_ImplSDL2_InitForVulkan(SDL_Window* pWindow);
+bool ImGui_ImplSDL2_InitForVulkan(SDL_Window* pWindow);
 
-void ImGui_ImplSDL2_NewFrame(SDL_Window* pWindow);
+void ImGui_ImplSDL2_NewFrame();
 
-void ImGui_ImplSDL2_ProcessEvent(SDL_Event* pEvent);
+bool ImGui_ImplSDL2_ProcessEvent(const SDL_Event* pEvent);
+
+void ImGui_ImplSDL2_Shutdown();
 
 
-#endif	// imgui_impl_sdl_h
+#endif	// imgui_impl_sdl2_h  (same name as non-stub)

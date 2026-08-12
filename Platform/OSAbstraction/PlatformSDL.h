@@ -24,8 +24,7 @@
 #include "iPlatform.h"
 #include "ImageSDL.h"
 
-#include "imgui.h"
-#include "imgui_impl_sdl.h"
+#include "imgui.h"		// (in turn #includes "imgui_impl_sdl2.h" for ImGui_ImplSDL2 calls below)
 
 
 class PlatformSDL : public iPlatform
@@ -50,7 +49,15 @@ private:
 	Uint32	timePress	= 0;
 	const Uint32 MILLISECONDS_LONG_PRESS = 300;		// about 1/3rd second, arbitrary
 
+	bool	pendingFullScreen = false;	// deferred fullscreen restore (macOS needs run loop active)
+
 public:
+	// Refresh rate (Hz) of the display the window currently occupies; 0 if unknown.
+	//	Needed for frame pacing: on a vsync-locked presentation, motion must advance in whole
+	//	refresh intervals, so an app has to know how long one is.  Queried live rather than
+	//	cached — dragging the window to another monitor can change it.
+	int GetDisplayRefreshHz() const;
+
 	int LastSavedPixelsWide = 0;
 	int	LastSavedPixelsHigh = 0;
 
@@ -63,6 +70,7 @@ public:
 		// METHODS
 	void CreateVulkanSurface(VkInstance instance, VkSurfaceKHR& surface);
 	bool GetWindowSize(int& pixelWidth, int& pixelHeight);
+	void SetWindowTitle(const char* title);
 	void DialogBox(const char* message, const char* title = "ERROR", AlertLevel level = FAILURE);
 	bool PollEvent(iControlScheme* pControl = nullptr);
 	bool IsEventQUIT();
@@ -71,11 +79,14 @@ public:
 	void ShowSoftKeyboard(bool show = true);
 	int  WasSimplePress();
 
+	bool IsFullScreen()				 { return detectFullScreen(); }
+	void ExitFullScreen();
+
 	iImageSource& ImageSource()	 { return static_cast<iImageSource&>(image); }
 	void InitGUISystem()		 { ImGui_ImplSDL2_InitForVulkan(pWindow); }
-	void GUISystemNewFrame()	 { ImGui_ImplSDL2_NewFrame(pWindow); }
+	void GUISystemNewFrame()	 { ImGui_ImplSDL2_NewFrame(); }
 	void GUISystemProcessEvent(SDL_Event* pEvent)
-								 { ImGui_ImplSDL2_ProcessEvent(pEvent); }
+								 { ImGui_ImplSDL2_ProcessEvent((const SDL_Event*) pEvent); }
 	void RegisterForceRenderCallback(PFNResizeForceRender pfnForceRender, void* pObject) {
 									pfnResizeForceRender = pfnForceRender;
 									pRenderingObject = pObject;
@@ -87,6 +98,7 @@ private:
 	void recordWindowGeometry();
 	void rememberWindowSize(int wide, int high);
 	void recordWindowPosition(int x, int y);
+	bool detectFullScreen();
 	float getDisplayScaling();
 	float getDisplayDPI(int iDisplay = 0);
 

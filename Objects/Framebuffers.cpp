@@ -9,6 +9,7 @@
 //
 #include "Framebuffers.h"
 #include "VulkanSingleton.h"
+#include "ResourceTracker.h"
 
 
 Framebuffers::Framebuffers(Swapchain& swapchain, DepthBuffer& depthBuffer,
@@ -19,12 +20,20 @@ Framebuffers::Framebuffers(Swapchain& swapchain, DepthBuffer& depthBuffer,
 		   renderPass.getVkRenderPass(), depthBuffer.getpImageView());
 }
 
-Framebuffers::~Framebuffers()  { destroy(); }
+Framebuffers::~Framebuffers()
+{
+	size_t nFramebuffers = framebuffers.size();
+
+	destroy();
+
+	Log(DEAD, "Destroyed: %u Framebuffers", nFramebuffers);
+}
 
 void Framebuffers::destroy()
 {
 	for (auto& framebuffer : framebuffers)
 		vkDestroyFramebuffer(device, framebuffer, nullALLOC);
+	framebuffers.clear();		// Idempotent for device-loss teardown.
 }
 
 

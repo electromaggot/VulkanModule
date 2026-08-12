@@ -13,6 +13,7 @@
 #include "iPlatform.h"
 #include "CommandObjects.h"
 #include "RenderSettings.h"
+#include "ResourceTracker.h"
 
 
 TextureImage::TextureImage(TextureSpec& texSpec, VkCommandPool& pool, GraphicsDevice& device,
@@ -48,6 +49,7 @@ TextureImage::~TextureImage()
 		pStagingBuffer = nullptr;
 	}
 	// ~ImageResource() will thus vkDestroyImageView(imageView), vkDestroyImage(image), vkFreeMemory(deviceMemory);
+	Log(DEAD, "Destroyed: TextureImage (sampler, staging buffer)");
 }
 
 void TextureImage::ReGenerateMipmaps()
@@ -90,7 +92,7 @@ void TextureImage::create(TextureSpec& texSpec, GraphicsDevice& graphicsDevice, 
 
 	pStagingBuffer->CopyOutToTextureImage();
 
-	if (texSpec.filterMode == MIPMAP)
+	if (texSpec.filterMode == MIPMAP || texSpec.filterMode == MIPMAP_SHARP)
 		mipmaps.Generate(image, format, width, height);
 	else
 		transitionImageLayout(image, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,	// from
@@ -110,7 +112,12 @@ void TextureImage::createBlank(ImageInfo& params, GraphicsDevice& graphicsDevice
 
 	pStagingBuffer->CreateAndMapBuffer(params.numBytes);
 
-	pStagingBuffer->Clear();
+	// If pixel data is provided, copy it; otherwise create blank (zeroed) texture.
+	if (params.pPixels) {
+		memcpy(pStagingBuffer->pBytes(), params.pPixels, static_cast<size_t>(params.numBytes));
+	} else {
+		pStagingBuffer->Clear();
+	}
 
 	createImage(params.wide, params.high, params.format, VK_IMAGE_TILING_OPTIMAL,
 				VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
@@ -134,6 +141,7 @@ void TextureImage::createBlank(ImageInfo& params, GraphicsDevice& graphicsDevice
 // filterMode NEAREST is a special case for either performance testing or an instance where
 //	render quality is unimportant.  When set, it is applied to mipmaps, but those would have
 //	to be enabled elsewhere, apart from the general simplification offered by TextureSpec.
+// filterMode MIPMAP_SHARP uses NEAREST for mag (sharp close-up) and LINEAR for min (smooth distance).
 //
 void TextureImage::createSampler(TextureSpec& texSpec)
 {
@@ -141,25 +149,34 @@ void TextureImage::createSampler(TextureSpec& texSpec)
 								  : texSpec.wrapMode == MIRROR ? VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT
 								  : VK_SAMPLER_ADDRESS_MODE_REPEAT;
 
-	VkFilter filtering = texSpec.filterMode != NEAREST ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;	// <-- zooms to blocky pixels!
-																								//	   (or shrinks to sloppy pixels!)
+	// Determine mag and min filters based on filter mode:
+	VkFilter magFilter, minFilter;
+	if (texSpec.filterMode == MIPMAP_SHARP) {
+		magFilter = VK_FILTER_NEAREST;	// Sharp close-up for pixel-art textures.
+		minFilter = VK_FILTER_LINEAR;	// Smooth minification with mipmaps (i.e. somewhat blurry).
+	} else {
+		VkFilter filtering = texSpec.filterMode != NEAREST ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;	// <-- zooms to blocky pixels!
+		magFilter = filtering;																		// (or shrinks to sloppy pixels!)
+		minFilter = filtering;
+	}
+
 	VkSamplerCreateInfo samplerInfo = {
 		.sType	= VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
 		.pNext	= nullptr,
 		.flags	= 0,
-		.magFilter	 = filtering,
-		.minFilter	 = filtering,
+		.magFilter	 = magFilter,
+		.minFilter	 = minFilter,
 		.mipmapMode  = texSpec.filterMode != NEAREST ? VK_SAMPLER_MIPMAP_MODE_LINEAR : VK_SAMPLER_MIPMAP_MODE_NEAREST,
 		.addressModeU	= wrapping,
 		.addressModeV	= wrapping,
 		.addressModeW	= wrapping,
-		.mipLodBias	 = 0,
+		.mipLodBias			= RenderSettings.useMipLod ? texSpec.lodBias : 0,
 		.anisotropyEnable	= RenderSettings.useAnisotropy ? (VkBool32) VK_TRUE : VK_FALSE,
 		.maxAnisotropy		= RenderSettings.useAnisotropy ? RenderSettings.anisotropyLevel : 1,
 		.compareEnable	= VK_FALSE,
 		.compareOp		= VK_COMPARE_OP_ALWAYS,
 		.minLod		 = 0,
-		.maxLod		 = 0,
+		.maxLod		 = RenderSettings.useMipLod ? static_cast<float>(mipmaps.NumLevels() - 1) : 0,
 		.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
 		.unnormalizedCoordinates = VK_FALSE	// (i.e. 0.0 to 1.0 range vs. in pixels)
 	};
@@ -267,10 +284,10 @@ TextureImage::StagingBuffer::StagingBuffer(TextureImage& image)
 { }
 
 #define DEREFERENCE(textureImage)						\
-	ImageInfo&	  imageData = textureImage.imageInfo;	\
-	VkDeviceSize& nBytes	= imageData.numBytes;		\
-	int&		  width		= imageData.wide;			\
-	int&		  height	= imageData.high;
+	[[maybe_unused]]	ImageInfo&	  imageData = textureImage.imageInfo;	\
+	[[maybe_unused]]	VkDeviceSize& nBytes	= imageData.numBytes;		\
+	[[maybe_unused]]	int&		  width		= imageData.wide;			\
+	[[maybe_unused]]	int&		  height	= imageData.high;
 
 void TextureImage::StagingBuffer::CreateAndMapBuffer(VkDeviceSize& nBytes)
 {
@@ -291,7 +308,7 @@ void TextureImage::StagingBuffer::CopyInImageData(TextureSpec& spec)
 	if (! spec.flipVertical)
 		memcpy(pBytesStaged, pPixels, static_cast<size_t>(nBytes));
 	else {
-		size_t bytesPerRow = nBytes / width;	// (imageSize was calculated using pitch)
+		size_t bytesPerRow = nBytes / height;	// (imageSize was calculated using pitch)
 		char* pSource = pPixels;
 		char* pDestination = pBytesStaged + nBytes;
 		for (uint32_t iRow = height; iRow > 0; --iRow) {
@@ -312,6 +329,8 @@ TextureImage::StagingBuffer::~StagingBuffer()
 		vkUnmapMemory(texture.device, stagedDeviceMemory);
 	vkDestroyBuffer(texture.device, vkBuffer, nullptr);
 	vkFreeMemory(texture.device, stagedDeviceMemory, nullptr);
+
+	Log(DEAD, "Destroyed: StagingBuffer (unmapMemory, buffer, memory)");
 }
 
 

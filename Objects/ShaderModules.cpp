@@ -9,6 +9,7 @@
 //
 #include "ShaderModules.h"
 #include "PlatformSpecifics.h"	// (for __emplace_back on iOS, possibly)
+#include "ResourceTracker.h"
 
 
 ShaderModules::ShaderModules(GraphicsDevice& graphics)
@@ -36,8 +37,12 @@ ShaderModules::ShaderModules(Shaders& shaders, GraphicsDevice& graphics)
 
 ShaderModules::~ShaderModules()
 {
+	size_t nModules = shaderModules.size();
+
 	for (auto& shaderModule : shaderModules)
 		vkDestroyShaderModule(device, shaderModule, nullALLOC);
+
+	Log(DEAD, "Destroyed: %u ShaderModules", nModules);
 }
 
 

@@ -16,6 +16,7 @@
 
 //#undef __cpp_impl_three_way_comparison		//TJ: otherwise "spaceship operator" errors-out with: std::partial_ordering not supported
 #include "vulkan/vulkan.hpp"		// for error to_string(VkResult)
+#include "ResourceTracker.h"
 
 
 const auto	TARGET_VULKAN_API_VERSION = VK_API_VERSION_1_0;
@@ -33,6 +34,8 @@ VulkanInstance::VulkanInstance(ValidationLayers& layers, iPlatform& platform)
 VulkanInstance::~VulkanInstance()
 {
 	vkDestroyInstance(instance, nullALLOC);
+
+	Log(DEAD, "Destroyed: VulkanInstance.");
 }
 
 
@@ -56,7 +59,7 @@ void VulkanInstance::createInstance(iPlatform& platform, ValidationLayers& layer
 	VkInstanceCreateInfo instInfo = {
 		.sType					 = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
 		.pNext					 = nullptr,
-		#ifdef __APPLE__
+		#if __APPLE__ && ! TARGET_OS_IPHONE
 		.flags					 = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR,  // Required for MoltenVK
 		#else
 		.flags					 = 0,

@@ -26,6 +26,7 @@
 #include "UniformBufferLiterals.h"
 #include "UniformBuffer.h"
 #include "TextureImage.h"
+#include "Customizer.h"
 
 class DrawableSpecifier;	// skirt circular reference including iRenderable.h
 
@@ -35,6 +36,8 @@ struct AddOns
 	friend struct iRenderable;
 	friend struct FixedRenderable;
 	friend struct DynamicRenderable;
+	friend struct Renderable;
+	friend struct SecondaryRenderable;
 	friend class  Renderables;
 
 
@@ -59,10 +62,15 @@ protected:
 
 		// METHODS
 
-	void createVertexAndOrIndexBuffers(MeshObject& meshObject);
+	void createVertexAndOrIndexBuffers(MeshObject& meshObject, Customizer customize = NONE);
+	void createDescribedItems(vector<UBO>& UBO, vector<TextureSpec>& textureSpecs,
+							  vector<VkDescriptorImageInfo>& runtimeTextures,
+							  vector<vector<VkDescriptorImageInfo>>& perFrameRuntimeTextures,
+							  iPlatform& platform);
 	void destroyVertexAndOrIndexBuffers();
 
-	void createDescribedItems(vector<UBO>& UBO, vector<TextureSpec>& textureSpecs, iPlatform& platform);
+	void createDescribedItems(vector<UBO>& UBO, vector<TextureSpec>& textureSpecs,
+							  vector<VkDescriptorImageInfo>& runtimeTextures, iPlatform& platform);
 	void destroyDescribedItems();
 
 	void Recreate(MeshObject& meshObject);

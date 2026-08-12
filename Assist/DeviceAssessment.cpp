@@ -209,6 +209,12 @@ void DeviceAssessment::assayPresentModeSupport(VkPhysicalDevice device, int iDev
 	VkPresentModeKHR presentModes[nModes];
 	vkGetPhysicalDeviceSurfacePresentModesKHR(device, windowSurface, &nModes, presentModes);
 
+	// Log available present modes
+	Log(NOTE, "Available present modes for Device %d:", iDevice);
+	for (uint32_t i = 0; i < nModes; ++i) {
+		Log(NOTE, "  - %s (%d)", presentModeName(presentModes[i]), presentModes[i]);
+	}
+
 	for (int iPrecedence = 0; iPrecedence < N_PRESENT_MODE_PRECEDENCES; ++iPrecedence)
 		for (auto& deviceMode : presentModes)
 			if (deviceMode == PRESENT_MODE_PRECEDENCE[iPrecedence])
@@ -216,10 +222,26 @@ void DeviceAssessment::assayPresentModeSupport(VkPhysicalDevice device, int iDev
 				RawScore score = N_PRECEDENCES - iPrecedence;
 				deviceProfiles[iDevice].surfaceSupportScore += score;
 				deviceProfiles[iDevice].selectedPresentMode = deviceMode;
+
+				Log(NOTE, "Selected present mode: %s", presentModeName(deviceMode));
 				return;
 			}
 	Log(WARN, "Device " + to_string(iDevice) + " supports NONE of " + to_string(N_PRESENT_MODE_PRECEDENCES) + " requested/preferred Present Modes.");
 
 	Log(WARN, "Sans a better PresentMode, choosing first one reported: " + to_string(presentModes[0]));
 	deviceProfiles[iDevice].selectedPresentMode = presentModes[0];
+}
+
+const char* DeviceAssessment::presentModeName(int iEnumMode) {
+	switch (iEnumMode) {
+		case VK_PRESENT_MODE_IMMEDIATE_KHR:				return "IMMEDIATE (no vsync)";
+		case VK_PRESENT_MODE_MAILBOX_KHR:				return "MAILBOX (triple buffering)";
+		case VK_PRESENT_MODE_FIFO_KHR:					return "FIFO (vsync, 60fps cap)";
+		case VK_PRESENT_MODE_FIFO_RELAXED_KHR:			return "FIFO_RELAXED";
+
+		case VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR:	return "SHARED_DEMAND_REFRESH";
+		case VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR: return "SHARED_CONTINUOUS_REFRESH";
+		// case VK_PRESENT_MODE_FIFO_LATEST_READY_KHR:		return "FIFO_LATEST_READY";  // Not available in Vulkan 1.2.135
+		default:										return "UNKNOWN (new?) MODE";
+	}
 }

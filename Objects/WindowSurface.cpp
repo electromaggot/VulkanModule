@@ -13,6 +13,7 @@
 //	© 0000 (uncopyrighted; use at will)
 //
 #include "WindowSurface.h"
+#include "ResourceTracker.h"
 
 
 WindowSurface::WindowSurface(VulkanInstance& vulkan, iPlatform& windowingSystem)

@@ -25,6 +25,8 @@ DepthBuffer::DepthBuffer(Swapchain& swapchain, GraphicsDevice& graphics, bool en
 DepthBuffer::~DepthBuffer()
 {
 	destroy();
+
+	Log(DEAD, "Destroyed: DepthBuffer");
 }
 
 

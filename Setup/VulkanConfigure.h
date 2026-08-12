@@ -51,9 +51,10 @@ const int N_COLOR_SPACE_PRECEDENCES = N_ELEMENTS_IN_ARRAY(COLOR_SPACE_PRECEDENCE
 
 const VkPresentModeKHR PRESENT_MODE_PRECEDENCE[] = {	// (for further info, DevNote at bottom)
 
-	VK_PRESENT_MODE_MAILBOX_KHR,
-	VK_PRESENT_MODE_IMMEDIATE_KHR,	// this precedes and is supposedly preferable to
-	VK_PRESENT_MODE_FIFO_KHR		//	this, which "unfortunately some drivers currently don't properly support"
+	VK_PRESENT_MODE_FIFO_KHR,		// vsync-paced: steady cadence, and blocking at vblank paces
+									//	the app's simulation sampling too.  Universally supported.
+	VK_PRESENT_MODE_MAILBOX_KHR,	// vsync-paced but non-blocking (newest frame wins at vblank).
+	VK_PRESENT_MODE_IMMEDIATE_KHR	// unpaced — highest FPS number, worst-looking motion.
 };
 const int N_PRESENT_MODE_PRECEDENCES = N_ELEMENTS_IN_ARRAY(PRESENT_MODE_PRECEDENCE);
 const int N_PRECEDENCES = N_PIXEL_FORMAT_PRECEDENCES + N_COLOR_SPACE_PRECEDENCES + N_PRESENT_MODE_PRECEDENCES;
@@ -74,9 +75,10 @@ const StrPtr INSTANCE_EXTENSION_NAMES[] = {
 //			 ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
 	DEBUG_REPORT_EXTENSION,			// Add debug display extensions; needed to relay debug messages.
 	DEBUG_UTILS_EXTENSION
-	#ifdef __APPLE__
+	#if __APPLE__ && ! TARGET_OS_IPHONE
 	,VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME	// Required for MoltenVK on macOS.
 	#endif
+	,VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME		//TJ_TODO: ensure Windows build doesn't need this moved up a line
 	//TJ_REMOVE_LATER for testing:
 	//,VK_EXT_DEPTH_RANGE_UNRESTRICTED_EXTENSION_NAME	//test: also won't be defined
 	//,VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME	//test: but will be
@@ -88,10 +90,12 @@ const int N_INSTANCE_EXTENSION_NAMES = N_ELEMENTS_IN_ARRAY(INSTANCE_EXTENSION_NA
 const bool REQUIRE_INSTANCE_EXTENSION[] = {
 	false
 	,false
-	#ifdef __APPLE__
-	,true	// VK_KHR_PORTABILITY_ENUMERATION required for MoltenVK.
+	#if __APPLE__ && ! TARGET_OS_IPHONE
+,false	// (later edit: don't require it after all, nuthin but trubl)
+//	,true	// VK_KHR_PORTABILITY_ENUMERATION required for MoltenVK.
 	//,false  // VK_KHR_PORTABILITY_ENUMERATION is for MoltenVK, but not absolutely required if not supported.
 	#endif
+	,false
 };
 
 
@@ -118,12 +122,51 @@ const bool REQUIRE_INSTANCE_LAYER[] = {
 const StrPtr DEVICE_EXTENSION_NAMES[] = {
 //			 ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
 	SWAPCHAIN_EXTENSION
+	,VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME
 };
 const int N_DEVICE_EXTENSION_NAMES = N_ELEMENTS_IN_ARRAY(DEVICE_EXTENSION_NAMES);
 
 const bool REQUIRE_DEVICE_EXTENSION[] = {
 	true
+	,false
 };
+
+
+// SHADOW MAPPING CONFIGURATION
+//
+// Shadow mapping provides realistic shadows by rendering the scene from the light's perspective.
+// Quality/performance trade-offs can be tuned via the constants below.
+//
+// NOTE: Shadow projection and camera modes are defined in Shadowing/ShadowMappingTypes.h
+//       These enums have been moved to eliminate dependencies and improve modularity.
+
+// SHADOW MAP RESOLUTION: Controls shadow detail and memory usage.
+// Higher resolution = sharper shadow edges but more GPU memory and slower rendering.
+// Lower resolution = faster rendering but blockier/pixelated shadow edges.
+// Recommended values:
+//   1024x1024 = Fast, suitable for low-end hardware (softer/blurrier shadows)
+//   2048x2048 = Balanced quality/performance (default, good for most scenes)
+//   4096x4096 = High quality, sharp shadows (slower, for high-end GPUs)
+const uint32_t SHADOW_MAP_WIDTH = 2048;
+const uint32_t SHADOW_MAP_HEIGHT = 2048;
+
+// PCF (Percentage Closer Filtering) KERNEL SIZE: Controls shadow softness.
+// PCF samples neighboring texels to create soft shadow edges (anti-aliasing for shadows).
+// Larger kernel = softer, more natural shadows but more texture samples (slower).
+// Smaller kernel = sharper, faster shadows but potentially aliased edges.
+// Kernel size = (2 * PCF_KERNEL_RADIUS + 1)²
+// Recommended values:
+//   Radius 1 = 3x3 kernel = 9 samples (fast, relatively sharp edges)
+//   Radius 2 = 5x5 kernel = 25 samples (balanced, moderate softness)
+//   Radius 3 = 7x7 kernel = 49 samples (slow, very soft/natural shadows)
+const int PCF_KERNEL_RADIUS = 1;
+
+// SHADOW BIAS: Prevents "shadow acne" (self-shadowing artifacts).
+// Shadow acne appears as dotted/striped patterns on surfaces that should be lit.
+// Too low = shadow acne artifacts (flickering dots/stripes)
+// Too high = "peter panning" (shadows detach from object bases, objects appear to float)
+// This value is tuned for typical scenes; adjust if you see artifacts
+const float SHADOW_BIAS = 0.0015f;
 
 
 // some UTILITY METHODS  (like to assist logging & debugging)
@@ -160,4 +203,27 @@ Apparently for "unlimited frame rate" choose VK_PRESENT_MODE_MAILBOX_KHR first, 
  is still provided by what should be the secondary choice of VK_PRESENT_MODE_IMMEDIATE_KHR.
 Alternately, if you want "NON-unlimited frame rate" (or the above two options are otherwise
  unsupported) the last option of VK_PRESENT_MODE_FIFO_KHR may be chosen.
+
+REVISED 4-Aug-2026 — precedence flipped to FIFO-first.  The above framed the choice as
+ "how high can the FPS number go," which is the wrong objective: a high but UNPACED frame
+ rate looks WORSE in motion than a lower paced one.  Two distinct things matter --
+
+  1. PRESENTATION cadence: when frames reach the display.  IMMEDIATE presents whenever a
+	 frame is ready, unrelated to vblank -> tearing and irregular on-screen intervals.
+	 Both FIFO and MAILBOX present only at vblank, so both are tear-free and regular.
+
+  2. SAMPLING cadence: the instant the app sampled its motion sources (clock, positions)
+	 for that frame.  Even with perfectly regular PRESENTS, if frame N sampled the world
+	 12ms of motion after frame N-1 and frame N+1 sampled 21ms after N, the eye reads
+	 judder.  This is the subtle one, and it is where MAILBOX disappoints a naive render
+	 loop: the app free-runs at whatever rate it can, so sampling instants are irregular
+	 and surplus frames are simply discarded at vblank.
+	 FIFO blocks the loop at vblank, which paces SAMPLING to the refresh interval for
+	 free -- no frame-pacing machinery needed in the app.
+
+ So FIFO first: smoothest motion, tear-free, and guaranteed present on every Vulkan
+  implementation (the spec requires it) -- no fallback anxiety.
+ MAILBOX second: right choice for an app that decouples simulation from render rate
+  (fixed timestep + interpolation), where it buys lower latency than FIFO.
+ IMMEDIATE last: benchmark/diagnostic use, or when latency beats appearance.
 */

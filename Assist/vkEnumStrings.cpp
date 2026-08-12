@@ -13,7 +13,7 @@
 //	© 2019 Megaphone Studios
 //
 #include <vulkan/vulkan.hpp>
-#include <vulkan/vulkan_to_string.hpp>
+// #include <vulkan/vulkan_to_string.hpp>  // Not available in older Vulkan SDKs
 
 typedef struct {
 	VkResult		eNum;

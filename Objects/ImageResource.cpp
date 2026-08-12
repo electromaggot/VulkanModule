@@ -8,6 +8,7 @@
 //	© 0000 (uncopyrighted; use at will)
 //
 #include "ImageResource.h"
+#include "ResourceTracker.h"
 
 
 ImageResource::ImageResource(GraphicsDevice& graphicsDevice, Mipmaps* optionalMipmaps)
@@ -15,7 +16,12 @@ ImageResource::ImageResource(GraphicsDevice& graphicsDevice, Mipmaps* optionalMi
 		pMipmaps(optionalMipmaps)
 { }
 
-ImageResource::~ImageResource()  { destroy(); }
+ImageResource::~ImageResource()
+{
+	destroy();
+
+	Log(DEAD, "Destroyed: ImageResource (image, imageView, deviceMemory)");
+}
 
 void ImageResource::destroy()
 {

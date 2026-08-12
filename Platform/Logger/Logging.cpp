@@ -13,11 +13,14 @@
 #include "Logging.h"
 #include "AppConstants.h"
 #include "FileSystem.h"
+#include <ctime>
+#include <iomanip>
 
 static void logToFile(Tier, const char*);
 
 
 //#define DEBUG_LOW
+#define HIDE_DEAD	1	// change to 0 to show all destroyed objects
 
 
 #if defined(__APPLE__) && defined(__MACH__)
@@ -33,14 +36,30 @@ static void logToFile(Tier, const char*);
 
 void LogStartup()	// Provide a startup sanity check...
 {					//		but can be a bit tricky, see DEV NOTE below.
+	// Log timestamp at startup
+	std::time_t now = std::time(nullptr);
+	std::tm* localTime = std::localtime(&now);
+	char timeBuffer[64];
+	std::strftime(timeBuffer, sizeof(timeBuffer), "%Y-%m-%d %H:%M:%S %Z", localTime);
+	Log(RAW, "STARTED %s", timeBuffer);
+
 	Log(RAW, "RUNNING %s", AppConstants.getExePath());
 	Log(RAW, "STORAGE %s", FileSystem::AppLocalStorageDirectory().c_str());
 	Log(RAW, "CONFIGS %s", AppConstants.Settings.filePath.c_str());
 }
 
 
-// Assumes..: enum Tier { ERROR, WARN, NOTE, RAW, SAME, LOW };
-const char* Prefix[] = { "ERROR! ", "Warning: ", "Note: ", "", "", "" };
+const bool useEmojis = true;
+
+const char* WordyPrefix[] = { "ERROR! ", "Warn: ", "Note: ", "", "", "GOAL! ", "Good: ", "Fail: ", "Dead: ", "" };	// 🛜 ☑️ ↪️ 🛠️ 🔥
+const char* EmojiPrefix[] = {	"❌ ",	  "⚠️ ",	"📋 ",	 "", "",  "🚀 ",	"✅ ",	  "🚫 ",	"💀 ",   "" };	// 🛑 🚨 ⛔ 💥 ☠️
+
+	// Assumes..: enum Tier { ERROR,	  WARN,		NOTE,  RAW, SAME, GOAL,		GOOD,	  FAIL,		DEAD,	LOW };
+const char** Prefix = useEmojis ? EmojiPrefix : WordyPrefix;
+
+Tier logThreshold = (Tier) (DEAD - HIDE_DEAD);
+
+bool LogLimit(Tier tier) { return logThreshold >= tier; }
 
 string logFileName;
 const char* pLogFileName = nullptr;
@@ -48,8 +67,9 @@ const char* pLogFileName = nullptr;
 
 void Log(Tier tier, string message) {
 	#ifndef DEBUG_LOW
-	if (tier == LOW)  return;
+		if (tier > logThreshold)  return;
 	#endif
+
 	cout << Prefix[tier] << message;
 	if (tier != SAME)  cout << ENDL;
 
@@ -60,7 +80,7 @@ void Log(Tier tier, string message) {
 void Log(Tier tier, const char* format, ...)
 {
 	#ifndef DEBUG_LOW
-	if (tier == LOW)  return;
+		if (tier > logThreshold)  return;
 	#endif
 
 	char buffer[1024];

@@ -22,10 +22,11 @@
 class GraphicsPipeline
 {
 public:
-	GraphicsPipeline(ShaderModules& shaders, RenderPass& renderPass,
+	GraphicsPipeline(ShaderModules& shaders, iRenderPass& renderPass,
 					 Swapchain& swapchain, GraphicsDevice& graphics,
 					 VertexAbstract* pVertex = nullptr, Descriptors* pDescriptors = nullptr,
-					 Customizer customize = NONE);
+					 Customizer customize = NONE, VkExtent2D customExtent = { 0, 0 });
+
 	~GraphicsPipeline();
 
 		// MEMBERS
@@ -38,10 +39,10 @@ private:
 		// METHODS
 private:
 	void create(ShaderModules& shaderModules, VertexAbstract* pVertex, VkExtent2D swapchainExtent,
-				RenderPass& renderPass, Descriptors* pDescriptors, Customizer customize);
+				iRenderPass& renderPass, Descriptors* pDescriptors, Customizer customize);
 	void destroy();
 public:
-	void Recreate(ShaderModules& shaderModules, RenderPass& renderPass, Swapchain& swapchain,
+	void Recreate(ShaderModules& shaderModules, iRenderPass& renderPass, Swapchain& swapchain,
 				  VertexAbstract* pVertex = nullptr, Descriptors* pDescriptors = nullptr,
 				  Customizer customize = NONE);
 		// getters

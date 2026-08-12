@@ -28,14 +28,26 @@ public:
 	GameClock()
 		:	startTime(high_resolution_clock::now()),
 			durationLastFrame(0.0f),
-			elapsedToFrameStart(0.0f)
+			elapsedToFrameStart(0.0f),
+			frameCount(0),
+			fpsTime(high_resolution_clock::now()),
+			currentFPS(0),
+			fpsUpdated(false)
 	{ }
+
+	virtual ~GameClock() = default;
 
 		// MEMBERS
 protected:
 	std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
 	float durationLastFrame;
 	float elapsedToFrameStart;
+
+	// FPS tracking
+	int frameCount;
+	std::chrono::time_point<std::chrono::high_resolution_clock> fpsTime;
+	int currentFPS;
+	bool fpsUpdated;
 
 		// METHODS
 public:
@@ -47,19 +59,39 @@ public:
 		return duration<float, seconds::period>(currentTime - startTime).count();
 	}
 
-	inline void BeginNewFrame()
+	virtual void BeginNewFrame()
 	{
 		float elapsedToNow = secondsSinceGameStart();
 		durationLastFrame = elapsedToNow - elapsedToFrameStart;
 		elapsedToFrameStart = elapsedToNow;
+
+		// Update FPS counter
+		frameCount++;
+		auto currentTime = high_resolution_clock::now();
+		float fpsDelta = duration<float>(currentTime - fpsTime).count();
+		if (fpsDelta >= 1.0f) {
+			currentFPS = static_cast<int>(frameCount / fpsDelta);
+			frameCount = 0;
+			fpsTime = currentTime;
+			fpsUpdated = true;
+		} else {
+			fpsUpdated = false;
+		}
 	}
 
-		// getters
-	inline float deltaSeconds() {	// since previous frame
+		// getters — virtual to allow subclasses (e.g. SongClock) to provide
+		//	alternative time sources while keeping the same interface.
+	virtual float deltaSeconds() const {	// since previous frame (can be negative for song-time clocks)
 		return durationLastFrame;
 	}
-	inline float secondsElapsed() {	// since game start
+	virtual float secondsElapsed() const {	// since game/song start
 		return elapsedToFrameStart;
+	}
+	inline int getFPS() const {				// current frames per second
+		return currentFPS;
+	}
+	inline bool wasFPSUpdated() const {		// true if FPS was recalculated this frame
+		return fpsUpdated;
 	}
 };
 
@@ -92,7 +124,6 @@ public:
 	  new frame can begin.
 */
 /* TO-DOs:
-	- Provide/manage FPS frames-per-second counter.
 	- Slo-mo mode (by scaling deltaTime and returning that) or fixed timing.
 	- If deltaTime exceeds threshold, break into series of smaller dT's -- keeping
 	  iterative "calculations" from blowing up, above-mentioned physics collision, etc.

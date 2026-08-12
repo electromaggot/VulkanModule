@@ -17,7 +17,13 @@
 #include "PlatformSDL.h"
 
 #include "AppConstants.h"
+#include "ResourceTracker.h"
+#include "imgui.h"	// for WantCaptureMouse and WantCaptureKeyboard flags
 #include <climits>	// (to build on Linux side)
+#include <cstdlib>	// for setenv on macOS
+#ifdef __APPLE__
+ #include <unistd.h>	// for access()
+#endif
 
 
 PlatformSDL::PlatformSDL()
@@ -57,11 +63,66 @@ const char DEFAULT_HOME_INDICATOR_APPEARANCE = Hidden;
 //
 void PlatformSDL::initializeSDL()
 {
+#ifdef __APPLE__
+	// Ensure the Vulkan loader can find MoltenVK. Shell env vars often contain
+	// stale versioned Homebrew Cellar paths that break after `brew upgrade`.
+	// Only set if not already pointing to a valid file (don't override user choice).
+	auto ensureICD = [](const char* envVar) {
+		const char* current = getenv(envVar);
+		if (current && access(current, F_OK) == 0)
+			return;
+		static const char* candidates[] = {
+			"/opt/homebrew/share/vulkan/icd.d/MoltenVK_icd.json",
+			"/opt/homebrew/etc/vulkan/icd.d/MoltenVK_icd.json",
+			"/usr/local/share/vulkan/icd.d/MoltenVK_icd.json",
+			"/usr/local/etc/vulkan/icd.d/MoltenVK_icd.json",
+		};
+		for (auto path : candidates) {
+			if (access(path, F_OK) == 0) {
+				setenv(envVar, path, 1);
+				return;
+			}
+		}
+	};
+	ensureICD("VK_ICD_FILENAMES");
+	ensureICD("VK_DRIVER_FILES");
+#endif
+
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0)
 		Fatal("Fail to Initialize SDL: " + string(SDL_GetError()));
 
 	char hintHomeIndicator[2] = { DEFAULT_HOME_INDICATOR_APPEARANCE, '\0' };
 	SDL_SetHint(SDL_HINT_IOS_HIDE_HOME_INDICATOR, hintHomeIndicator);
+
+#ifdef __APPLE__
+	// Vsync is NOT configured here.  MoltenVK derives CAMetalLayer.displaySyncEnabled from the
+	//	Vulkan present mode we select at swapchain creation, so PRESENT_MODE_PRECEDENCE
+	//	(VulkanConfigure.h) is the single place that decides paced-vs-unpaced.  Setting it here
+	//	too would just be a second, conflicting opinion.
+	// (Removed 4-Aug-2026: SDL_HINT_RENDER_VSYNC / SDL_HINT_RENDER_SCALE_QUALITY.  Those govern
+	//	SDL's 2D SDL_Renderer, which a Vulkan app never creates -- they were inert, and their
+	//	"vsync disabled" wording misrepresented what the app was actually doing.)
+
+	setenv("MVK_CONFIG_DISPLAY_WATERMARK", "0", 0);				// No debug watermark.
+	setenv("MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS", "0", 0);		// Async queue submits (throughput).
+
+	Log(NOTE, "macOS: MoltenVK configured; frame pacing follows the selected Vulkan present mode.");
+#endif
+}
+
+// Refresh rate (Hz) of the display this window is on; 0 if it can't be determined.
+//
+int PlatformSDL::GetDisplayRefreshHz() const
+{
+	if (!pWindow)
+		return 0;
+	int iDisplay = SDL_GetWindowDisplayIndex(pWindow);
+	if (iDisplay < 0)
+		return 0;
+	SDL_DisplayMode mode;
+	if (SDL_GetCurrentDisplayMode(iDisplay, &mode) != 0)
+		return 0;
+	return mode.refresh_rate;		// SDL reports 0 when the rate is unspecified/variable.
 }
 
 // Create a vulkan window; fatal throw on failure.
@@ -76,14 +137,77 @@ void PlatformSDL::createVulkanCompatibleWindow()
 		winX = settings.startingWindowX;
 		winY = settings.startingWindowY;
 	}
-	if (winWide <= 0 || winWide > AppConstants.MaxSaneScreenWidth)		// Do not allow…
-		winWide  = AppConstants.DefaultWindowWidth;
-	if (winHigh <= 0 || winHigh > AppConstants.MaxSaneScreenHeight)		//	…window to…
-		winHigh = AppConstants.DefaultWindowHeight;
-	if (winX < -winWide || winX > AppConstants.MaxSaneScreenWidth)		//	…be entirely…
+
+	// Validate window position across ALL displays (multi-monitor support)
+	int numDisplays = SDL_GetNumVideoDisplays();
+	bool windowOnValidDisplay = false;
+	const int MIN_VISIBLE_PIXELS = 50;  // Minimum pixels of title bar that must be visible
+
+	// Check each display to see if window is visible on any of them
+	for (int i = 0; i < numDisplays; ++i) {
+		SDL_Rect displayBounds;
+		if (SDL_GetDisplayBounds(i, &displayBounds) == 0) {
+			// Check if window's title bar is accessible on this display
+			bool titleBarVisible = (winX + MIN_VISIBLE_PIXELS >= displayBounds.x &&  // Not too far left
+									winX <= displayBounds.x + displayBounds.w - MIN_VISIBLE_PIXELS &&  // Not too far right
+									winY >= displayBounds.y &&  // Title bar not above screen
+									winY <= displayBounds.y + displayBounds.h - MIN_VISIBLE_PIXELS);  // Not too far down
+
+			if (titleBarVisible) {
+				windowOnValidDisplay = true;
+
+				// Validate window size against this display
+				if (winWide <= 0 || winWide > displayBounds.w)
+					winWide  = AppConstants.DefaultWindowWidth;
+				if (winHigh <= 0 || winHigh > displayBounds.h)
+					winHigh = AppConstants.DefaultWindowHeight;
+
+				// Ensure window size doesn't exceed this display's bounds
+				if (winWide > displayBounds.w)
+					winWide = displayBounds.w;
+				if (winHigh > displayBounds.h)
+					winHigh = displayBounds.h;
+
+				Log(LOW, "Window validated on display %d: pos(%d, %d) size(%dx%d)", i, winX, winY, winWide, winHigh);
+				break;  // Found valid display, stop checking
+			}
+		}
+	}
+
+	// If window is not visible on ANY display, center it on primary display
+	if (!windowOnValidDisplay) {
+		Log(LOW, "Window position (%d, %d) not visible on any display, centering on primary", winX, winY);
 		winX = SDL_WINDOWPOS_CENTERED;
-	if (winY < -winHigh || winY > AppConstants.MaxSaneScreenHeight)		//	…off-screen.
 		winY = SDL_WINDOWPOS_CENTERED;
+
+		// Validate size against primary display
+		SDL_Rect primaryBounds;
+		if (SDL_GetDisplayBounds(0, &primaryBounds) == 0) {
+			if (winWide <= 0 || winWide > primaryBounds.w)
+				winWide  = AppConstants.DefaultWindowWidth;
+			if (winHigh <= 0 || winHigh > primaryBounds.h)
+				winHigh = AppConstants.DefaultWindowHeight;
+		} else {
+			// Fallback if SDL functions fail - use conservative defaults
+			if (winWide <= 0 || winWide > AppConstants.MaxSaneScreenWidth)
+				winWide  = AppConstants.DefaultWindowWidth;
+			if (winHigh <= 0 || winHigh > AppConstants.MaxSaneScreenHeight)
+				winHigh = AppConstants.DefaultWindowHeight;
+		}
+	}
+
+	// Final fallback for invalid positions
+	if (winX == INT_MIN || winY == INT_MIN) {
+		// Fallback to original validation
+		if (winWide <= 0 || winWide > AppConstants.MaxSaneScreenWidth)
+			winWide  = AppConstants.DefaultWindowWidth;
+		if (winHigh <= 0 || winHigh > AppConstants.MaxSaneScreenHeight)
+			winHigh = AppConstants.DefaultWindowHeight;
+		if (winX < -winWide || winX > AppConstants.MaxSaneScreenWidth)
+			winX = SDL_WINDOWPOS_CENTERED;
+		if (winY < -winHigh || winY > AppConstants.MaxSaneScreenHeight)
+			winY = SDL_WINDOWPOS_CENTERED;
+	}
 
 	int windowFlags = SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN
 					| SDL_WINDOW_RESIZABLE	// not just for desktop windows, also applies to mobile device orientation changes
@@ -93,17 +217,40 @@ void PlatformSDL::createVulkanCompatibleWindow()
 	if (!pWindow)
 		Fatal("Fail to Create Vulkan-compatible Window with SDL: " + string(SDL_GetError()));
 
+	// Log display information for performance diagnostics.
+	int displayIndex = SDL_GetWindowDisplayIndex(pWindow);
+	if (displayIndex >= 0) {
+		const char* displayName = SDL_GetDisplayName(displayIndex);
+		SDL_DisplayMode displayMode;
+		if (SDL_GetCurrentDisplayMode(displayIndex, &displayMode) == 0) {
+			Log(NOTE, "Window on display %d: \"%s\" ( %d × %d @ %dHz )",
+				displayIndex,
+				displayName ? displayName : "Unknown",
+				displayMode.w, displayMode.h, displayMode.refresh_rate);
+
+			// Helpful performance hint based on display type:
+			if (displayIndex > 0) {
+				Log(WARN, "External display detected - FPS may be limited by display connection/vsync.");
+			} else {
+				Log(GOOD, "Built-in display - expect maximum performance.");
+			}
+		}
+	}
+
 	pixelsWide = LastSavedPixelsWide = winWide;
 	pixelsHigh = LastSavedPixelsHigh = winHigh;
 	windowX = winX;
 	windowY = winY;
+
+	if (settings.isFullScreen && !IsMobile)
+		pendingFullScreen = true;		// defer until run loop is active (macOS requires it)
 
 	//recordWindowGeometry();		// re-saves anything that had to be "corrected" above
 	//No, on 2nd thought, won't.  If re-run, will re-assign the same way.  If user tweaks, then it will save.
 	//(plus, the above seems to wipe out the saved credentials, which need to be pulled from Vault if that's to happen)
 
 //	if (! isMobilePlatform)		// we don't need this for full-screen or mobile (where called unnecessarily on device rotation)
-		SDL_AddEventWatch(realtimeResizingEventWatcher, this);
+	SDL_AddEventWatch(realtimeResizingEventWatcher, this);
 //TODO: had commented the above test, but not documented why. Later, justify resizeEventWatcher on mobile...
 //		   was it to actually catch and process the device rotation?
 }
@@ -164,8 +311,10 @@ void PlatformSDL::createMultiMonitorWindows()
 }
 void PlatformSDL::createVulkanSurface(int iScreen, VkInstance instance, VkSurfaceKHR& surface)
 {
-	if (SDL_Vulkan_CreateSurface(screenInfos[iScreen].pWindow, instance, &surface))
+	if (SDL_Vulkan_CreateSurface(screenInfos[iScreen].pWindow, instance, &surface)) {
+		VK_TRACK_CREATE(VK_RESOURCE_SURFACE);	// SDL creates surface internally, manually track it.
 		return;
+	}
 	Fatal("Unable to Create Vulkan-compatible Surface using SDL: " + string(SDL_GetError()));
 }
 void PlatformSDL::destroyMultiMonitorWindows()
@@ -205,8 +354,10 @@ void PlatformSDL::querySupportedVulkanExtensions()
 //
 void PlatformSDL::CreateVulkanSurface(VkInstance instance, VkSurfaceKHR& surface)
 {
-	if (SDL_Vulkan_CreateSurface(pWindow, instance, &surface))
+	if (SDL_Vulkan_CreateSurface(pWindow, instance, &surface)) {
+		VK_TRACK_CREATE(VK_RESOURCE_SURFACE);	// SDL creates surface internally, manually track it.
 		return;
+	}
 	Fatal("Unable to Create Vulkan-compatible Surface using SDL: " + string(SDL_GetError()));
 }
 
@@ -252,15 +403,59 @@ bool PlatformSDL::GetWindowSize(int& pixelWidth, int& pixelHeight)
 	return false;
 }
 
+void PlatformSDL::SetWindowTitle(const char* title)
+{
+	if (pWindow)
+		SDL_SetWindowTitle(pWindow, title);
+}
+
+// Detect fullscreen: SDL flags (SDL-initiated) or macOS native (green button).
+//	SDL2 doesn't track macOS native fullscreen with its own flags, and on notched
+//	MacBooks the window size is identical in windowed-maximized and native fullscreen,
+//	so query the NSWindow styleMask directly via a platform-specific helper.
+//
+#if __APPLE__ && ! TARGET_OS_IPHONE
+	extern "C" bool macOS_IsNativeFullScreen(SDL_Window* pWindow);
+	extern "C" void macOS_ExitNativeFullScreen(SDL_Window* pWindow);
+	// NOTE: Must include "MacOSFullScreen.mm" in Xcode project for these to resolve.
+#endif
+
+bool PlatformSDL::detectFullScreen()
+{
+	if (SDL_GetWindowFlags(pWindow) & SDL_WINDOW_FULLSCREEN)
+		return true;
+
+#if __APPLE__ && ! TARGET_OS_IPHONE
+	return macOS_IsNativeFullScreen(pWindow);
+#else
+	return false;
+#endif
+}
+
+void PlatformSDL::ExitFullScreen()
+{
+	if (SDL_GetWindowFlags(pWindow) & SDL_WINDOW_FULLSCREEN)
+		SDL_SetWindowFullscreen(pWindow, 0);
+#if __APPLE__ && ! TARGET_OS_IPHONE
+	else if (macOS_IsNativeFullScreen(pWindow))
+		macOS_ExitNativeFullScreen(pWindow);
+#endif
+}
+
 void PlatformSDL::recordWindowGeometry() // (with logging too)
 {
 	Log(SAME, "Note: Save Window Geometry: ");
 
+	isFullScreen = detectFullScreen();
+
 	AppSettings& settings = AppConstants.Settings;
-	settings.startingWindowWidth  = pixelsWide;
-	settings.startingWindowHeight = pixelsHigh;
-	settings.startingWindowX = windowX;
-	settings.startingWindowY = windowY;
+	settings.isFullScreen = isFullScreen;
+	if (!isFullScreen) {
+		settings.startingWindowWidth  = pixelsWide;
+		settings.startingWindowHeight = pixelsHigh;
+		settings.startingWindowX = windowX;
+		settings.startingWindowY = windowY;
+	}
 	settings.Save();
 }
 void PlatformSDL::rememberWindowSize(int wide, int high)
@@ -332,51 +527,64 @@ bool PlatformSDL::PollEvent(iControlScheme* pController)
 {
 	if (SDL_PollEvent(&event))
 	{
-		GUISystemProcessEvent(&event);
+		// Pass events to ImGui first; it needs to see ALL events.	// Note: When IMGUI_DISABLE - in GUISystem/imgui.h -
+		GUISystemProcessEvent(&event);								//	stub implementations provide no-op.
 		//printf("event %d : %d\n", event.type, event.window.event);
+
+		ImGuiIO& io = ImGui::GetIO();				 // Get ImGui's input capture flags AFTER it processes the event,
+		bool imguiWantsMouse = io.WantCaptureMouse;	 // although if IMGUI_DISABLE, stub always returns false (no mouse capture).
 
 		switch (event.type) {
 			case SDL_WINDOWEVENT:
 				process(event.window);
 				break;
 			case SDL_MOUSEMOTION:
-				mouseX = event.motion.x;	// handle mouse input passively
+				mouseX = event.motion.x;	// Always update mouse position (passive tracking).
 				mouseY = event.motion.y;
-				if (pController) {			// handle actively
+				if (pController && !imguiWantsMouse) {		// Only pass to controller if...
 					pController->handlePrimaryPressAndDrag(mouseX, mouseY);
 					pController->handleSecondaryPressAndDrag(mouseX, mouseY);
+					pController->handleTertiaryPressAndDrag(mouseX, mouseY);
 				}
 				break;
 			case SDL_MOUSEBUTTONDOWN:
-				if (pController)
-					switch (event.button.button)
-					{
-					case SDL_BUTTON_LEFT:
-						pController->handlePrimaryPressDown(event.button.x, event.button.y);
-						break;
-					case SDL_BUTTON_RIGHT:
-						pController->handleSecondaryPressDown(event.button.x, event.button.y);
-						break;
-					}
-				else
+				if (pController) {
+					if (!imguiWantsMouse)					//	...if ImGui doesn't want mouse...
+						switch (event.button.button)
+						{
+						case SDL_BUTTON_LEFT:
+							pController->handlePrimaryPressDown(event.button.x, event.button.y);
+							break;
+						case SDL_BUTTON_MIDDLE:
+							pController->handleTertiaryPressDown(event.button.x, event.button.y);
+							break;
+						case SDL_BUTTON_RIGHT:
+							pController->handleSecondaryPressDown(event.button.x, event.button.y);
+							break;
+						}
+				} else
 					timePress = event.button.timestamp;
 				break;
 			case SDL_MOUSEBUTTONUP:
-				if (pController)
-					switch (event.button.button)
-					{
-					case SDL_BUTTON_LEFT:
-						pController->handlePrimaryPressUp(event.button.x, event.button.y);
-						break;
-					case SDL_BUTTON_RIGHT:
-						pController->handleSecondaryPressUp(event.button.x, event.button.y);
-						break;
-					}
-				else if (event.button.timestamp - timePress < MILLISECONDS_LONG_PRESS)
+				if (pController) {
+					if (!imguiWantsMouse)					//	...and same here...
+						switch (event.button.button)
+						{
+						case SDL_BUTTON_LEFT:
+							pController->handlePrimaryPressUp(event.button.x, event.button.y);
+							break;
+						case SDL_BUTTON_MIDDLE:
+							pController->handleTertiaryPressUp(event.button.x, event.button.y);
+							break;
+						case SDL_BUTTON_RIGHT:
+							pController->handleSecondaryPressUp(event.button.x, event.button.y);
+							break;
+						}
+				} else if (event.button.timestamp - timePress < MILLISECONDS_LONG_PRESS)
 					conveyPress = event.button.button;
 				break;
 			case SDL_MOUSEWHEEL:
-				if (pController)
+				if (pController && !imguiWantsMouse)		//	...and here too.
 					pController->handleMouseWheel(event.wheel.x, event.wheel.y);
 				break;
 			case SDL_MULTIGESTURE:
@@ -389,12 +597,18 @@ bool PlatformSDL::PollEvent(iControlScheme* pController)
 				}
 				break;
 			case SDL_KEYUP: {
+				// ESC (unshifted) exits fullscreen mode back to windowed.
+				if (event.key.keysym.sym == SDLK_ESCAPE
+						&& !(event.key.keysym.mod & (KMOD_LSHIFT | KMOD_RSHIFT))
+						&& detectFullScreen())
+					SDL_SetWindowFullscreen(pWindow, 0);
+
 				#if TARGET_OS_IOS
 					// iOS soft keyboard seems to immediately follow KEYDOWN with KEYUP, which
 					//	confuses ImGui's attempt to track KeysDownDuration between those events.
 					//	Result: BACKSPACE doesn't seem to work on iOS.  This tries to hack it:
-					ImGuiIO& io = ImGui::GetIO();
-					int keyMapBackspace = io.KeyMap[ImGuiKey_Backspace];
+					ImGuiIO& io = ImGui::GetIO();							// (note that for IMGUI_DISABLE, stub
+					int keyMapBackspace = io.KeyMap[ImGuiKey_Backspace];	//	provides no-op/harmless assignments)
 					io.KeysDown[keyMapBackspace] = (event.key.keysym.scancode == SDL_SCANCODE_BACKSPACE);
 					//	...same seems to apply to RETURN key as well.
 					io.KeysDown[io.KeyMap[ImGuiKey_Enter]] = (event.key.keysym.scancode == SDL_SCANCODE_RETURN);
@@ -406,6 +620,34 @@ bool PlatformSDL::PollEvent(iControlScheme* pController)
 		}
 		return true;
 	}
+
+	// Event queue empty -- run loop is active, safe for deferred operations.
+
+	if (pendingFullScreen) {					// Restore fullscreen saved from prior session,
+		pendingFullScreen = false;				//	or switch from native to borderless fullscreen.
+		SDL_SetWindowFullscreen(pWindow,			//	Deferred: macOS requires the run loop to be active.
+								SDL_WINDOW_FULLSCREEN_DESKTOP);
+	}
+
+	// Detect fullscreen state changes (covers both SDL-initiated and macOS native).
+	bool currentlyFullScreen = detectFullScreen();
+	if (currentlyFullScreen != isFullScreen) {
+		isFullScreen = currentlyFullScreen;
+		Log(LOW, "Fullscreen state change: %s", isFullScreen ? "ENTER" : "EXIT");
+
+#if __APPLE__ && ! TARGET_OS_IPHONE
+		// If the user entered native fullscreen (green button), switch to borderless
+		//	fullscreen instead -- it's consistent (ESC exits) and doesn't show a menu
+		//	bar on mouse hover.  Exit native first, then apply borderless on next idle.
+		if (isFullScreen && !(SDL_GetWindowFlags(pWindow) & SDL_WINDOW_FULLSCREEN)) {
+			macOS_ExitNativeFullScreen(pWindow);
+			pendingFullScreen = true;
+		} else
+#endif
+		if (!IsMobile)
+			recordWindowGeometry();
+	}
+
 	return false;
 }
 
@@ -433,7 +675,7 @@ void PlatformSDL::process(SDL_WindowEvent& windowEvent)
 			isWindowHidden = false;
 			break;
 		case SDL_WINDOWEVENT_MAXIMIZED:
-		case SDL_WINDOWEVENT_RESTORED: // (from being maximized)
+		case SDL_WINDOWEVENT_RESTORED:
 			isWindowResized = true;
 			isWindowHidden = false;
 			break;
@@ -446,8 +688,12 @@ void PlatformSDL::process(SDL_WindowEvent& windowEvent)
 
 bool PlatformSDL::IsEventQUIT()
 {
-	return (event.type == SDL_QUIT
-		|| (event.type == SDL_KEYUP && event.key.keysym.sym == SDLK_ESCAPE)
+	// Quit on: SDL_QUIT, Shift+ESC, or window close
+	// (ESC alone is reserved for canceling operations, e.g. edit operation in editor mode.)
+	bool isShiftEscape = ( event.type == SDL_KEYUP && event.key.keysym.sym == SDLK_ESCAPE
+						&& (event.key.keysym.mod & (KMOD_LSHIFT | KMOD_RSHIFT)) );
+
+	return (event.type == SDL_QUIT || isShiftEscape
 		|| (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE));
 }
 

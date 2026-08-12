@@ -28,7 +28,8 @@
 enum FilterMode {
 	LINEAR,
 	NEAREST,
-	MIPMAP
+	MIPMAP,
+	MIPMAP_SHARP	// NEAREST mag (sharp close-up) + LINEAR min + mipmaps (smooth distance)
 };
 
 enum WrapMode {
@@ -44,6 +45,7 @@ struct TextureSpec	// Texture Specifier / Specification
 	WrapMode	wrapMode	 = REPEAT;
 	bool		flipVertical = false;	// Set only for pre-flipped image coming from OpenGL. Vulkan orients texture Y-origin correctly.
 	bool		wantMutable	 = false;	// User will modify texture later (so retain staging buffer and re-copyBufferToImage "dirtied" subregions).
+	float		lodBias		 = 0.0f;	// LOD bias: negative = sharper (prefers higher-res mipmaps), positive = blurrier (prefers lower-res mipmaps)
 	ImageInfo*	pImageInfo	 = nullptr;
 };
 

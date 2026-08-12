@@ -16,6 +16,8 @@
 //
 #include "GraphicsDevice.h"
 #include "VulkanConfigure.h"
+#include "RenderSettings.h"
+#include "ResourceTracker.h"
 
 
 GraphicsDevice::GraphicsDevice(WindowSurface& surface, VulkanInstance& instance,
@@ -36,6 +38,21 @@ GraphicsDevice::GraphicsDevice(WindowSurface& surface, VulkanInstance& instance,
 GraphicsDevice::~GraphicsDevice()
 {
 	vkDestroyDevice(logicalDevice, nullALLOC);
+
+	Log(DEAD, "Destroyed: GraphicsDevice");
+}
+
+void GraphicsDevice::DestroyLogicalDevice()
+{
+	vkDestroyDevice(logicalDevice, nullALLOC);
+	logicalDevice = VK_NULL_HANDLE;
+}
+
+void GraphicsDevice::RecreateLogicalDevice(ValidationLayers& validation)
+{
+	DestroyLogicalDevice();							// Lost device — tear it down,
+	createLogicalDevice(validation);				//	then rebuild (reuses surviving physicalDevice /
+	Log(NOTE, "Recreated: GraphicsDevice logical device.");	//	queue families / extensions; re-gathers queues).
 }
 
 
@@ -65,17 +82,25 @@ bool GraphicsDevice::IsImageFormatSupported(VkFormat format, VkImageTiling tilin
 //
 void GraphicsDevice::createLogicalDevice(ValidationLayers& validation)
 {
+	VkBool32 useAnisotropic = RenderSettings.useAnisotropy ? VK_TRUE : VK_FALSE;	// Enabling anisotropic filtering improves
+																					//	texture quality at oblique angles.
 	queueFamilies.InitializeQueueCreateInfos();
 
 	VkPhysicalDeviceFeatures deviceFeatures = {	// Notes on requesting device-level features:
-		//	.samplerAnisotropy	= VK_TRUE,		// Anisotropic filtering may make sense to enable at the device level,
-												//	thus affect everything on-screen equally, a feature that is as-expected.
+		.samplerAnisotropy	= useAnisotropic,	// If any textures want anisotropic filtering, then it must be enabled at the
+												//	device level too (thus affect all objects on-screen equally, so expect that).
 		//	.fillModeNonSolid	= VK_TRUE		// This renders EVERYTHING on-screen as wireframe, which may be better done per-object at
 	};											//	pipeline level via .polygonMode = VK_POLYGON_MODE_LINE (search: Customizer.WIREFRAME).
 
+	VkPhysicalDevicePortabilitySubsetFeaturesKHR portabilityFeaturesKHR = {
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR,
+		.pNext = NULL,							// Link to the next structure in the chain, or NULL if this is the last one.
+		.events = VK_TRUE						// Enable the events feature, for EventObjects vkCreateEvent (+ nix validation error).
+	};
+
 	VkDeviceCreateInfo createInfo = {
 		.sType	= VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-		.pNext	= nullptr,
+		.pNext	= &portabilityFeaturesKHR,
 		.flags	= 0,
 
 		.queueCreateInfoCount = N_ELEMENTS_IN_ARRAY(queueFamilies.QueueCreateInfos),
@@ -104,14 +129,20 @@ void GraphicsDevice::createLogicalDevice(ValidationLayers& validation)
 VkPhysicalDevice GraphicsDevice::selectGPU(VkInstance& instance, VkSurfaceKHR& surface,
 										   DeviceSelectionMethod choice) {
 	uint32_t nPhysicalDevices = 0;
-	vkEnumeratePhysicalDevices(instance, &nPhysicalDevices, nullptr);
+	VkResult result = vkEnumeratePhysicalDevices(instance, &nPhysicalDevices, nullptr);
+	if (result != VK_SUCCESS) {
+		Fatal("Failed to enumerate physical devices: " + ErrStr(result));
+	}
 	if (nPhysicalDevices == 0) {
 		Fatal("No Physical Devices found with Vulkan support.");
 		exit(1); // (satisfy the Analyzer, which blind to Fatal above, fears below array may init with 0 size)
 	}
 
 	VkPhysicalDevice physicalDevices[nPhysicalDevices];
-	vkEnumeratePhysicalDevices(instance, &nPhysicalDevices, physicalDevices);
+	result = vkEnumeratePhysicalDevices(instance, &nPhysicalDevices, physicalDevices);
+	if (result != VK_SUCCESS) {
+		Fatal("Failed to enumerate physical devices (second call): " + ErrStr(result));
+	}
 
 	DeviceAssessment assessDevices(physicalDevices, nPhysicalDevices, Queues, surface);
 

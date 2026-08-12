@@ -16,11 +16,13 @@
 
 const StrPtr SHADER_SUBDIRECTORY  = "shaders/compiled/";
 
-const StrPtr TEXTURE_SUBDIRECTORY = "assets/textures/";
+const StrPtr TEXTURE_SUBDIRECTORY = "assets/texture/";
 
-const StrPtr MODEL_SUBDIRECTORY = "assets/models/";
+const StrPtr MODEL_SUBDIRECTORY	  = "assets/model/";
 
-const StrPtr FONT_SUBDIRECTORY = "assets/fonts/";
+const StrPtr FONT_SUBDIRECTORY	  = "assets/font/";
+
+const StrPtr TERRAIN_SUBDIRECTORY = "assets/terrain/";
 
 
 // Directory hierarchy project-specific conventions
@@ -50,6 +52,11 @@ string FileSystem::FontFileFullPath(StrPtr fileName)
 	return ExeAccompaniedFullPath(fileName, FONT_SUBDIRECTORY);
 }
 
+string FileSystem::TerrainFileFullPath(StrPtr fileName)
+{
+	return ExeAccompaniedFullPath(fileName, TERRAIN_SUBDIRECTORY);
+}
+
 
 vector<char> FileSystem::ReadShaderFile(const string& shaderFilename)
 {
@@ -66,7 +73,8 @@ vector<char> FileSystem::readFile(const string& fileName, const char* subdirecto
 														  const char* showFileType)
 {
 	const string fullPath = ExeAccompaniedFullPath(fileName, subdirectoryName);
-	Log(RAW, "Read: %s - file: %s", showFileType, fullPath.c_str());
+	if (LogLimit(LOW))
+		Log(RAW, "Read: %s - file: %s", showFileType, fullPath.c_str());
 	return readFile(fullPath);
 }
 

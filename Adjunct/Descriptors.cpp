@@ -11,6 +11,7 @@
 //	© 0000 (uncopyrighted; use at will)
 //
 #include "Descriptors.h"
+#include "ResourceTracker.h"
 
 
 Descriptors::Descriptors(vector<DescribEd>& describeds, Swapchain& swapchain, GraphicsDevice& device)
@@ -29,6 +30,7 @@ Descriptors::~Descriptors()
 {
 	destroy();
 	vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+	Log(DEAD, "Destroyed: Descriptors");
 }
 
 void Descriptors::create()
@@ -132,7 +134,14 @@ void Descriptors::createDescriptorSets()
 					pBufferInfo = &describers[iBind].bufferInfo;
 					break;
 				case TEXTURE:
-					pImageInfo = &describers[iBind].imageInfo;
+					// Check if per-frame image info is provided (for resources that vary per frame)
+					if (describers[iBind].hasPerFrameImageInfo()) {
+						// Use per-frame image info (e.g., shadow maps with frames-in-flight)
+						pImageInfo = &describers[iBind].perFrameImageInfo[iBuffer];
+					} else {
+						// Use single image info (normal case for static textures)
+						pImageInfo = &describers[iBind].imageInfo;
+					}
 					break;
 			}
 
