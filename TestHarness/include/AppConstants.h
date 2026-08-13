@@ -19,7 +19,7 @@
 
 extern struct Constants
 {
-	const StrPtr AppName			= "HelloVulkanSDL";
+	const StrPtr AppName			= "VulkanTestHarness";
 	const uint32_t AppVersion		= VK_MAKE_VERSION(1, 0, 0);		// (Vulkan wants this)
 
 	const StrPtr WindowTitle		= "Vulkan Demo";
@@ -31,7 +31,7 @@ extern struct Constants
 	const StrPtr CompanyName		= "GitHubProject";
 	const StrPtr ProjectName		= "HelloTriangle";
 
-#define COMPARE_AGAINST		IPHONE_X		// These comparison cases are for
+#define COMPARE_AGAINST		WINDOW_5x4		// These comparison cases are for
 #if COMPARE_AGAINST == SHADERTOY_16x9		//	test and are all temporary!
 	const int DefaultWindowWidth	= 640;
 	const int DefaultWindowHeight	= 360;
@@ -56,9 +56,12 @@ extern struct Constants
 	const int MaxSaneScreenWidth	= 7680 * 2;		// 8K x 2 values. Simply sanity-
 	const int MaxSaneScreenHeight	= 4320 * 2;		//	check on pixel-related ranges.
 
-	VkClearColorValue DefaultClearColor = { { 0.0f, 0.0f, 0.0f, 1.0f } };		// Black
+	//VkClearColorValue DefaultClearColor = { { 0.0f, 0.0f, 0.0f, 1.0f } };		// Black
 	//VkClearColorValue DefaultClearColor = { { 0.4f, 0.6f, 0.85f, 1.0f } };	// Sky blue
 	//VkClearColorValue DefaultClearColor = { { 0.3f, 0.3f, 0.7f, 1.0f } };		// Deep sky blue
+	//VkClearColorValue DefaultClearColor = { { 0.28f, 0.24f, 0.54f, 1.0f } };	// Dark slate blue
+	//VkClearColorValue DefaultClearColor = { { 0.18f, 0.31f, 0.31f, 1.0f } };	// Deep slate gray
+	VkClearColorValue DefaultClearColor = { { 0.21f, 0.23f, 0.28f, 1.0f } };	// Gunmetal blue
 
 	const bool SupportStereo3D		= false;
 
