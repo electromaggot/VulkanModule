@@ -36,6 +36,10 @@ endif()
 
 project(VulkanModule CXX)
 
+if(APPLE)					# Obj-C++ (.mm) support, needed by MacOSFullScreen.mm
+    enable_language(OBJCXX)
+endif()
+
 
 # Set target architecture
 if(NOT CMAKE_PLATFORM_NAME)
@@ -76,8 +80,6 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)		# Use solution folders feature
 
 set(PROJECT_NAME VulkanTester)				# Sub-projects
 
-set(EXECUTABLE_OUTPUT_PATH build)			# sub-directory destination for built binary
-
 
 #################### Source groups ######################
 
@@ -88,25 +90,36 @@ AUX_SOURCE_DIRECTORY("include" VulkanTester_include)
 AUX_SOURCE_DIRECTORY("../Platform/" Platform)
 AUX_SOURCE_DIRECTORY("../Platform/FileSystem/" Platform_FileSystem)
 AUX_SOURCE_DIRECTORY("../Platform/GUISystem/stubs/" Platform_GUISystem)
-AUX_SOURCE_DIRECTORY("../Platform/ImageHandling/" Platform_ImageHandling)
+set(Platform_ImageHandling			# ImageSDLoptional.cpp is a mutually-exclusive
+    "../Platform/ImageHandling/ImageSDL.cpp"	#  stand-in for ImageSDL.cpp (SDL without
+)						#  SDL_image) -- never build both, they define
+						#  the same class.  SDL_image is REQUIRED below,
+						#  so the full implementation is the one to use.
 AUX_SOURCE_DIRECTORY("../Platform/Logger/" Platform_Logger)
 
 set(Platform_OSAbstraction
     "../Platform/OSAbstraction/PlatformSDL.cpp"
 )
+if(APPLE)					# PlatformSDL.cpp calls into these Obj-C++ routines
+    list(APPEND Platform_OSAbstraction
+        "../Platform/OSAbstraction/MacOSFullScreen.mm"
+    )
+    set_source_files_properties(		# see "Objective-C memory management (ARC)" in CLAUDE.md
+        "../Platform/OSAbstraction/MacOSFullScreen.mm"
+        PROPERTIES COMPILE_OPTIONS "-fobjc-arc"
+    )
+endif()
 source_group("Platform\\OSAbstraction" FILES ${Platform_OSAbstraction})
 
 AUX_SOURCE_DIRECTORY("../Adjunct/" Vulkan_Adjunct)
 
-set(Vulkan_Adjunct_Renderables
-    "../Adjunct/Renderables/AddOns.cpp"
-    "../Adjunct/Renderables/Renderable.cpp"
-)
+AUX_SOURCE_DIRECTORY("../Adjunct/Renderables/" Vulkan_Adjunct_Renderables)
 source_group("Vulkan\\Adjunct\\Renderables" FILES ${Vulkan_Adjunct_Renderables})
 
 AUX_SOURCE_DIRECTORY("../Adjunct/VertexTypes/" Vulkan_Adjunct_VertexTypes)
 
-AUX_SOURCE_DIRECTORY("../Assist/" Vulkan_Assist)
+AUX_SOURCE_DIRECTORY("../Assist/" Vulkan_Assist)		# note: not recursive, hence...
+AUX_SOURCE_DIRECTORY("../Assist/ResourceTracker/" Vulkan_Assist_ResourceTracker)
 
 AUX_SOURCE_DIRECTORY("../Objects/" Vulkan_Objects)
 
@@ -126,6 +139,7 @@ set(ALL_FILES
     ${Vulkan_Adjunct_Renderables}
     ${Vulkan_Adjunct_VertexTypes}
     ${Vulkan_Assist}
+    ${Vulkan_Assist_ResourceTracker}
     ${Vulkan_Objects}
     ${Vulkan_Setup}
 )
@@ -138,19 +152,21 @@ add_executable(${PROJECT_NAME} ${ALL_FILES})		# Target
 set(ROOT_NAMESPACE VulkanTester)
 
 
-if("${CMAKE_PLATFORM_NAME}" STREQUAL "x64")		# Output directory
-    set_target_properties(${PROJECT_NAME} PROPERTIES
-        OUTPUT_DIRECTORY_DEBUG   "${CMAKE_SOURCE_DIR}/build/${CMAKE_PLATFORM_NAME}/$<CONFIG>/"
-        OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/build/${CMAKE_PLATFORM_NAME}/$<CONFIG>/"
-    )
-endif()
-if("${CMAKE_PLATFORM_NAME}" STREQUAL "x64")
-    set_target_properties(${PROJECT_NAME} PROPERTIES
-        OUTPUT_DIRECTORY_DEBUG   "${CMAKE_SOURCE_DIR}/build/"
-        OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/build/$<CONFIG>/"
-        INTERPROCEDURAL_OPTIMIZATION_RELEASE "TRUE"
-    )
-elseif("${CMAKE_PLATFORM_NAME}" STREQUAL "x86")
+# Output directory: the binary lands directly in the build directory it was configured in, so
+#	`cmake .. && cmake --build .` from TestHarness/build yields TestHarness/build/VulkanTester.
+#	Compiled shaders deploy to shaders/compiled/ beside it, via $<TARGET_FILE_DIR:...> below --
+#	which is exactly where FileSystem.cpp looks for them.
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+)
+foreach(OUTPUT_CONFIG ${CMAKE_CONFIGURATION_TYPES})	# multi-config generators (Visual Studio,
+    string(TOUPPER ${OUTPUT_CONFIG} OUTPUT_CONFIG_UC)	#  Xcode) otherwise append a per-config
+    set_target_properties(${PROJECT_NAME} PROPERTIES	#  subdirectory; keep them uniform so the
+        RUNTIME_OUTPUT_DIRECTORY_${OUTPUT_CONFIG_UC} "${CMAKE_CURRENT_BINARY_DIR}"
+    )							#  shader deployment path stays predictable
+endforeach()
+
+if("${CMAKE_PLATFORM_NAME}" STREQUAL "x64" OR "${CMAKE_PLATFORM_NAME}" STREQUAL "x86")
     set_target_properties(${PROJECT_NAME} PROPERTIES
         INTERPROCEDURAL_OPTIMIZATION_RELEASE "TRUE"
     )
@@ -209,6 +225,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
     "${CMAKE_CURRENT_SOURCE_DIR}/../Setup"
     "${CMAKE_CURRENT_SOURCE_DIR}/../Assist"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Assist/ResourceTracker"
     "${CMAKE_CURRENT_SOURCE_DIR}/../Adjunct"
     "${CMAKE_CURRENT_SOURCE_DIR}/../Adjunct/Renderables"
     "${CMAKE_CURRENT_SOURCE_DIR}/../Adjunct/VertexTypes"
@@ -227,7 +244,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 # Platform-specific compile definitions
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     "SDL_MAIN_HANDLED"
-)
+    "IMGUI_DISABLE"				# TestHarness builds GUISystem/stubs (above), not
+)						#  External/imgui-src, so exclude ImGui globally.
 
 if(WIN32)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
@@ -249,32 +267,77 @@ endif()
 
 # Cross-platform post-build events will be added below
 
-# Create build directories
-if(WIN32)
+#################### Shaders ############################
+#
+# Compile GLSL -> SPIR-V as part of the build, then deploy alongside the binary.
+#	Previously this only COPIED prebuilt .spv files.  Since *.spv is gitignored, a fresh clone
+#	has none, so the harness died at startup on "Failed to open file ... triangle-vert.spv".
+#	find_package(Vulkan) (above) locates glslc for us as Vulkan_GLSLC_EXECUTABLE.
+#
+#	NOTE: the deployed destination must match SHADER_SUBDIRECTORY in
+#	 Platform/FileSystem/FileSystem.cpp ("shaders/compiled/"), which is where the runtime
+#	 actually looks.  Keep the two in sync.
+#
+#	Naming: <base>.<stage> compiles to <base>-<stage>.spv (triangle.vert -> triangle-vert.spv),
+#	 matching how shaders are named in the DrawableSpecifier that requests them.
+
+set(SHADER_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders")
+set(SHADER_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders/compiled")
+
+file(GLOB SHADER_SOURCES "${SHADER_SOURCE_DIR}/*.vert" "${SHADER_SOURCE_DIR}/*.frag"
+                         "${SHADER_SOURCE_DIR}/*.comp" "${SHADER_SOURCE_DIR}/*.geom"
+                         "${SHADER_SOURCE_DIR}/*.tesc" "${SHADER_SOURCE_DIR}/*.tese")
+
+if(Vulkan_GLSLC_EXECUTABLE AND SHADER_SOURCES)
+
+    set(SPIRV_BINARIES)
+    foreach(SHADER_SOURCE ${SHADER_SOURCES})
+        get_filename_component(SHADER_BASE "${SHADER_SOURCE}" NAME_WE)
+        get_filename_component(SHADER_TYPE "${SHADER_SOURCE}" LAST_EXT)
+        string(SUBSTRING "${SHADER_TYPE}" 1 -1 SHADER_STAGE)		# ".vert" -> "vert"
+        set(SPIRV "${SHADER_BINARY_DIR}/${SHADER_BASE}-${SHADER_STAGE}.spv")
+
+        add_custom_command(
+            OUTPUT "${SPIRV}"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${SHADER_BINARY_DIR}"
+            COMMAND ${Vulkan_GLSLC_EXECUTABLE} "${SHADER_SOURCE}" -o "${SPIRV}"
+            DEPENDS "${SHADER_SOURCE}"
+            COMMENT "Compiling shader ${SHADER_BASE}${SHADER_TYPE}"
+            VERBATIM
+        )
+        list(APPEND SPIRV_BINARIES "${SPIRV}")
+    endforeach()
+
+    add_custom_target(CompileShaders DEPENDS ${SPIRV_BINARIES})
+    add_dependencies(${PROJECT_NAME} CompileShaders)
+
+    add_custom_command(					# deploy where the runtime looks for them
+        TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders/compiled"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SPIRV_BINARIES}
+                                                     "$<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders/compiled/"
+        COMMENT "Deploying compiled shaders"
+    )
+
+else()		# No glslc (or no GLSL sources): fall back to whatever prebuilt .spv are lying around.
+
+    message(WARNING "glslc not found -- falling back to prebuilt .spv in ${SHADER_SOURCE_DIR}. "
+                    "Since *.spv is gitignored, a clean checkout may have none, in which case "
+                    "the harness will fail at startup.  Install the Vulkan SDK to get glslc.")
     add_custom_command(
         TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/compiledShaders"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/*.spv" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/compiledShaders/" 2>NUL || echo "Shaders copied"
-        COMMENT "Windows: Setting up shader directory"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders/compiled"
+        COMMAND ${CMAKE_COMMAND} -E copy "${SHADER_SOURCE_DIR}/*.spv"
+                                         "$<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders/compiled/"
+        COMMENT "Copying prebuilt shaders (glslc unavailable)"
     )
-else()
-    add_custom_command(
-        TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory "build"
-        COMMAND ${CMAKE_COMMAND} -E make_directory "build/compiledShaders"
-        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/*.spv" "build/compiledShaders/" 2>/dev/null || true
-        COMMENT "Unix: Setting up shader directory"
-    )
+
 endif()
 
-# Platform-specific resource setup
-if(NOT WIN32)
-    add_custom_command(
-        TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND test -L "build/textures" || (cd build && ln -s "../../graphics/assets/texture" 2>/dev/null || true)
-        COMMENT "Creating texture symlink"
-    )
-endif()
+# (No texture setup: TestHarness draws an untextured tri-color triangle.  The former symlink
+#  here pointed at a nonexistent graphics/assets/texture and was named "texture" besides,
+#  whereas TEXTURE_SUBDIRECTORY in FileSystem.cpp is "assets/texture/".  Restore it in that
+#  shape, relative to the target file dir, if this harness ever loads a texture.)
 
 
 #if("${CMAKE_PLATFORM_NAME}" STREQUAL "x64")		# Custom build events
@@ -295,9 +358,11 @@ set(ADDITIONAL_LIBRARY_DEPENDENCIES
 )
 
 if(APPLE)
+    find_library(COCOA_FRAMEWORK Cocoa)		# for MacOSFullScreen.mm
     list(APPEND ADDITIONAL_LIBRARY_DEPENDENCIES
         "m"
         "stdc++"
+        ${COCOA_FRAMEWORK}
     )
 elseif(WIN32)
     # Windows-specific libraries
