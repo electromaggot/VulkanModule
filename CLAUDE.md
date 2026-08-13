@@ -96,11 +96,18 @@ VulkanModule is a reusable foundation for Vulkan graphics projects, providing ob
 ### Coordinate System and Winding Order
 
 **Coordinate System:**
-- This module supports **left-handed coordinates** with **+Z pointing into screen** (forward)
-- Controlled by `Assist/VulkanMath.h`: `const bool INVERT_Z = true;`
-- When `INVERT_Z = true`: Uses `glm::perspectiveLH_ZO()` and `glm::lookAtLH()` (left-handed)
-- When `INVERT_Z = false`: Uses standard `glm::perspective()` and `glm::lookAt()` (right-handed)
-- Applications using this module inherit the coordinate system setting
+- The module defaults to **standard Vulkan**: right-handed, `+Z` out of the screen, CCW front faces
+- Optional **left-handed** mode (`+Z` into the screen, forward) is opted into *per application*:
+  ```cmake
+  target_compile_definitions(MyApp PRIVATE INVERT_Z_SETTING=true)
+  ```
+- `Assist/VulkanMath.h` reads that as `constexpr bool INVERT_Z`, defaulting to `false`
+- **Scope**: `INVERT_Z` has exactly one effect — it reverses `GraphicsPipeline`'s default
+  `VkFrontFace` (`GraphicsPipeline.cpp`), because left-handed geometry winds opposite. It does
+  **not** alter projection or view math; the module never calls `glm::perspectiveLH_ZO()` or
+  `glm::lookAtLH()`. Applications build their own MVP matrices and choose handedness there.
+- Consequently an app that sets `INVERT_Z_SETTING=true` must also supply left-handed
+  projection/view matrices itself — the setting only keeps culling consistent with them.
 
 **Winding Order Convention:**
 - **Counter-clockwise (CCW)** is the standard for front-facing triangles

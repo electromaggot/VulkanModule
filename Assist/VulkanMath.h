@@ -13,8 +13,23 @@
 #define VulkanMath_h
 
 
-const bool INVERT_Z = true;	// Temporary!  Flips world to +Z forward, left-handed.
-	// Will replace with Config system later, but definitely necessary global graphics engine setting.
+// Flips the world to +Z forward, left-handed (Direct3D/Unity-style) instead of Vulkan's
+//	standard right-handed +Z-out-of-screen.  Its sole effect is to reverse GraphicsPipeline's
+//	default VkFrontFace (see GraphicsPipeline.cpp), since left-handed geometry winds opposite.
+//
+// This defaults OFF so that this module behaves like standard Vulkan out-of-the-box: a
+//	consumer that asks for nothing special gets counter-clockwise front faces, and geometry
+//	authored to the usual Vulkan/glm conventions renders right-side-out.  Applications built
+//	around a left-handed world (e.g. one that flies a camera forward into ascending +Z) opt in
+//	from their own build, leaving this library free of any single application's convention:
+//
+//		target_compile_definitions(MyApp PRIVATE INVERT_Z_SETTING=true)
+//
+#ifndef INVERT_Z_SETTING
+	#define INVERT_Z_SETTING false
+#endif
+
+constexpr bool INVERT_Z = INVERT_Z_SETTING;
 
 enum CoordinateSystem {
 	VULKAN_OPENGL_RIGHT_HANDED,		// +Z out of screen
