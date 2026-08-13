@@ -53,5 +53,8 @@ cmake_install.cmake
 *.vcxproj.user
 UpgradeLog.htm
 
+# Claude Code per-developer local settings (holds machine-specific absolute paths)
+.claude/settings.local.json
+
 # Miscellaneous or specific-to-this-specific-project
 external
