@@ -108,6 +108,11 @@ VulkanModule is a reusable foundation for Vulkan graphics projects, providing ob
   `glm::lookAtLH()`. Applications build their own MVP matrices and choose handedness there.
 - Consequently an app that sets `INVERT_Z_SETTING=true` must also supply left-handed
   projection/view matrices itself — the setting only keeps culling consistent with them.
+- **Consumers read `INVERT_Z` too.** Applications commonly branch on this same symbol as their
+  coordinate-system contract — LevelEdit/TuneTrip keys projection (`glm::perspectiveLH_ZO`),
+  OBJ winding order, Z-negation at model load, and camera math off it. So while its effect
+  *within this module* is the single `VkFrontFace` flip, changing the effective value is
+  engine-wide for such an app. Treat it as a coordinate-system contract, not a local toggle.
 
 **Winding Order Convention:**
 - **Counter-clockwise (CCW)** is the standard for front-facing triangles
