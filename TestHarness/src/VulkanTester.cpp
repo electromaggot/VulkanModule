@@ -8,9 +8,31 @@
 //
 #include "VulkanTester.h"
 
+#include "AppConstants.h"
 #include "CommandObjects.h"
 #include "Renderable.h"
 #include "VertexNull.h"
+
+
+// Hand VulkanModule the settings it needs.  This mapping lives here, in the application,
+//	because AppConstants is the application's -- the module no longer reaches up for it.
+//
+VulkanConfig VulkanTester::appVulkanConfig()
+{
+	VulkanConfig config;
+	config.appName				= AppConstants.AppName;
+	config.appVersion			= AppConstants.AppVersion;
+	config.companyName			= AppConstants.CompanyName;
+	config.projectName			= AppConstants.ProjectName;
+	config.debugLogFileName		= AppConstants.DebugLogFileName;
+	config.exePath				= AppConstants.getExePath();	// main() set this from argv[0]
+	config.windowTitle			= AppConstants.WindowTitle;
+	config.defaultWindowWidth	= AppConstants.DefaultWindowWidth;
+	config.defaultWindowHeight	= AppConstants.DefaultWindowHeight;
+	config.clearColor			= AppConstants.DefaultClearColor;
+	config.supportStereo3D		= AppConstants.SupportStereo3D;
+	return config;
+}
 
 
 UBO_MVP	MVP;
