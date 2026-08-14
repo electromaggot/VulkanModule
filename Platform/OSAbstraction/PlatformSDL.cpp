@@ -26,8 +26,19 @@
 #endif
 
 
-PlatformSDL::PlatformSDL()
+// Sanity bounds for geometry restored from saved settings: reject values that could only come
+//	from a corrupt settings file or a since-disconnected display, falling back to the config's
+//	default window size.  Deliberately NOT application-configurable -- an app has no basis on
+//	which to choose a number here, and nothing but this validation reads them.
+//
+static const int MAX_SANE_SCREEN_WIDTH	= 7680 * 2;		// 8K x 2: a range check, not a limit
+static const int MAX_SANE_SCREEN_HEIGHT	= 4320 * 2;		//	we ever expect to approach.
+
+
+PlatformSDL::PlatformSDL(const VulkanConfig& config)
 {
+	publishVulkanConfig(config);		// before anything below reads Config()
+
 	namePlatform = "SDL";
 
 	initializeSDL();
@@ -158,9 +169,9 @@ void PlatformSDL::createVulkanCompatibleWindow()
 
 				// Validate window size against this display
 				if (winWide <= 0 || winWide > displayBounds.w)
-					winWide  = AppConstants.DefaultWindowWidth;
+					winWide  = Config().defaultWindowWidth;
 				if (winHigh <= 0 || winHigh > displayBounds.h)
-					winHigh = AppConstants.DefaultWindowHeight;
+					winHigh = Config().defaultWindowHeight;
 
 				// Ensure window size doesn't exceed this display's bounds
 				if (winWide > displayBounds.w)
@@ -184,28 +195,28 @@ void PlatformSDL::createVulkanCompatibleWindow()
 		SDL_Rect primaryBounds;
 		if (SDL_GetDisplayBounds(0, &primaryBounds) == 0) {
 			if (winWide <= 0 || winWide > primaryBounds.w)
-				winWide  = AppConstants.DefaultWindowWidth;
+				winWide  = Config().defaultWindowWidth;
 			if (winHigh <= 0 || winHigh > primaryBounds.h)
-				winHigh = AppConstants.DefaultWindowHeight;
+				winHigh = Config().defaultWindowHeight;
 		} else {
 			// Fallback if SDL functions fail - use conservative defaults
-			if (winWide <= 0 || winWide > AppConstants.MaxSaneScreenWidth)
-				winWide  = AppConstants.DefaultWindowWidth;
-			if (winHigh <= 0 || winHigh > AppConstants.MaxSaneScreenHeight)
-				winHigh = AppConstants.DefaultWindowHeight;
+			if (winWide <= 0 || winWide > MAX_SANE_SCREEN_WIDTH)
+				winWide  = Config().defaultWindowWidth;
+			if (winHigh <= 0 || winHigh > MAX_SANE_SCREEN_HEIGHT)
+				winHigh = Config().defaultWindowHeight;
 		}
 	}
 
 	// Final fallback for invalid positions
 	if (winX == INT_MIN || winY == INT_MIN) {
 		// Fallback to original validation
-		if (winWide <= 0 || winWide > AppConstants.MaxSaneScreenWidth)
-			winWide  = AppConstants.DefaultWindowWidth;
-		if (winHigh <= 0 || winHigh > AppConstants.MaxSaneScreenHeight)
-			winHigh = AppConstants.DefaultWindowHeight;
-		if (winX < -winWide || winX > AppConstants.MaxSaneScreenWidth)
+		if (winWide <= 0 || winWide > MAX_SANE_SCREEN_WIDTH)
+			winWide  = Config().defaultWindowWidth;
+		if (winHigh <= 0 || winHigh > MAX_SANE_SCREEN_HEIGHT)
+			winHigh = Config().defaultWindowHeight;
+		if (winX < -winWide || winX > MAX_SANE_SCREEN_WIDTH)
 			winX = SDL_WINDOWPOS_CENTERED;
-		if (winY < -winHigh || winY > AppConstants.MaxSaneScreenHeight)
+		if (winY < -winHigh || winY > MAX_SANE_SCREEN_HEIGHT)
 			winY = SDL_WINDOWPOS_CENTERED;
 	}
 
@@ -213,7 +224,7 @@ void PlatformSDL::createVulkanCompatibleWindow()
 					| SDL_WINDOW_RESIZABLE	// not just for desktop windows, also applies to mobile device orientation changes
 					| (IsMobile ? SDL_WINDOW_FULLSCREEN : 0);
 
-	pWindow = SDL_CreateWindow(AppConstants.WindowTitle, winX, winY, winWide, winHigh, windowFlags);
+	pWindow = SDL_CreateWindow(Config().windowTitle, winX, winY, winWide, winHigh, windowFlags);
 	if (!pWindow)
 		Fatal("Fail to Create Vulkan-compatible Window with SDL: " + string(SDL_GetError()));
 

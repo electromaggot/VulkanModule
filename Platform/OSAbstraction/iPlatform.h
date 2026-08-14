@@ -19,6 +19,7 @@
 #include "AppSettings.h"
 #include "iImageSource.h"
 #include "iControlScheme.h"
+#include "VulkanConfig.h"
 
 
 class iPlatform
@@ -77,6 +78,11 @@ public:
 
 		// getters
 public:
+	const VulkanConfig& Config() const			{ return TheVulkanConfig(); }
+				// Per-app settings this module needs (window size/title, app name, clear color,
+				//	etc.).  Concretions publish the application's VulkanConfig on construction;
+				//	absent that, module defaults apply.  See Setup/VulkanConfig.h.
+
 	StrPtr*		getSupportedVulkanExtensions()	{ return supportedVulkanExtensions; }
 	ArrayCount	getVulkanExtensionCount()		{ return nVulkanExtensions; }
 

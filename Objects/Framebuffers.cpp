@@ -65,7 +65,7 @@ void Framebuffers::create(vector<VkImageView>& swapchainImageViews, VkExtent2D& 
 			.pAttachments	 = attachments,
 			.width			 = extent.width,
 			.height			 = extent.height,
-			.layers			 = AppConstants.SupportStereo3D ? (uint32_t) 2 : 1
+			.layers			 = TheVulkanConfig().supportStereo3D ? (uint32_t) 2 : 1
 		};
 
 		call = vkCreateFramebuffer(device, &framebufferInfo, nullALLOC, &framebuffers[iBufferView]);

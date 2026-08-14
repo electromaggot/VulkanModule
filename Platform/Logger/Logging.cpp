@@ -11,7 +11,8 @@
 //	© 0000 (uncopyrighted; use at will)
 //
 #include "Logging.h"
-#include "AppConstants.h"
+#include "AppConstants.h"	// still, for AppConstants.Settings (see VulkanConfig.h on retiring this)
+#include "VulkanConfig.h"
 #include "FileSystem.h"
 #include <ctime>
 #include <iomanip>
@@ -43,7 +44,7 @@ void LogStartup()	// Provide a startup sanity check...
 	std::strftime(timeBuffer, sizeof(timeBuffer), "%Y-%m-%d %H:%M:%S %Z", localTime);
 	Log(RAW, "STARTED %s", timeBuffer);
 
-	Log(RAW, "RUNNING %s", AppConstants.getExePath());
+	Log(RAW, "RUNNING %s", TheVulkanConfig().exePath);
 	Log(RAW, "STORAGE %s", FileSystem::AppLocalStorageDirectory().c_str());
 	Log(RAW, "CONFIGS %s", AppConstants.Settings.filePath.c_str());
 }
@@ -98,7 +99,7 @@ void Log(Tier tier, const char* format, ...)
 void logToFile(Tier tier, const char* buffer)
 {
 	if (!pLogFileName) {
-		logFileName = FileSystem::AppLocalStorageDirectory() + AppConstants.DebugLogFileName;
+		logFileName = FileSystem::AppLocalStorageDirectory() + TheVulkanConfig().debugLogFileName;
 		pLogFileName = logFileName.c_str();
 	}
 	ofstream	settingsFile;

@@ -49,8 +49,8 @@ void VulkanInstance::createInstance(iPlatform& platform, ValidationLayers& layer
 	VkApplicationInfo appInfo = {
 		.sType				= VK_STRUCTURE_TYPE_APPLICATION_INFO,
 		.pNext				= nullptr,
-		.pApplicationName	= AppConstants.AppName,
-		.applicationVersion	= AppConstants.AppVersion,
+		.pApplicationName	= platform.Config().appName,
+		.applicationVersion	= platform.Config().appVersion,
 		.pEngineName		= VulkanSingleton::instance().EngineName,
 		.engineVersion		= VulkanSingleton::instance().EngineVersion,
 		.apiVersion			= TARGET_VULKAN_API_VERSION

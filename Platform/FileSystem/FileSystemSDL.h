@@ -11,7 +11,7 @@
 //
 #include "VulkanPlatform.h"		// for std::string etc.
 #include "PlatformSDL.h"		// for SDL #includes
-#include "AppConstants.h"		// for company/project names
+#include "VulkanConfig.h"		// for company/project names
 
 
 static	char*	dirnameExecutableBase	= nullptr;
@@ -44,7 +44,7 @@ protected:	// (discourage standalone (non-derived) instantiation)
 	static string appLocalStorageDirectory()
 	{
 		if (! dirnameAppLocalStorage)
-			dirnameAppLocalStorage = SDL_GetPrefPath(AppConstants.CompanyName, AppConstants.ProjectName);
+			dirnameAppLocalStorage = SDL_GetPrefPath(TheVulkanConfig().companyName, TheVulkanConfig().projectName);
 
 		return dirnameAppLocalStorage;
 	}
