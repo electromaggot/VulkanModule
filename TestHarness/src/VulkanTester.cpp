@@ -14,24 +14,33 @@
 #include "VertexNull.h"
 
 
-// Hand VulkanModule the settings it needs.  This mapping lives here, in the application,
-//	because AppConstants is the application's -- the module no longer reaches up for it.
+// Hand VulkanModule the settings it needs.  VulkanConfig.h DECLARES this; every application
+//	defines it.  The mapping lives here because AppConstants is the application's -- the module
+//	no longer reaches up for it.  A function-local static, so it resolves correctly whenever
+//	first asked, including during static initialization (before main() runs).
 //
-VulkanConfig VulkanTester::appVulkanConfig()
+const VulkanConfig& AppVulkanConfig()
 {
-	VulkanConfig config;
-	config.appName				= AppConstants.AppName;
-	config.appVersion			= AppConstants.AppVersion;
-	config.companyName			= AppConstants.CompanyName;
-	config.projectName			= AppConstants.ProjectName;
-	config.debugLogFileName		= AppConstants.DebugLogFileName;
-	config.exePath				= AppConstants.getExePath();	// main() set this from argv[0]
-	config.windowTitle			= AppConstants.WindowTitle;
-	config.defaultWindowWidth	= AppConstants.DefaultWindowWidth;
-	config.defaultWindowHeight	= AppConstants.DefaultWindowHeight;
-	config.clearColor			= AppConstants.DefaultClearColor;
-	config.supportStereo3D		= AppConstants.SupportStereo3D;
-	return config;
+	static VulkanConfig config = [] {
+		VulkanConfig cfg;
+		cfg.appName				= AppConstants.AppName;
+		cfg.appVersion			= AppConstants.AppVersion;
+		cfg.companyName			= AppConstants.CompanyName;
+		cfg.projectName			= AppConstants.ProjectName;
+		cfg.debugLogFileName	= AppConstants.DebugLogFileName;
+		// (exePath is NOT set here -- see below; it isn't known yet at static-init time.)
+		cfg.windowTitle			= AppConstants.WindowTitle;
+		cfg.defaultWindowWidth	= AppConstants.DefaultWindowWidth;
+		cfg.defaultWindowHeight	= AppConstants.DefaultWindowHeight;
+		cfg.clearColor			= AppConstants.DefaultClearColor;
+		cfg.supportStereo3D		= AppConstants.SupportStereo3D;
+		return cfg;
+	}();
+
+	StrPtr exe = AppConstants.getExePath();		// Refreshed per call, not snapshotted: main()
+	config.exePath = exe ? exe : "";			//	sets it from argv[0], which is later than the
+												//	first call above (static init).  Never null --
+	return config;								//	it reaches printf in LogStartup().
 }
 
 

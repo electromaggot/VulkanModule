@@ -33,18 +33,13 @@ const SteerSetup simple = NO_DEPTH_BUFFER;
 class VulkanTester
 {
 private:
-	static VulkanConfig appVulkanConfig();	// this app's AppConstants -> the module's config
-
-	VulkanConfig	config;				// Must precede (and outlive) the platform, which
-										//	publishes it module-wide by reference.
 	PlatformSDL		platform;			// SDL is target "platform" (i/o abstraction layer).
 
 	VulkanSetup		vulkan;				// This one instantiation...
 
 public:
 	VulkanTester()
-		:	config(appVulkanConfig()),
-			platform(config),
+		:	platform(),
 			vulkan(platform, simple),	//		...initializes almost all of Vulkan.
 			device(vulkan.device.getLogical()),				//
 			swapchain(vulkan.swapchain.getVkSwapchain()),	// Then the rest of this initializer
