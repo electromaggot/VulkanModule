@@ -44,7 +44,7 @@ protected:	// (discourage standalone (non-derived) instantiation)
 	static string appLocalStorageDirectory()
 	{
 		if (! dirnameAppLocalStorage)
-			dirnameAppLocalStorage = SDL_GetPrefPath(TheVulkanConfig().companyName, TheVulkanConfig().projectName);
+			dirnameAppLocalStorage = SDL_GetPrefPath(AppVulkanConfig().companyName, AppVulkanConfig().projectName);
 
 		return dirnameAppLocalStorage;
 	}

@@ -35,10 +35,8 @@ static const int MAX_SANE_SCREEN_WIDTH	= 7680 * 2;		// 8K x 2: a range check, no
 static const int MAX_SANE_SCREEN_HEIGHT	= 4320 * 2;		//	we ever expect to approach.
 
 
-PlatformSDL::PlatformSDL(const VulkanConfig& config)
+PlatformSDL::PlatformSDL()
 {
-	publishVulkanConfig(config);		// before anything below reads Config()
-
 	namePlatform = "SDL";
 
 	initializeSDL();

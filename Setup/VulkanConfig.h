@@ -6,18 +6,28 @@
 //
 // Historically these values were read directly from an `AppConstants.h` that each consuming
 //	application had to supply, which inverted the dependency: a reusable library reaching up
-//	into its consumer for configuration.  Every field below is defaulted, so an application
-//	that supplies nothing still builds and runs; supply a VulkanConfig to override.
+//	into its consumer for configuration.
 //
-//	Application usage:
-//		VulkanConfig config;
-//		config.appName		= "MyApp";
-//		config.windowTitle	= "My Window";
-//		PlatformSDL platform(config);		// platform publishes it module-wide
-//		VulkanSetup vulkan(platform);		// reads it back via platform.Config()
+//	THE APPLICATION DEFINES AppVulkanConfig(), declared below.  This module only declares and
+//	calls it, so the linker requires every consumer to supply one -- there is no silent
+//	fallback to defaults.  A definition is short, since the struct defaults every field:
 //
-//	The application owns the VulkanConfig and must keep it alive for the platform's lifetime
-//	(publishing stores a reference, not a copy) -- typically a member alongside the platform.
+//		const VulkanConfig& AppVulkanConfig()
+//		{
+//			static VulkanConfig config = [] {
+//				VulkanConfig cfg;
+//				cfg.appName		= "MyApp";
+//				cfg.windowTitle	= "My Window";
+//				return cfg;
+//			}();
+//			return config;
+//		}
+//
+//	Being a FUNCTION with a function-local static is the point: it resolves correctly whenever
+//	it is first called, including during static initialization.  An earlier design had the
+//	application "publish" a config at runtime, which lost a race -- an application whose global
+//	AppSettings resolves its per-user file path in its constructor asks for the config before
+//	main() ever runs, and would have silently gotten defaults (and cached the wrong path).
 //
 // Created 8/13/26 by Tadd Jensen
 //	© 0000 (uncopyrighted; use at will)
@@ -41,6 +51,10 @@ struct VulkanConfig
 	StrPtr		exePath				= "";		// the running executable, usually argv[0];
 													//	reported in the startup log.  Empty
 													//	rather than null: it reaches printf.
+			// NOTE: this one is late-bound.  AppVulkanConfig() may first be called during static
+			//	initialization, before main() has seen argv -- so an application whose definition
+			//	snapshots its fields once must refresh THIS field on each call (see the examples
+			//	in the header comment's referenced applications), or it stays empty.
 
 		// WINDOW - initial size and title, before any saved geometry is restored over them
 	StrPtr		windowTitle			= "Vulkan";
@@ -53,14 +67,11 @@ struct VulkanConfig
 };
 
 
-// Module-wide access, for the code that runs before (or without) any platform object exists:
-//	Logging's free functions and FileSystem's static path resolution.  The platform publishes
-//	on construction; until then -- and in any application that never supplies one -- the
-//	defaults above apply.  Prefer iPlatform::Config() wherever a platform is in reach.
+// DEFINED BY THE APPLICATION (see the header comment above).  Prefer iPlatform::Config() where
+//	a platform is in reach; call this directly from code that runs without one, such as
+//	Logging's free functions and FileSystem's static path resolution.
 //
-const VulkanConfig&	TheVulkanConfig();
-
-void publishVulkanConfig(const VulkanConfig& config);
+const VulkanConfig&	AppVulkanConfig();
 
 
 #endif	// VulkanConfig_h

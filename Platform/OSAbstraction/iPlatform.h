@@ -78,10 +78,10 @@ public:
 
 		// getters
 public:
-	const VulkanConfig& Config() const			{ return TheVulkanConfig(); }
+	const VulkanConfig& Config() const			{ return AppVulkanConfig(); }
 				// Per-app settings this module needs (window size/title, app name, clear color,
-				//	etc.).  Concretions publish the application's VulkanConfig on construction;
-				//	absent that, module defaults apply.  See Setup/VulkanConfig.h.
+				//	etc.), supplied by the application's AppVulkanConfig().  Offered here as a
+				//	convenience wherever a platform is already in hand.  See Setup/VulkanConfig.h.
 
 	StrPtr*		getSupportedVulkanExtensions()	{ return supportedVulkanExtensions; }
 	ArrayCount	getVulkanExtensionCount()		{ return nVulkanExtensions; }

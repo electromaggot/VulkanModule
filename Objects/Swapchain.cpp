@@ -64,7 +64,7 @@ void Swapchain::create(VkSurfaceKHR& surface)
 		.imageFormat	 = surfaceFormat.format,
 		.imageColorSpace = surfaceFormat.colorSpace,
 		.imageExtent	 = extent,
-		.imageArrayLayers = TheVulkanConfig().supportStereo3D ? (uint32_t) 2 : 1,
+		.imageArrayLayers = AppVulkanConfig().supportStereo3D ? (uint32_t) 2 : 1,
 		.imageUsage		 = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 
 		.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,			// (best performance, same family)
@@ -121,7 +121,7 @@ void Swapchain::createImageViews()
 			.baseMipLevel	= 0,
 			.levelCount		= 1,
 			.baseArrayLayer	= 0,
-			.layerCount	 = TheVulkanConfig().supportStereo3D ? (uint32_t) 2 : 1
+			.layerCount	 = AppVulkanConfig().supportStereo3D ? (uint32_t) 2 : 1
 		}
 	};
 
@@ -151,8 +151,8 @@ VkExtent2D Swapchain::determineSwapExtent(const VkSurfaceCapabilitiesKHR& capabi
 	if (windowExtent.width == INVALID || windowExtent.height == INVALID) {	// If still not a valid extent,
 		if (capabilities.currentExtent.width != INVALID && capabilities.currentExtent.height != INVALID)
 			return capabilities.currentExtent;								//	secondarily try capabilities or
-		windowExtent = { static_cast<uint32_t>(TheVulkanConfig().defaultWindowWidth),	//	last-ditch assign
-						 static_cast<uint32_t>(TheVulkanConfig().defaultWindowHeight) };	//	one from defaults.
+		windowExtent = { static_cast<uint32_t>(AppVulkanConfig().defaultWindowWidth),	//	last-ditch assign
+						 static_cast<uint32_t>(AppVulkanConfig().defaultWindowHeight) };	//	one from defaults.
 	}
 	clamp(windowExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
 	clamp(windowExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);

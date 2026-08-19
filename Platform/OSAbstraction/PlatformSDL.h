@@ -30,8 +30,7 @@
 class PlatformSDL : public iPlatform
 {
 public:
-	PlatformSDL(const VulkanConfig& config);	// publishes `config` module-wide; the caller
-												//	owns it and must outlive this platform.
+	PlatformSDL();
 	~PlatformSDL();
 
 		// MEMBERS

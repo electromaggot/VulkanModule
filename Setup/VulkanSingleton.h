@@ -19,11 +19,9 @@ public:
 	const char* EngineName		 = "None";		// (would perhaps have special significance for an
 	const uint32_t EngineVersion = VK_MAKE_VERSION(0, 0, 0);	// engine like unreal/unity/etc.)
 
-	VkClearColorValue ClearColor = TheVulkanConfig().clearColor;
-				// Read once, when instance() is first called -- which, being a function-local
-				//	static, happens lazily at first use, by which point the platform has
-				//	published the application's config.  Assign this member directly to change
-				//	the clear color later at runtime.
+	VkClearColorValue ClearColor = AppVulkanConfig().clearColor;
+				// Read once, when instance() is first called.  Assign this member directly to
+				//	change the clear color later at runtime.
 
 
 // CONSTRUCTION & INSTANCING
