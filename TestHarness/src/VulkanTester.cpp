@@ -14,10 +14,9 @@
 #include "VertexNull.h"
 
 
-// Hand VulkanModule the settings it needs.  VulkanConfig.h DECLARES this; every application
-//	defines it.  The mapping lives here because AppConstants is the application's -- the module
-//	no longer reaches up for it.  A function-local static, so it resolves correctly whenever
-//	first asked, including during static initialization (before main() runs).
+// Hand VulkanModule the settings it needs.  VulkanConfig.h DECLARES this; every application defines it.
+//	The mapping lives here because AppConstants is the application's.  A function-local static, so it
+//	resolves correctly whenever first asked, including during static initialization, before main() runs.
 //
 const VulkanConfig& AppVulkanConfig()
 {

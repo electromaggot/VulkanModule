@@ -360,10 +360,11 @@ set(ADDITIONAL_LIBRARY_DEPENDENCIES
 if(APPLE)
     find_library(COCOA_FRAMEWORK Cocoa)		# for MacOSFullScreen.mm
     list(APPEND ADDITIONAL_LIBRARY_DEPENDENCIES
-        "m"
-        "stdc++"
+        "m"					# (in libSystem here, so a no-op -- kept for symmetry)
         ${COCOA_FRAMEWORK}
-    )
+    )						# Note: no "stdc++".  Clang maps -lstdc++ to -lc++ on macOS,
+							#  and clang++ as the link driver already links libc++ implicitly,
+							#  so naming it here just asks for the same library a second time.
 elseif(WIN32)
     # Windows-specific libraries
     list(APPEND ADDITIONAL_LIBRARY_DEPENDENCIES
@@ -380,6 +381,14 @@ else()
         "dl"
     )
 endif()
+
+# pkg-config reports SDL2 as a dependency of SDL2_image, so SDL2 arrives twice: once from
+#	SDL2_LIBRARIES and again inside SDL2_IMAGE_LIBRARIES.  CMake preserves repeated entries
+#	(ordering can matter for static archives) by re-emitting everything that follows them, so
+#	that one duplicate also dragged m/stdc++/Cocoa onto the link line twice -- which the linker
+#	then warned about.  These are all shared libraries, whose order is irrelevant, so simply
+#	drop the repeats.  (REMOVE_DUPLICATES keeps each item's FIRST occurrence.)
+list(REMOVE_DUPLICATES ADDITIONAL_LIBRARY_DEPENDENCIES)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE ${ADDITIONAL_LIBRARY_DEPENDENCIES})
 
