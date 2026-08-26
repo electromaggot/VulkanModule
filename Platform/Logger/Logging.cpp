@@ -11,13 +11,23 @@
 //	© 0000 (uncopyrighted; use at will)
 //
 #include "Logging.h"
-#include "AppConstants.h"	// still, for AppConstants.Settings (see VulkanConfig.h on retiring this)
 #include "VulkanConfig.h"
+#include "iAppSettings.h"
 #include "FileSystem.h"
 #include <ctime>
 #include <iomanip>
 
 static void logToFile(Tier, const char*);
+
+// Is file logging switched on?  Null settings (an app that persists nothing) means no.
+//	Consulted per call rather than cached: Log() may run before the application's settings
+//	object exists, and we want the answer to start working as soon as it does.
+//
+static bool isLoggingToFile()
+{
+	iAppSettings* pSettings = AppStoredSettings();
+	return pSettings && pSettings->IsDebugLogToFile();
+}
 
 
 //#define DEBUG_LOW
@@ -46,7 +56,8 @@ void LogStartup()	// Provide a startup sanity check...
 
 	Log(RAW, "RUNNING %s", AppVulkanConfig().exePath);
 	Log(RAW, "STORAGE %s", FileSystem::AppLocalStorageDirectory().c_str());
-	Log(RAW, "CONFIGS %s", AppConstants.Settings.filePath.c_str());
+	if (iAppSettings* pSettings = AppStoredSettings())
+		Log(RAW, "CONFIGS %s", pSettings->SettingsFilePath());
 }
 
 
@@ -74,7 +85,7 @@ void Log(Tier tier, string message) {
 	cout << Prefix[tier] << message;
 	if (tier != SAME)  cout << ENDL;
 
-	if (AppConstants.Settings.isDebugLogToFile)
+	if (isLoggingToFile())
 		logToFile(tier, message.c_str());
 }
 
@@ -92,7 +103,7 @@ void Log(Tier tier, const char* format, ...)
 	cout << Prefix[tier] << buffer;
 	if (tier != SAME)  cout << ENDL;
 
-	if (AppConstants.Settings.isDebugLogToFile)
+	if (isLoggingToFile())
 		logToFile(tier, buffer);
 }
 

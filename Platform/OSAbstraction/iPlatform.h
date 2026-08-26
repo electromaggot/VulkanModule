@@ -16,19 +16,16 @@
 
 #include "VulkanPlatform.h"
 #include "PlatformExtension.h"
-#include "AppSettings.h"
 #include "iImageSource.h"
 #include "iControlScheme.h"
 #include "VulkanConfig.h"
+#include "iAppSettings.h"
 
 
 class iPlatform
 {
 public:
 	enum AlertLevel { FAILURE, WARNING, INFORMATION };
-
-	iPlatform(AppSettings* pSettings = nullptr)  { }
-	iPlatform(AppSettings& settings) : iPlatform(&settings)  { }
 
 		// MEMBERS
 protected:
@@ -82,6 +79,11 @@ public:
 				// Per-app settings this module needs (window size/title, app name, clear color,
 				//	etc.), supplied by the application's AppVulkanConfig().  Offered here as a
 				//	convenience wherever a platform is already in hand.  See Setup/VulkanConfig.h.
+
+	iAppSettings* Settings() const				{ return AppStoredSettings(); }
+				// The app's PERSISTENT settings -- window geometry to restore and save back.
+				//	NULL when the application persists nothing, so always check.  Companion to
+				//	Config() above; see Setup/iAppSettings.h.
 
 	StrPtr*		getSupportedVulkanExtensions()	{ return supportedVulkanExtensions; }
 	ArrayCount	getVulkanExtensionCount()		{ return nVulkanExtensions; }

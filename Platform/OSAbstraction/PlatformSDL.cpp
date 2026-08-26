@@ -16,7 +16,6 @@
 //
 #include "PlatformSDL.h"
 
-#include "AppConstants.h"
 #include "ResourceTracker.h"
 #include "imgui.h"	// for WantCaptureMouse and WantCaptureKeyboard flags
 #include <climits>	// (to build on Linux side)
@@ -33,6 +32,12 @@
 //
 static const int MAX_SANE_SCREEN_WIDTH	= 7680 * 2;		// 8K x 2: a range check, not a limit
 static const int MAX_SANE_SCREEN_HEIGHT	= 4320 * 2;		//	we ever expect to approach.
+
+// Baseline "100%" display density, which a measured DPI is divided by to yield a scale factor.
+//	A platform convention rather than an application choice -- Apple's baseline is 72 DPI --
+//	so it lives here now, having formerly come from each app's PlatformConstants.h.
+//
+static const float DEFAULT_DOTS_PER_INCH = 72.0f;
 
 
 PlatformSDL::PlatformSDL()
@@ -138,13 +143,16 @@ int PlatformSDL::GetDisplayRefreshHz() const
 //
 void PlatformSDL::createVulkanCompatibleWindow()
 {
-	AppSettings& settings = AppConstants.Settings;
+	WindowGeometry stored;			// Defaults (isStored false) if the app persists nothing,
+	if (iAppSettings* pSettings = Settings())	//	in which case the fallbacks below apply.
+		stored = pSettings->GetWindowGeometry();
+
 	int winWide = 0, winHigh = 0, winX = INT_MIN, winY = INT_MIN;
-	if (settings.isInitialized) {
-		winWide = settings.startingWindowWidth;
-		winHigh = settings.startingWindowHeight;
-		winX = settings.startingWindowX;
-		winY = settings.startingWindowY;
+	if (stored.isStored) {
+		winWide = stored.width;
+		winHigh = stored.height;
+		winX = stored.x;
+		winY = stored.y;
 	}
 
 	// Validate window position across ALL displays (multi-monitor support)
@@ -251,7 +259,7 @@ void PlatformSDL::createVulkanCompatibleWindow()
 	windowX = winX;
 	windowY = winY;
 
-	if (settings.isFullScreen && !IsMobile)
+	if (stored.isFullScreen && !IsMobile)
 		pendingFullScreen = true;		// defer until run loop is active (macOS requires it)
 
 	//recordWindowGeometry();		// re-saves anything that had to be "corrected" above
@@ -457,15 +465,22 @@ void PlatformSDL::recordWindowGeometry() // (with logging too)
 
 	isFullScreen = detectFullScreen();
 
-	AppSettings& settings = AppConstants.Settings;
-	settings.isFullScreen = isFullScreen;
-	if (!isFullScreen) {
-		settings.startingWindowWidth  = pixelsWide;
-		settings.startingWindowHeight = pixelsHigh;
-		settings.startingWindowX = windowX;
-		settings.startingWindowY = windowY;
+	iAppSettings* pSettings = Settings();
+	if (!pSettings) {					// App persists nothing, so there is nowhere to record it.
+		Log(RAW, "SKIPPED (this app stores no settings).");
+		return;
 	}
-	settings.Save();
+	WindowGeometry geometry = pSettings->GetWindowGeometry();
+	geometry.isFullScreen = isFullScreen;
+	if (!isFullScreen) {				// While fullscreen, retain the last WINDOWED geometry,
+		geometry.width  = pixelsWide;	//	so leaving fullscreen restores that size/position.
+		geometry.height = pixelsHigh;
+		geometry.x = windowX;
+		geometry.y = windowY;
+	}
+	geometry.isStored = true;
+	pSettings->SetWindowGeometry(geometry);
+	pSettings->Save();
 }
 void PlatformSDL::rememberWindowSize(int wide, int high)
 {
@@ -490,7 +505,7 @@ float PlatformSDL::getDisplayScaling()
 	auto noHiDPI = SDL_GetHintBoolean(SDL_HINT_VIDEO_HIGHDPI_DISABLED, SDL_TRUE);
 	if (noHiDPI == SDL_TRUE)
 		return 0.0f;
-	return getDisplayDPI() / PlatformConstants.DefaultDotsPerInch;
+	return getDisplayDPI() / DEFAULT_DOTS_PER_INCH;
 }
 //TJ_ADVISORY_NOTE_(DELETE_THIS_AFTER_FURTHER_INVESTIGATION)
 // This "Scaling" hasn't been observed to actually work.  Typically pRenderer is NULL, then

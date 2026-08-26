@@ -20,16 +20,38 @@
 #ifndef AppSettings_h
 #define AppSettings_h
 
+#include "iAppSettings.h"		// VulkanModule's view of what it needs from us
+
 #include <string>
 
 
-class AppSettings
+class AppSettings : public iAppSettings
 {
 public:
 	AppSettings();
 
-	void Save();
+	void Save() override;
 	void Retrieve();
+
+		// iAppSettings — what VulkanModule reads and writes back (window geometry, mainly).
+		//	These simply adapt the plain members below, which are what actually persist.
+	WindowGeometry GetWindowGeometry() const override
+	{
+		return { startingWindowX, startingWindowY,
+				 startingWindowWidth, startingWindowHeight,
+				 isFullScreen, isInitialized };
+	}
+	void SetWindowGeometry(const WindowGeometry& geometry) override
+	{
+		startingWindowX		 = geometry.x;
+		startingWindowY		 = geometry.y;
+		startingWindowWidth	 = geometry.width;
+		startingWindowHeight = geometry.height;
+		isFullScreen		 = geometry.isFullScreen;
+		isInitialized		 = geometry.isStored;
+	}
+	bool   IsDebugLogToFile()  const override	{ return isDebugLogToFile; }
+	StrPtr SettingsFilePath()  const override	{ return filePath.c_str(); }
 
 	std::string filePath;
 
