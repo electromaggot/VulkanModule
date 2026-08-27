@@ -2,14 +2,37 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Known Design Debt
+## What a Consuming Application Must Supply
 
-### AppConstants coupling
-VulkanModule internals directly `#include "AppConstants.h"`, a header that each consuming application must provide. Affected files include `PlatformSDL.cpp`, `VulkanSingleton.h`, `Logging.cpp`, `VulkanInstance.cpp`, `Framebuffers.cpp`, `Swapchain.cpp`, `FileSystemSDL.h`, and `iPlatform.h`.
+The module reaches up into its consumer for exactly **two** things, both declared by the module
+and defined by the application. The linker enforces both, so nothing can be forgotten silently.
+(This replaced an earlier arrangement in which module internals directly `#include`d an
+`AppConstants.h` that every consumer had to provide.)
 
-This inverts the correct dependency direction: a reusable library should not reach up into its consumer for configuration. The right fix is to define an `AppConfig` or `VulkanConfig` struct (or equivalent) inside VulkanModule, accept it through the `VulkanSetup` constructor, and remove all direct references to `AppConstants`. Consuming projects would then populate that struct from their own `AppConstants` (or any other source) before calling `VulkanSetup`. The struct contains consumer-specific per-app values like window title, clear color, dimensions, app name, etc. which are meant to be overridden but have typical default values.
+**1. `AppVulkanConfig()`** — `Setup/VulkanConfig.h`. Fixed configuration, handed over once:
+app name/version, company/project (which resolve the per-user storage path), window title and
+default size, clear color, stereo flag, log file name, exe path. Every field has a default, so
+a definition can be as short as setting `appName` and `windowTitle`.
 
-Deferred because multiple projects currently depend on VulkanModule and rely on the existing `AppConstants` convention.
+**2. `AppStoredSettings()`** — `Setup/iAppSettings.h`. The app's *persistent* settings, as a
+live object the module calls back into: window geometry is read at window creation and written
+back on every move/resize/fullscreen change, then committed via `Save()`. An existing settings
+class simply inherits `iAppSettings`. **Returning `nullptr` is legitimate** and means "this app
+persists nothing" — windows then open at the configured default size and saving is skipped.
+
+Both are **functions**, deliberately, not globals or values passed to a constructor: they are
+called during static initialization (an app whose global settings object resolves its file path
+in its constructor asks before `main()` runs), and a function with a function-local static
+resolves correctly whenever first called. Two consequences worth knowing:
+
+- `VulkanConfig::exePath` is **late-bound** — `argv` isn't known at static-init time, so an app
+  that snapshots its fields once must refresh that one field per call.
+- `AppStoredSettings()` should return `nullptr` until the settings object is genuinely
+  constructed. Both bundled examples gate on a zero-initialized `bool` set at the end of the
+  constructor; without it, a virtual call through a not-yet-constructed global would crash.
+
+See `TestHarness/src/VulkanTester.cpp` and `TestHarness/src/AppSettings.cpp` for the reference
+implementations.
 
 ## Building and Running
 
@@ -489,10 +512,15 @@ enabling it costs a mixed C++/Obj-C codebase nothing.
 
 **AppSettings requirements:**
 
-The app's `AppSettings` class must have:
-- `bool isFullScreen = false;` member
-- `Save()` that persists `isFullScreen` to storage
-- `Retrieve()` that loads `isFullScreen` from storage (called from constructor)
+Geometry persistence rides on the `iAppSettings` interface described under "What a Consuming
+Application Must Supply" — the module reads a `WindowGeometry` at startup and writes one back on
+every move/resize, then calls `Save()`. The app decides how (and whether) that is stored; if
+`AppStoredSettings()` returns `nullptr`, the module simply skips saving.
+
+To restore fullscreen across sessions, the app must actually persist `WindowGeometry::isFullScreen`
+alongside the position and size. It's easy to miss: an app can carry an `isFullScreen` member,
+have the module set it correctly, and still never write it to storage — in which case windows
+always reopen windowed, with no error to indicate why.
 
 ### Shadow Mapping
 
