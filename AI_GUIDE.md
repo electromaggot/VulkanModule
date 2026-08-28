@@ -3,22 +3,36 @@
 Guide for an AI assistant bootstrapping a new graphics project using VulkanModule.
 Optimized for fast, correct rendering on first attempt.
 
-**Do NOT follow the TestHarness as a template.** TestHarness uses right-handed coordinates (`glm::lookAt`), no depth buffer, and shader-defined vertices. It is a minimal "hello Vulkan" that sidesteps most engine conventions. Any real 3D project will break if you copy its patterns.
+**TestHarness is a starting point for wiring, not for 3D.** Its `AppVulkanConfig()` /
+`AppStoredSettings()` definitions and CMake setup are worth copying. Its *rendering* is not: no
+depth buffer (`NO_DEPTH_BUFFER`), shader-defined vertices, and no model/texture loading. Copy how
+it plugs in; don't copy how it draws.
 
 ---
 
 ## Critical Rules (violating any of these produces invisible geometry)
 
-1. **Left-handed coordinate system.** `INVERT_Z = true` in `Assist/VulkanMath.h`. +Z is into the screen.
-2. **Must use LH GLM functions:**
+1. **Pick a handedness, then be consistent.** The module defaults to **standard right-handed
+   Vulkan** (`INVERT_Z` false), where `glm::lookAt()` / `glm::perspective()` are correct and CCW
+   is the front face. That is the recommended choice for a new project.
+   For a **left-handed** world (+Z into the screen, e.g. flying forward into ascending Z), opt in
+   from your own build — the module never assumes it:
+   ```cmake
+   target_compile_definitions(MyApp PRIVATE INVERT_Z_SETTING=true)
+   ```
+2. **Match your matrices to that choice.** `INVERT_Z_SETTING` only reverses the pipeline's default
+   `VkFrontFace`; it does **not** change your math. If you opt in, you must also supply LH matrices:
    ```cpp
    VP.view = glm::lookAtLH(eye, target, up);
    VP.proj = glm::perspectiveLH_ZO(fov, aspect, near, far);
    VP.proj[1][1] *= -1.0f;  // Vulkan NDC Y-flip — always required
    ```
-   `glm::lookAt()` and `glm::perspective()` are right-handed and WILL produce a black screen. No crash, no error — just nothing visible.
-3. **Camera at negative Z, looking toward positive Z.** Example: `eye = (0, 1, -3)`, `target = (0, 0, 10)`.
-4. **CCW winding = front face** (with `INVERT_Z`, the engine swaps to CW internally via `VK_FRONT_FACE_CLOCKWISE`).
+   Mixing the two produces a **black screen with no crash and no error** — geometry is silently
+   backface-culled. If nothing renders, suspect this first.
+3. **Camera placement follows the same choice.** Left-handed: at negative Z looking toward
+   positive Z, e.g. `eye = (0, 1, -3)`, `target = (0, 0, 10)`. Right-handed: the reverse.
+4. **CCW winding = front face** by default. Opting into `INVERT_Z_SETTING` swaps the pipeline to
+   `VK_FRONT_FACE_CLOCKWISE`, because left-handed geometry winds the other way.
 5. **Use `BASIC` SteerSetup** (not `NO_DEPTH_BUFFER`) for any 3D content that needs depth testing.
 6. **Use a visible clear color during development.** Near-black is indistinguishable from "nothing rendering." Use something like `{ 0.1, 0.15, 0.35, 1.0 }`.
 
@@ -33,85 +47,72 @@ MyProject/
 ├── VulkanModule -> (symlink to VulkanModule)
 ├── CMakeLists.txt
 ├── include/
-│   ├── AppConstants.h        # REQUIRED — engine includes this from consuming app
-│   ├── AppSettings.h         # REQUIRED — settings persistence
-│   ├── PlatformSpecifics.h   # REQUIRED — copy from TestHarness/include/
-│   ├── PlatformConstants.h   # REQUIRED — copy from TestHarness/include/
 │   └── MyApp.h               # Your app class
 └── src/
     ├── main.cpp
-    ├── AppSettings.cpp        # Copy from TestHarness/src/
-    ├── MyApp.cpp
+    ├── MyApp.cpp             # also defines the two functions below
     └── shaders/
         ├── myshader.vert
-        ├── myshader.frag
-        ├── myshader-vert.spv  # Pre-compiled SPIR-V
-        └── myshader-frag.spv
+        └── myshader.frag     # compiled to SPIR-V by the build
 ```
 
-### Required Boilerplate Files (copy from TestHarness, then customize)
+### The Two Functions You Must Define
 
-**`AppConstants.h`** — The engine `#include`s this file. Every project must provide it.
+The module reaches up into its consumer for **exactly two things**, both *declared* by the module
+and *defined* by you. The linker enforces both, so neither can be forgotten silently. There is no
+required `AppConstants.h` — the module includes no app-supplied header at all.
+
+**1. `AppVulkanConfig()`** — `Setup/VulkanConfig.h`. Every field is defaulted, so supply only what
+you care about:
 ```cpp
-#ifndef AppConstants_h
-#define AppConstants_h
+#include "VulkanConfig.h"
 
-#ifdef INSTANTIATE
-  #define extern
-#endif
-
-#include "PlatformConstants.h"
-#include "VulkanPlatform.h"
-#include "AppSettings.h"
-
-extern struct Constants
+const VulkanConfig& AppVulkanConfig()
 {
-    const StrPtr AppName            = "MyProject";
-    const uint32_t AppVersion       = VK_MAKE_VERSION(1, 0, 0);
-    const StrPtr WindowTitle        = "My Window Title";
-    const StrPtr SettingsFileName   = "Settings.json";
-    const StrPtr DebugLogFileName   = "DebugLog.txt";
-    const StrPtr CompanyName        = "GitHubProject";
-    const StrPtr ProjectName        = "MyProject";
-
-    const int DefaultWindowWidth    = 1280;
-    const int DefaultWindowHeight   = 720;
-    const int MaxSaneScreenWidth    = 7680 * 2;
-    const int MaxSaneScreenHeight   = 4320 * 2;
-
-    // USE A VISIBLE COLOR during development:
-    VkClearColorValue DefaultClearColor = { { 0.1f, 0.15f, 0.35f, 1.0f } };
-
-    const bool SupportStereo3D      = false;
-
-    StrPtr  getExePath() const  { return exePath; }
-    void    setExePath(StrPtr p){ if (exePath == nullptr) exePath = p; }
-private:
-    StrPtr  exePath = nullptr;
-public:
-    AppSettings  Settings;
-} AppConstants;
-
-#ifdef extern
-  #undef extern
-#endif
-#endif
+    static VulkanConfig config = [] {
+        VulkanConfig cfg;
+        cfg.appName      = "MyProject";
+        cfg.windowTitle  = "My Window Title";
+        cfg.companyName  = "MyCompany";     // these two decide the per-user
+        cfg.projectName  = "MyProject";     //   settings directory
+        cfg.clearColor   = { { 0.1f, 0.15f, 0.35f, 1.0f } };   // visible! see rule 6
+        return cfg;
+    }();
+    return config;      // (set cfg.exePath from argv[0] per call if you want it logged)
+}
 ```
 
-**`PlatformSpecifics.h`** and **`PlatformConstants.h`** — Copy verbatim from `TestHarness/include/`. These are app-level files the engine expects to find in the consumer's include path.
+**2. `AppStoredSettings()`** — `Setup/iAppSettings.h`. Returning `nullptr` is completely
+legitimate and means "this app persists nothing": windows then open at `defaultWindowWidth` ×
+`defaultWindowHeight` and saving is skipped. **Start here**, and only implement `iAppSettings`
+once you actually want window geometry to survive a restart:
+```cpp
+#include "iAppSettings.h"
 
-**`AppSettings.h` / `AppSettings.cpp`** — Copy verbatim from TestHarness. Handles window geometry persistence.
+iAppSettings* AppStoredSettings()   { return nullptr; }
+```
+
+⚠️ **Both are functions, deliberately** — they can be called during static initialization, before
+`main()` runs. Use a function-local static (as above), never a namespace-scope global, and if you
+do return a real settings object, gate it behind a zero-initialized `bool` set at the end of that
+object's constructor — otherwise an early call dispatches through a zero vtable and crashes.
+See `TestHarness/src/AppSettings.cpp` for that guard.
+
+### Optional: the AppConstants convention
+
+TestHarness and LevelEdit keep an `AppConstants.h` holding these values and map it into the two
+functions above. That is **a convenience, not a requirement** — the module never sees it. If you
+do copy that pattern, note its `INSTANTIATE` idiom `#define`s `extern` away, so exactly one
+translation unit must instantiate it, its prerequisites must already be included, and nothing may
+include it beforehand. Simpler to skip it entirely on a new project.
 
 ### main.cpp Template
 
 ```cpp
 #include "MyApp.h"
-#include "AppConstants.h"
 
 int main(int argc, char* argv[])
 {
-    AppConstants.setExePath(argv[0]);
-
     MyApp app;
     try {
         app.Init();
@@ -134,7 +135,6 @@ int main(int argc, char* argv[])
 #ifndef MyApp_h
 #define MyApp_h
 
-#include "AppSettings.h"
 #include "PlatformSDL.h"
 #include "VulkanSetup.h"
 #include "DrawableSpecifier.h"
@@ -628,13 +628,10 @@ set(EXECUTABLE_OUTPUT_PATH build)
 set(MyProject_src
     "src/main.cpp"
     "src/MyApp.cpp"
-    "src/AppSettings.cpp"
     # ... your additional source files
 )
 
 set(MyProject_include
-    "include/AppConstants.h"
-    "include/AppSettings.h"
     "include/MyApp.h"
     # ... your additional headers
 )
@@ -726,7 +723,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     "SDL_MAIN_HANDLED"
     "IMGUI_DISABLE"          # Required unless you have External/imgui-src/
-)
+  # "INVERT_Z_SETTING=true"  # Uncomment ONLY for a left-handed world (+Z into screen),
+)                            #  and then supply LH matrices yourself — see Critical Rules 1-2.
 
 if(APPLE)
     target_compile_definitions(${PROJECT_NAME} PRIVATE "VK_USE_PLATFORM_METAL_EXT")
