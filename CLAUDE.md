@@ -142,10 +142,13 @@ VulkanModule is a reusable foundation for Vulkan graphics projects, providing ob
 - Pipeline configured with `VK_FRONT_FACE_COUNTER_CLOCKWISE` by default
 - All geometry (manually-defined or procedurally-generated) must use CCW winding
 - OBJ files follow CCW standard (Wavefront specification)
-- See `Objects/GraphicsPipeline.cpp` lines 204-219 for detailed rationale
+- See the `DEV NOTE` at the end of `Objects/GraphicsPipeline.cpp` for detailed rationale
 
 **Override for Direct3D/Unity Models:**
 - Use `FRONT_CLOCKWISE` or `MODELED_FOR_DIRECT3D` Customizer flags for CW-wound models
+- Under `INVERT_Z` the two flips **cancel**, back to counter-clockwise — a left-handed app and a
+  D3D-wound model already agree. (⚠️ Fixed Aug 2026: a bitwise `^` on mismatched operands meant
+  they never cancelled, so this override was inert in exactly the apps that need it.)
 - See "Rendering Customizations" section below for details
 
 ### Core Components

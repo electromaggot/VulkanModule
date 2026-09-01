@@ -83,10 +83,20 @@ void GraphicsPipeline::create(ShaderModules& shaderModules, VertexAbstract* pVer
 		.pScissors		= &scissor
 	};
 
-	// Simplest way to INVERT_Z is VK_FRONT_FACE_CLOCKWISE, since Vulkan is COUNTER_CLOCKWISE.
-	//	However `customize` allows that swap on per-model basis, so INVERT_Z reverses that:
-	VkFrontFace frontFace = ((customize & FRONT_CLOCKWISE) ^ INVERT_Z) ?		// (*) note at bottom
-							VK_FRONT_FACE_CLOCKWISE : VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	// Vulkan's front face is COUNTER_CLOCKWISE by default (see (*) note at bottom).  Two separate
+	//	things can flip that, and when BOTH apply they cancel back to counter-clockwise:
+	//	  - the coordinate system (app-wide): left-handed geometry winds the opposite way;
+	//	  - this particular model: already authored wound the other way (Direct3D/Unity source).
+	//
+	const bool flippedByCoordinateSystem = INVERT_Z;
+	const bool flippedByThisModel		 = (customize & FRONT_CLOCKWISE) != 0;
+
+	VkFrontFace frontFace = flippedByCoordinateSystem != flippedByThisModel		// logical XOR:
+							? VK_FRONT_FACE_CLOCKWISE							//	one, not both
+							: VK_FRONT_FACE_COUNTER_CLOCKWISE;
+		// Was a BITWISE `^` on mismatched operands -- FRONT_CLOCKWISE is 0b100, INVERT_Z is 0/1,
+		//	so 4^1 = 5 (still truthy) and the two could never cancel.  A per-model override was
+		//	therefore inert in any left-handed app, which is exactly where you would reach for it.
 
 	VkPipelineRasterizationStateCreateInfo rasterizer = {
 		.sType	= VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
