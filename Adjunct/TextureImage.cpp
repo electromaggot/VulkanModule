@@ -54,7 +54,7 @@ TextureImage::~TextureImage()
 
 void TextureImage::ReGenerateMipmaps()
 {
-	if (pStagingBuffer)	// i.e. wantMutable && texSpec.filterMode == MIPMAP)
+	if (pStagingBuffer && mipmaps.IsEnabled())	// i.e. wantMutable && texSpec.filterMode == MIPMAP)
 	{
 		mipmaps.Generate(image, imageInfo.format, imageInfo.wide, imageInfo.high);
 	}
@@ -79,6 +79,12 @@ void TextureImage::create(TextureSpec& texSpec, GraphicsDevice& graphicsDevice, 
 	uint32_t height	= imageInfo.high;
 	VkFormat format	= imageInfo.format;
 
+	if (texSpec.filterMode == MIPMAP || texSpec.filterMode == MIPMAP_SHARP)
+		mipmaps.UseFullChain(width, height);	// The ONLY place this texture opts in.  Everything
+												//	below asks mipmaps.IsEnabled() rather than
+												//	retesting filterMode, so the levels we allocate
+												//	and the levels we fill cannot disagree.
+
 	pStagingBuffer	= new class StagingBuffer(*this);
 
 	pStagingBuffer->CopyInImageData(texSpec);
@@ -92,7 +98,7 @@ void TextureImage::create(TextureSpec& texSpec, GraphicsDevice& graphicsDevice, 
 
 	pStagingBuffer->CopyOutToTextureImage();
 
-	if (texSpec.filterMode == MIPMAP || texSpec.filterMode == MIPMAP_SHARP)
+	if (mipmaps.IsEnabled())
 		mipmaps.Generate(image, format, width, height);
 	else
 		transitionImageLayout(image, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,	// from
@@ -119,6 +125,9 @@ void TextureImage::createBlank(ImageInfo& params, GraphicsDevice& graphicsDevice
 		pStagingBuffer->Clear();
 	}
 
+	if (mipmap)
+		mipmaps.UseFullChain(params.wide, params.high);		// (see note in create() above)
+
 	createImage(params.wide, params.high, params.format, VK_IMAGE_TILING_OPTIMAL,
 				VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -128,7 +137,7 @@ void TextureImage::createBlank(ImageInfo& params, GraphicsDevice& graphicsDevice
 
 	pStagingBuffer->CopyOutToTextureImage();
 
-	if (mipmap)
+	if (mipmaps.IsEnabled())
 		mipmaps.Generate(image, params.format, params.wide, params.high);
 	else
 		transitionImageLayout(image, params.format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,	// from
@@ -176,7 +185,9 @@ void TextureImage::createSampler(TextureSpec& texSpec)
 		.compareEnable	= VK_FALSE,
 		.compareOp		= VK_COMPARE_OP_ALWAYS,
 		.minLod		 = 0,
-		.maxLod		 = RenderSettings.useMipLod ? static_cast<float>(mipmaps.NumLevels() - 1) : 0,
+		.maxLod		 = (RenderSettings.useMipLod && mipmaps.IsEnabled())		// Never let the sampler
+					   ? static_cast<float>(mipmaps.NumLevels() - 1) : 0,		//	reach a level that
+																				//	was never filled.
 		.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
 		.unnormalizedCoordinates = VK_FALSE	// (i.e. 0.0 to 1.0 range vs. in pixels)
 	};

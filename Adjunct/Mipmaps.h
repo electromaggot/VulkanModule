@@ -19,8 +19,8 @@ class Mipmaps : CommandBufferBase
 public:
 	Mipmaps(VkCommandPool& pool, GraphicsDevice& device)
 		:	CommandBufferBase(pool, device),
-			numLevels(1)
-	{ }
+			numLevels(1)		// i.e. DISABLED: just the one full-size image, no chain.
+	{ }							//	Nothing gets a chain it did not explicitly ask for.
 
 		// MEMBER
 private:
@@ -28,19 +28,38 @@ private:
 
 		// METHODS
 public:
-	uint32_t CalculateNumberOfLevels(int32_t textureWidth, int32_t textureHeight)
+	// How many levels a full chain WOULD have, for these dimensions.  Pure -- static, and touches
+	//	no state, so it is safe to call when merely sizing or reporting.
+	//
+	static uint32_t LevelsToFit(int32_t textureWidth, int32_t textureHeight)
 	{
-		numLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(textureWidth, textureHeight)))) + 1;
-		return numLevels;
+		return static_cast<uint32_t>(std::floor(std::log2(std::max(textureWidth, textureHeight)))) + 1;
 	}
 
-	uint32_t NumLevels()	{ return numLevels; }
+	// OPT IN to mipmapping.  The one and only mutator, and deliberately a verb: an earlier
+	//	CalculateNumberOfLevels() both computed AND assigned while reading like a query, so callers
+	//	(ImageResource::createImage among them) silently enabled mipmapping just by asking how many
+	//	levels there were.  See the DEV NOTE at the end of Objects/ImageResource.cpp.
+	//
+	void UseFullChain(int32_t textureWidth, int32_t textureHeight)
+	{
+		numLevels = LevelsToFit(textureWidth, textureHeight);
+	}
+
+	// Ask THIS, not "numLevels > 1", so that allocating levels and filling them cannot disagree:
+	//	whoever sizes the image and whoever generates the chain read the same single answer.
+	//
+	bool		IsEnabled() const	{ return numLevels > 1; }
+
+	uint32_t	NumLevels()  const	{ return numLevels; }
 
 
 	void Generate(VkImage image, VkFormat imageFormat, int32_t textureWide, int32_t textureHigh)
 	{
-		if (numLevels <= 1)
-			Log(WARN, "Using MIPMAPS, but Number of Levels is %d (should be > 1) or was not Calculate()d in VkImageCreateInfo.", numLevels);
+		if (! IsEnabled()) {	// Nothing to blit into -- the image was sized for a single level.
+			Log(WARN, "Generate() called without UseFullChain() -- no mipmaps to generate.");
+			return;
+		}
 
 		VkFormatProperties formatProperties;
 		vkGetPhysicalDeviceFormatProperties(graphicsDevice.getGPU(), imageFormat, &formatProperties);

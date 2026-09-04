@@ -60,7 +60,7 @@ void ImageResource::createImageView(VkImageAspectFlags aspectFlags/* = VK_IMAGE_
 		.subresourceRange = {
 			.aspectMask		= aspectFlags,
 			.baseMipLevel	= 0,
-			.levelCount		= pMipmaps ? pMipmaps->NumLevels() : 1, // (note: NumLevels will also be 1 if mipmaps not used)
+			.levelCount		= pMipmaps ? pMipmaps->NumLevels() : 1,	// (1 unless mipmapping was opted into)
 			.baseArrayLayer = 0,
 			.layerCount		= 1
 		}
@@ -84,7 +84,8 @@ void ImageResource::createImage(uint32_t width, uint32_t height, VkFormat format
 		.imageType	 = VK_IMAGE_TYPE_2D,
 		.format		 = format,
 		.extent		 = { width, height, 1 /* = depth, must be 1 */ },
-		.mipLevels	 = pMipmaps ? pMipmaps->CalculateNumberOfLevels(width, height) : 1,
+		.mipLevels	 = pMipmaps ? pMipmaps->NumLevels() : 1,	// a QUERY -- the owner opts in (and
+						//	fills!) via Mipmaps::UseFullChain() before calling here; see (*) below.
 		.arrayLayers = 1,
 		.samples	 = VK_SAMPLE_COUNT_1_BIT,
 		.tiling		 = tiling,
@@ -117,3 +118,25 @@ void ImageResource::createImage(uint32_t width, uint32_t height, VkFormat format
 
 	vkBindImageMemory(device, image, imageDeviceMemory, 0);
 }
+
+
+/* (*) DEV NOTE - why mipLevels is only ever QUERIED here
+
+	This line used to call Mipmaps::CalculateNumberOfLevels(width, height), which despite its name
+	did not merely calculate: it ASSIGNED Mipmaps::numLevels.  Every TextureImage hands
+	ImageResource a Mipmaps (only DepthBuffer passes none), so simply asking how many levels there
+	were is what turned mipmapping on -- for every texture, whether or not it wanted it.  A 512x512
+	image got 10 levels; a texture loaded with plain LINEAR filtering never ran Generate(), so
+	levels 1..9 stayed empty, while createImageView() exposed all ten and createSampler() set
+	maxLod = 9.
+
+	Nothing complained.  It stayed invisible until a textured surface was MINIFIED, at which point
+	the sampler computed a LOD above 0, read an empty level, and returned pure black -- which,
+	against a black clear colour, looks like an object that simply is not rendering.  It cost a long
+	debugging session in HelloVulkanSDL, whose textured quads are minified.
+
+	The API now separates the two ideas: LevelsToFit() computes (pure, static), UseFullChain()
+	opts in (the one mutator), and IsEnabled()/NumLevels() report.  Sizing the image, creating its
+	view, generating the chain, and clamping the sampler's maxLod all read that single state, so
+	they cannot drift apart again.
+*/
