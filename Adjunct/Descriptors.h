@@ -39,10 +39,9 @@ struct DescribEd {	// Pronounced "describe-ed" meaning: "the thing being describ
 	//	image, so frame N's descriptor set must name frame N's buffer.	When populated, bufferInfo at index iFrame
 	vector<VkDescriptorBufferInfo> perFrameBufferInfo;			 //	is used instead of the single bufferInfo above.
 
-	DescribEd(VkDescriptorBufferInfo bufinf, VkShaderStageFlags flags)
-		:	type(BUFFER), bufferInfo(bufinf), stage(flags)	{ }
-	DescribEd(VkDescriptorBufferInfo bufinf, VkShaderStageFlags flags, GeneralVkDescriptorType bufType)
-		:	type(bufType), bufferInfo(bufinf), stage(flags)	{ }  // For dynamic buffers
+	// NOTE: constructors taking single VkDescriptorBufferInfo were deliberately removed.  Buffers here are always
+	//	per-frame, so accepting one info silently aims every frame's set at same buffer ← bug.  ∴ Pass the vector.
+
 	DescribEd(VkDescriptorImageInfo imginf, VkShaderStageFlags flags)
 		:	type(TEXTURE), imageInfo(imginf), stage(flags)	{ }
 	// Constructor for per-frame uniform buffers → the ordinary case for a UBO.  bufType keeps a DYNAMIC_BUFFER

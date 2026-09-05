@@ -117,6 +117,21 @@ void Descriptors::createDescriptorSets()
 	if (call != VK_SUCCESS)
 		Fatal("Allocate Descriptor Sets FAILURE" + ErrStr(call));
 
+	// Each per-frame vector is indexed below by iBuffer, so it must have an entry per swapchain image.  Buffers
+	//	can no longer get this wrong (their counts derive from this same swapchain), but per-frame IMAGE info
+	//	arrives from the application - DrawableProperties::perFrameRuntimeTextures, e.g. shadow maps - and nothing
+	//	else checks its length.  Short by one & we would index past the end, reading whatever follows as a descriptor.
+	for (uint32_t iBind = 0; iBind < numDescribers; ++iBind) {
+		if (describers[iBind].hasPerFrameBufferInfo() && describers[iBind].perFrameBufferInfo.size() != numBuffers)
+			Fatal("Descriptor binding " + to_string(iBind) + " supplies "
+				  + to_string(describers[iBind].perFrameBufferInfo.size())
+				  + " per-frame buffers, but the swapchain has " + to_string(numBuffers) + " images.");
+		if (describers[iBind].hasPerFrameImageInfo() && describers[iBind].perFrameImageInfo.size() != numBuffers)
+			Fatal("Descriptor binding " + to_string(iBind) + " supplies "
+				  + to_string(describers[iBind].perFrameImageInfo.size())
+				  + " per-frame images, but the swapchain has " + to_string(numBuffers) + " images.");
+	}
+
 	for (int iBuffer = 0; iBuffer < numBuffers; ++iBuffer)
 	{
 		VkWriteDescriptorSet descriptorWrite[numDescribers];

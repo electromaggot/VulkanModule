@@ -16,14 +16,12 @@
 #include <stdexcept>
 #include <algorithm>
 
-DynamicUniformBuffer::DynamicUniformBuffer(uint32_t maxObjects, uint32_t framesInFlight,
-										   GraphicsDevice& device)
-	: BufferBase(device)
-	, maxObjects(maxObjects)
-	, framesInFlight(framesInFlight)
+DynamicUniformBuffer::DynamicUniformBuffer(uint32_t maxObjects, Swapchain& swapchain, GraphicsDevice& device)
+	:	BufferBase(device)
+	  , maxObjects(maxObjects)
+	  , framesInFlight(static_cast<uint32_t>(swapchain.getImageViews().size()))
 {
-	// Calculate aligned size for dynamic UBO requirements
-	VkPhysicalDeviceProperties properties;
+	VkPhysicalDeviceProperties properties;				// Calculate aligned size for dynamic UBO requirements.
 	vkGetPhysicalDeviceProperties(physicalDevice, &properties);
 
 	uint32_t minAlignment = static_cast<uint32_t>(properties.limits.minUniformBufferOffsetAlignment);
@@ -47,12 +45,10 @@ void DynamicUniformBuffer::create()
 	mappedMemory.resize(framesInFlight);
 
 	for (uint32_t i = 0; i < framesInFlight; ++i) {
-		// Use BufferBase's helper method to create the buffer
-		createGeneralBuffer(totalBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		createGeneralBuffer(totalBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,	// Use BufferBase's helper method
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,	//	 to create the buffer.
 			uniformBuffers[i], uniformBuffersMemory[i]);
-
-		// Map memory for this buffer
+																					// Map memory for this buffer:
 		call = vkMapMemory(device, uniformBuffersMemory[i], 0, totalBufferSize, 0, &mappedMemory[i]);
 		if (call != VK_SUCCESS) {
 			Fatal("Failed to map dynamic uniform buffer memory!" + ErrStr(call));
@@ -79,21 +75,16 @@ void DynamicUniformBuffer::destroy()
 }
 
 void DynamicUniformBuffer::updateObjectTransform(uint32_t frameIndex, uint32_t objectIndex, const mat4& modelMatrix,
-												  float opacity, float effectFlags,
-												  float effectParam, float effectParam2)
+												  float opacity, float effectFlags, float effectParam, float effectParam2)
 {
-	if (frameIndex >= framesInFlight || objectIndex >= maxObjects) {
-		return; // Invalid indices
-	}
+	if (frameIndex >= framesInFlight || objectIndex >= maxObjects)
+		return;		// Invalid indices
 
-	// Calculate offset for this object
-	size_t offset = objectIndex * alignedObjectSize;
+	size_t offset = objectIndex * alignedObjectSize;						// Calculate offset for this object.
 
-	// Get pointer to this object's data
-	uint8_t* bufferData = static_cast<uint8_t*>(mappedMemory[frameIndex]);
+	uint8_t* bufferData = static_cast<uint8_t*>(mappedMemory[frameIndex]);	// Get pointer to this object's data.
 	PerObjectData* objectData = reinterpret_cast<PerObjectData*>(bufferData + offset);
-
-	// Copy model matrix, opacity, and effect flags
+																			// Copy model matrix, opacity, and effect flags:
 	memcpy(objectData->model, glm::value_ptr(modelMatrix), sizeof(objectData->model));
 	objectData->opacity = opacity;
 	objectData->effectFlags = effectFlags;
@@ -112,20 +103,19 @@ VkDescriptorBufferInfo DynamicUniformBuffer::getDescriptorBufferInfo(uint32_t fr
 	if (frameIndex < uniformBuffers.size()) {
 		bufferInfo.buffer = uniformBuffers[frameIndex];
 		bufferInfo.offset = 0;
-		bufferInfo.range = alignedObjectSize; // Range per object
+		bufferInfo.range = alignedObjectSize;	// Range per object
 	}
 	return bufferInfo;
 }
 
-void DynamicUniformBuffer::Recreate(uint32_t maxObjects, uint32_t framesInFlight)
+void DynamicUniformBuffer::Recreate(uint32_t maxObjects, Swapchain& swapchain)
 {
 	destroy();
 
 	this->maxObjects = maxObjects;
-	this->framesInFlight = framesInFlight;
+	this->framesInFlight = static_cast<uint32_t>(swapchain.getImageViews().size());
 
-	// Recalculate buffer size
-	totalBufferSize = static_cast<VkDeviceSize>(alignedObjectSize * maxObjects);
+	totalBufferSize = static_cast<VkDeviceSize>(alignedObjectSize * maxObjects);	// Recalculate buffer size.
 
 	create();
 }

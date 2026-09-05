@@ -13,6 +13,7 @@
 #define DynamicUniformBuffer_h
 
 #include "BufferBase.h"
+#include "Swapchain.h"
 #include "VulkanMath.h"
 #include <vector>
 
@@ -28,8 +29,8 @@ public:
 		alignas(4)  float effectParam2;		// Second effect parameter (default 0.0, app-defined meaning)
 	};
 
-	DynamicUniformBuffer(uint32_t maxObjects, uint32_t framesInFlight,
-						 GraphicsDevice& device);
+	DynamicUniformBuffer(uint32_t maxObjects, Swapchain& swapchain,		// ← Swapchain now provides the per-frame
+						 GraphicsDevice& device);						//	buffer count.  See DEV NOTE below.
 	~DynamicUniformBuffer();
 
 	// Update a specific object's transform, opacity, and optional effect flags/param
@@ -51,7 +52,7 @@ public:
 	uint32_t getFramesInFlight() const		{ return framesInFlight; }
 
 	// Recreate buffers (e.g., on window resize)
-	void Recreate(uint32_t maxObjects, uint32_t framesInFlight);
+	void Recreate(uint32_t maxObjects, Swapchain& swapchain);
 
 	void destroy();		// Public for device-loss teardown (old device); idempotent (clears vectors).
 
@@ -72,3 +73,11 @@ private:
 };
 
 #endif // DynamicUniformBuffer_h
+
+
+/* DEV NOTE - "frames in flight" count source-of-truth
+   The per-frame buffer count comes from the SWAPCHAIN, exactly as UniformBuffer's does - not a number the application
+	supplies.  The former `uint32_t framesInFlight` parameter, which every caller filled via swapchain.getNumImages()
+	anyway, was a second source of truth for what Descriptors and UniformBuffer both read from the swapchain directly.
+	Passing a different count would have mis-sized the per-frame descriptor vectors against each other.
+*/
