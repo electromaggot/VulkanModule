@@ -44,7 +44,11 @@ public:
 	VkDescriptorBufferInfo getDescriptorBufferInfo(uint32_t frameIndex) const;
 
 	// Get the size per object (aligned)
-	uint32_t getAlignedObjectSize() const { return alignedObjectSize; }
+	uint32_t getAlignedObjectSize() const	{ return alignedObjectSize; }
+
+	// How many per-frame buffers exist - i.e. the valid range of frameIndex above.  Callers need it to describe one
+	//	VkDescriptorBufferInfo per frame; describe frame N to read buffer N which updateObjectTransform() writes.
+	uint32_t getFramesInFlight() const		{ return framesInFlight; }
 
 	// Recreate buffers (e.g., on window resize)
 	void Recreate(uint32_t maxObjects, uint32_t framesInFlight);

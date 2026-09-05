@@ -69,3 +69,26 @@ void UniformBuffer::Recreate(int bytesizeUniformBufferObject, Swapchain& swapcha
 	destroy();
 	create();
 }
+
+
+/* DEV NOTE - Two bugs that hid each other, and why per-frame buffers now actually work...
+  This class allocates one buffer per swapchain image so that writing the CPU side for the next
+	frame cannot disturb a buffer the GPU is still reading for a frame in flight.  Until refactor
+	that intent was defeated twice over, and each defect concealed the other:
+	  1. getDescriptorBufferInfo() took no argument and always returned uniformBuffers[0].  It's
+		 called once, while descriptors are being built, so EVERY frame's descriptor set pointed
+		 at buffer 0.  Buffers 1..n-1 were dutifully written by Update() and never read.
+	  2. CommandBufferSet::recordCommands() passed `iBuffer` - its loop index over that set's own
+		 VkCommandBuffers - as the renderables' frame index.  Each set was allocated exactly one
+		 command buffer (CommandControl::PostInitPrepBuffers), so that index was always 0, and
+		 every frame therefore bound descriptor set 0.
+  Fixing either alone changed nothing observable, which was the trap: correct the descriptor and
+	you still only ever bind set 0; correct the index and every set still names buffer 0.  Only
+	together did they yield per-frame uniforms.  A half-fix looked like a wrong theory.
+  The visible cost beforehand: the GPU always read buffer 0, which Update() refreshed only on
+	frames where the acquired image index happened to be 0 - one frame in three on a triple-
+	buffered swapchain.  UBO-driven motion therefore advanced at a third of the frame rate, and
+	buffer 0 could be rewritten while an in-flight frame was still reading it: precisely the
+	hazard the per-frame allocation exists to avoid.  The same stale index also made
+	SecondaryRenderable replay frame 0's secondary command buffer on every frame.
+*/

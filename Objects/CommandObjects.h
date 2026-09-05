@@ -68,7 +68,10 @@ private:
 public:
 	void allocateVkCommandBuffer();
 	void freeVkCommandBuffers();
-	void recordCommands(vector<iRenderableBase*> pRenderables, VkFramebuffer& framebuffer,
+	// iFrame is the SWAPCHAIN IMAGE index this set is being recorded for.  Renderables need it to
+	//	select their per-frame descriptor set (and, for SecondaryRenderable, their per-frame
+	//	secondary buffer), so it must be threaded through rather than inferred here.
+	void recordCommands(vector<iRenderableBase*> pRenderables, int iFrame, VkFramebuffer& framebuffer,
 						VkExtent2D& swapChainExtent, VkRenderPass& renderPass);
 		// getters
 	uint32_t	numBufferSets()	 {	return (uint32_t) vkCommandBuffers.size();	}

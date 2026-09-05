@@ -53,7 +53,7 @@ struct iRenderableBase
 
 	virtual bool Update(GameClock& time) { return false; }	// Be sure to override if re-recording command buffers each frame!
 
-	virtual void IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex = 0) = 0;
+	virtual void IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int iFrame = 0) = 0;
 
 	virtual void Recreate(VulkanSetup& vulkan, bool reloadMesh = false) { }
 };
@@ -116,7 +116,7 @@ struct iRenderable : iRenderableBase
 
 
 	virtual iRenderable* newConcretion(CommandRecording* pRecordingMode) const = 0;
-	virtual void IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex = 0) = 0;
+	virtual void IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int iFrame = 0) = 0;
 
 	// Check if this renderable uses secondary command buffers.
 	virtual bool IsSecondaryCommandBuffer() const { return false; }

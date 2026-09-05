@@ -38,13 +38,17 @@ private:
 	void create();
 	void destroy();
 public:
-	void Update(int indexCurrentImage, void* pUBO, size_t nbytesUBO);
+	void Update(int iFrame, void* pUBO, size_t nbytesUBO);
 	void Recreate(int bytesizeUniformBufferObject, Swapchain& swapchain);
 
 		// getters
-	VkDescriptorBufferInfo getDescriptorBufferInfo() {
+	uint32_t NumBuffers() const	{ return numBuffers; }
+
+	// One buffer per swapchain image, so the descriptor set bound for a frame must
+	//	name THAT frame's buffer.  See the DEV NOTE at the end of UniformBuffer.cpp.
+	VkDescriptorBufferInfo getDescriptorBufferInfo(uint32_t iFrame) {
 		return {
-			.buffer	= uniformBuffers[0],
+			.buffer	= uniformBuffers[iFrame < numBuffers ? iFrame : 0],
 			.offset	= 0,
 			.range	= nbytesBufferObject	// (or VK_WHOLE_SIZE)
 		};

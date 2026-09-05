@@ -90,33 +90,28 @@ void SecondaryRenderable::AllocateSecondaryCommandBuffers(VulkanSetup& vulkan)
 // Record Vulkan draw commands into the secondary command buffer.
 //	Called during AllocateSecondaryCommandBuffers() to pre-record commands.
 //
-void SecondaryRenderable::IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex)
+void SecondaryRenderable::IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int iFrame)
 {
-	// Bind graphics pipeline:
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.getVkPipeline());
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.getVkPipeline());	// Bind graphics pipeline.
 
 	if (descriptors.exist()) {		// Bind descriptor sets:
 		// DIAGNOSTIC: Check for out-of-bounds or null descriptor set access.
 		auto& sets = descriptors.getSets();
-		if (bufferIndex < 0 || bufferIndex >= (int)sets.size()) {
-			Log(ERROR, "2NDARY DESCRIPTOR OOB: '%s' bufferIndex=%d sets.size()=%zu", name.c_str(), bufferIndex, sets.size());
+		if (iFrame < 0 || iFrame >= (int) sets.size()) {
+			Log(ERROR, "2NDARY DESCRIPTOR OUT-OF-BOUNDS: '%s' iFrame=%d sets.size()=%zu", name.c_str(), iFrame, sets.size());
 			return;
 		}
-		if (sets[bufferIndex] == VK_NULL_HANDLE) {
-			Log(ERROR, "2NDARY DESCRIPTOR NULL: '%s' bufferIndex=%d", name.c_str(), bufferIndex);
+		if (sets[iFrame] == VK_NULL_HANDLE) {
+			Log(ERROR, "2NDARY DESCRIPTOR NULL: '%s' iFrame=%d", name.c_str(), iFrame);
 			return;
 		}
-		if (hasDynamicOffset) {
-			// Bind descriptor with dynamic offset for per-object transforms via Dynamic UBO.
+		if (hasDynamicOffset) {		// Bind descriptor with dynamic offset for per-object transforms via Dynamic UBO.
 			uint32_t dynamicOffsets[] = { dynamicOffset };
 			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-									pipeline.getPipelineLayout(), 0, 1,
-									&sets[bufferIndex], 1, dynamicOffsets);
-		} else {	// Standard descriptor binding without dynamic offset.
+									pipeline.getPipelineLayout(), 0, 1, &sets[iFrame], 1, dynamicOffsets);
+		} else						// Standard descriptor binding without dynamic offset.
 			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-									pipeline.getPipelineLayout(), 0, 1,
-									&sets[bufferIndex], 0, nullptr);
-		}
+									pipeline.getPipelineLayout(), 0, 1, &sets[iFrame], 0, nullptr);
 	}
 
 	if (addOns.pVertexBuffer) {		// Bind vertex buffer:
@@ -126,14 +121,11 @@ void SecondaryRenderable::IssueBindAndDrawCommands(VkCommandBuffer& commandBuffe
 	}
 
 	if (addOns.pIndexBuffer) {		// Draw indexed or non-indexed:
-				// Indexed draw: use index buffer.
-		vkCmdBindIndexBuffer(commandBuffer, addOns.pIndexBuffer->getVk(),
+		vkCmdBindIndexBuffer(commandBuffer, addOns.pIndexBuffer->getVk(),	// Indexed draw: use index buffer.
 							 0, VkIndexTypes[vertexObject.indexType]);
 		vkCmdDrawIndexed(commandBuffer, vertexObject.indexCount, vertexObject.instanceCount,
-										vertexObject.firstIndex, vertexObject.vertexOffset,
-										vertexObject.firstInstance);
-	} else {	// Non-indexed draw: use vertex buffer directly.
+										vertexObject.firstIndex, vertexObject.vertexOffset, vertexObject.firstInstance);
+	} else																	// Non-indexed draw: use vertex buffer directly.
 		vkCmdDraw(commandBuffer, vertexObject.vertexCount, vertexObject.instanceCount,
 								 vertexObject.firstVertex, vertexObject.firstInstance);
-	}
 }

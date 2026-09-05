@@ -35,12 +35,25 @@ struct DescribEd {	// Pronounced "describe-ed" meaning: "the thing being describ
 	// When populated, imageInfo at index iFrame is used instead of single imageInfo above.
 	vector<VkDescriptorImageInfo> perFrameImageInfo;
 
+	// Likewise per-frame BUFFER info, and for the same reason: a UniformBuffer allocates one buffer per swapchain
+	//	image, so frame N's descriptor set must name frame N's buffer.	When populated, bufferInfo at index iFrame
+	vector<VkDescriptorBufferInfo> perFrameBufferInfo;			 //	is used instead of the single bufferInfo above.
+
 	DescribEd(VkDescriptorBufferInfo bufinf, VkShaderStageFlags flags)
 		:	type(BUFFER), bufferInfo(bufinf), stage(flags)	{ }
 	DescribEd(VkDescriptorBufferInfo bufinf, VkShaderStageFlags flags, GeneralVkDescriptorType bufType)
 		:	type(bufType), bufferInfo(bufinf), stage(flags)	{ }  // For dynamic buffers
 	DescribEd(VkDescriptorImageInfo imginf, VkShaderStageFlags flags)
 		:	type(TEXTURE), imageInfo(imginf), stage(flags)	{ }
+	// Constructor for per-frame uniform buffers → the ordinary case for a UBO.  bufType keeps a DYNAMIC_BUFFER
+	//	dynamic: a DynamicUniformBuffer also holds one buffer per frame, and its dynamic offset selects the
+	//	OBJECT within a frame - so which FRAME still has to be chosen here, by the buffer this set names.
+	DescribEd(vector<VkDescriptorBufferInfo> perFrameBufInfo, VkShaderStageFlags flags,
+			  GeneralVkDescriptorType bufType = BUFFER)
+		:	type(bufType), stage(flags), perFrameBufferInfo(perFrameBufInfo) {
+		if (!perFrameBufferInfo.empty())			// Initialize union's bufferInfo with first
+			bufferInfo = perFrameBufferInfo[0];		//	frame's - for any single-frame access.
+	}
 	// Constructor for per-frame texture descriptors (e.g., shadow maps with multiple frames-in-flight).
 	DescribEd(vector<VkDescriptorImageInfo> perFrameImgInfo, VkShaderStageFlags flags)
 		:	type(TEXTURE), stage(flags), perFrameImageInfo(perFrameImgInfo) {
@@ -48,9 +61,10 @@ struct DescribEd {	// Pronounced "describe-ed" meaning: "the thing being describ
 		if (!perFrameImageInfo.empty())
 			imageInfo = perFrameImageInfo[0];
 	}
-	VkDescriptorType	getDescriptorType()		{ return (VkDescriptorType) type;	}
-	VkShaderStageFlags	getShaderStageFlags()	{ return stage;						}
-	bool				hasPerFrameImageInfo()	{ return !perFrameImageInfo.empty();}
+	VkDescriptorType	getDescriptorType()		{ return (VkDescriptorType) type;		}
+	VkShaderStageFlags	getShaderStageFlags()	{ return stage;							}
+	bool				hasPerFrameImageInfo()	{ return !perFrameImageInfo.empty();	}
+	bool				hasPerFrameBufferInfo()	{ return !perFrameBufferInfo.empty();	}
 };
 
 

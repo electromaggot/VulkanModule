@@ -90,7 +90,7 @@ void CommandBufferSet::freeVkCommandBuffers()
 	vkCommandBuffers.clear();
 }
 
-void CommandBufferSet::recordCommands(vector<iRenderableBase*> pBufferRenderables, VkFramebuffer& framebuffer,
+void CommandBufferSet::recordCommands(vector<iRenderableBase*> pBufferRenderables, int iFrame, VkFramebuffer& framebuffer,
 									  VkExtent2D& swapchainExtent, VkRenderPass& renderPass)
 {
 	VkClearValue clearValues[] = {
@@ -127,8 +127,10 @@ void CommandBufferSet::recordCommands(vector<iRenderableBase*> pBufferRenderable
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		// Record all batches with optimized pipeline binding, self-managed renderables last:
-		batchManager.recordBatches(commandBuffer, iBuffer, selfManagedRenderables);
+		// Record all batches with optimized pipeline binding, self-managed renderables last.
+		//	Note iFrame, NOT iBuffer: renderables index their per-frame descriptor sets (and secondary
+		//	command buffers) with this.  See the DEV NOTE at the end of 'Adjunct/UniformBuffer.cpp'.
+		batchManager.recordBatches(commandBuffer, iFrame, selfManagedRenderables);
 
 		vkCmdEndRenderPass(commandBuffer);
 
@@ -188,7 +190,7 @@ void CommandControl::PostInitPrepBuffers(VulkanSetup& vulkan)
 		if (buffersByFrame[iFrame].numBufferSets() > 0)		// Free old buffers first (reload case: prevents accumulation).
 			buffersByFrame[iFrame].freeVkCommandBuffers();
 		buffersByFrame[iFrame].allocateVkCommandBuffer();
-		buffersByFrame[iFrame].recordCommands(mergedRenderables, vulkan.framebuffers[iFrame],
+		buffersByFrame[iFrame].recordCommands(mergedRenderables, iFrame, vulkan.framebuffers[iFrame],
 											  vulkan.swapchain.getExtent(), vulkan.renderPass.getVkRenderPass());
 	}
 }
@@ -213,7 +215,7 @@ void CommandControl::RecordRenderablesForNextFrame(VulkanSetup& vulkan, int iNex
 	BuildMergedVectorFromTypedSources(mergedRenderables);
 
 	// Record command buffer for next frame.
-	buffersByFrame[iNextFrame].recordCommands(mergedRenderables, vulkan.framebuffers[iNextFrame],
+	buffersByFrame[iNextFrame].recordCommands(mergedRenderables, iNextFrame, vulkan.framebuffers[iNextFrame],
 											  vulkan.swapchain.getExtent(), vulkan.renderPass.getVkRenderPass());
 }
 

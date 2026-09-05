@@ -91,7 +91,7 @@ public:
 
 	// Record all batches into command buffer with optimized pipeline binding.
 	//	selfManagedRenderables: Renderables that manage their own state record last.
-	void recordBatches(VkCommandBuffer& commandBuffer, int bufferIndex,
+	void recordBatches(VkCommandBuffer& commandBuffer, int iFrame,
 					   const vector<iRenderableBase*>& selfManagedRenderables = {});
 
 	void clear();			// Clear all batches - call before rebuilding.

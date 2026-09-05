@@ -127,21 +127,20 @@ void Descriptors::createDescriptorSets()
 			VkDescriptorImageInfo*	pImageInfo	= nullptr;
 
 			switch (describers[iBind].type) {
-				case DYNAMIC_BUFFER:
-					pBufferInfo = &describers[iBind].bufferInfo;
+				case DYNAMIC_BUFFER:	// Dynamic too: its offset selects the OBJECT within a frame,
+				case BUFFER:							//	so which FRAME still comes from the buffer named here.
+					// Same reasoning as TEXTURE below: a UniformBuffer holds one buffer per swapchain image, so this
+					//	set - which is bound for frame iBuffer - must name that frame's buffer, not everyone's buffer 0.
+					if (describers[iBind].hasPerFrameBufferInfo())
+						pBufferInfo = &describers[iBind].perFrameBufferInfo[iBuffer];
+					else
+						pBufferInfo = &describers[iBind].bufferInfo;
 					break;
-				case BUFFER:
-					pBufferInfo = &describers[iBind].bufferInfo;
-					break;
-				case TEXTURE:
-					// Check if per-frame image info is provided (for resources that vary per frame)
-					if (describers[iBind].hasPerFrameImageInfo()) {
-						// Use per-frame image info (e.g., shadow maps with frames-in-flight)
-						pImageInfo = &describers[iBind].perFrameImageInfo[iBuffer];
-					} else {
-						// Use single image info (normal case for static textures)
+				case TEXTURE:		// Check if per-frame image info is provided, for resources that vary per frame.
+					if (describers[iBind].hasPerFrameImageInfo())					// Use per-frame image info, e.g.
+						pImageInfo = &describers[iBind].perFrameImageInfo[iBuffer];	//	shadow maps with frames-in-flight.
+					else			// Use single image info; normal case for static textures.
 						pImageInfo = &describers[iBind].imageInfo;
-					}
 					break;
 			}
 

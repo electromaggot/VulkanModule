@@ -22,39 +22,34 @@ Renderable::Renderable(DrawableSpecifier& drawable, VulkanSetup& vulkan, iPlatfo
 { }
 
 
-void Renderable::IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex)
+void Renderable::IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int iFrame)
 {
-	IssueBindAndDrawCommands(commandBuffer, bufferIndex, false);
+	IssueBindAndDrawCommands(commandBuffer, iFrame, false);
 }
 
-void Renderable::IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex, bool skipPipelineBind)
+void Renderable::IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int iFrame, bool skipPipelineBind)
 {
-	// Bind graphics pipeline, unless using batched rendering where pipeline already bound.
-	if (! skipPipelineBind)
+	if (! skipPipelineBind)			// Bind graphics pipeline, unless using batched rendering where pipeline already bound.
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.getVkPipeline());
 
 	if (descriptors.exist()) {		// Bind descriptor sets.
 		// DIAGNOSTIC: Check for out-of-bounds or null descriptor set access.
 		auto& sets = descriptors.getSets();
-		if (bufferIndex < 0 || bufferIndex >= (int)sets.size()) {
-			Log(ERROR, "DESCRIPTOR OOB: '%s' bufferIndex=%d sets.size()=%zu", name.c_str(), bufferIndex, sets.size());
+		if (iFrame < 0 || iFrame >= (int)sets.size()) {
+			Log(ERROR, "DESCRIPTOR OUT-OF_BOUNDS: '%s' iFrame=%d sets.size()=%zu", name.c_str(), iFrame, sets.size());
 			return;		// Skip draw to avoid crash.
 		}
-		if (sets[bufferIndex] == VK_NULL_HANDLE) {
-			Log(ERROR, "DESCRIPTOR NULL: '%s' bufferIndex=%d", name.c_str(), bufferIndex);
+		if (sets[iFrame] == VK_NULL_HANDLE) {
+			Log(ERROR, "DESCRIPTOR NULL: '%s' iFrame=%d", name.c_str(), iFrame);
 			return;		// Skip draw to avoid crash.
 		}
-		if (hasDynamicOffset) {
-					// Bind descriptor with dynamic offset for per-object transforms via Dynamic UBO.
+		if (hasDynamicOffset) {		// Bind descriptor with dynamic offset for per-object transforms via Dynamic UBO.
 			uint32_t dynamicOffsets[] = { dynamicOffset };
 			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-									pipeline.getPipelineLayout(), 0, 1,
-									&sets[bufferIndex], 1, dynamicOffsets);
-		} else {	// Standard descriptor binding without dynamic offset.
+									pipeline.getPipelineLayout(), 0, 1, &sets[iFrame], 1, dynamicOffsets);
+		} else						// Standard descriptor binding without dynamic offset.
 			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-									pipeline.getPipelineLayout(), 0, 1,
-									&sets[bufferIndex], 0, nullptr);
-		}
+									pipeline.getPipelineLayout(), 0, 1, &sets[iFrame], 0, nullptr);
 	}
 
 	if (addOns.pVertexBuffer) {		// Bind vertex buffer.

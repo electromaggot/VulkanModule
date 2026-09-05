@@ -107,30 +107,41 @@ void AddOns::createDescribedItems(vector<UBO>& UBOs, vector<TextureSpec>& textur
 		if (eachUBO.isDynamic) {
 			// Dynamic UBO: No per-object UniformBuffer created, using shared DynamicUniformBuffer
 			pUniformBuffers.push_back(nullptr);
-			VkDescriptorBufferInfo bufInfo = eachUBO.pDynamicUBO->getDescriptorBufferInfo(0);
-			described.emplace_back(bufInfo, eachUBO.getShaderStageFlags(), DYNAMIC_BUFFER);
+
+			// Per-frame, exactly as for a regular UBO below.  The dynamic OFFSET picks the object; the descriptor still has
+			//	to pick the FRAME, since DynamicUniformBuffer allocates a separate buffer per frame and updateObjectTransform()
+			//	writes the one being drawn.  Naming frame N here reads frame N's transforms, applies UBOs specific to frame N.
+			vector<VkDescriptorBufferInfo> perFrameBufferInfo;
+			for (uint32_t iFrame = 0; iFrame < eachUBO.pDynamicUBO->getFramesInFlight(); ++iFrame)
+				perFrameBufferInfo.push_back(eachUBO.pDynamicUBO->getDescriptorBufferInfo(iFrame));
+
+			described.emplace_back(perFrameBufferInfo, eachUBO.getShaderStageFlags(), DYNAMIC_BUFFER);
 		} else {
 			// Regular UBO: create UniformBuffer as before
 			UniformBuffer* pUniformBuffer = new UniformBuffer(eachUBO.byteSize, vulkan.swapchain, vulkan.device);
 			pUniformBuffers.push_back(pUniformBuffer);
-			described.emplace_back(pUniformBuffer->getDescriptorBufferInfo(),	// layout(binding = 0)	<-- appears in Vertex Shader
-									eachUBO.getShaderStageFlags());
+
+			// One VkDescriptorBufferInfo per swapchain image, so each frame's descriptor set names the buffer that frame's Update()
+			//	actually writes.  (Hand over a single info aimed every set at buffer 0, leave the other buffers written but unread.)
+			vector<VkDescriptorBufferInfo> perFrameBufferInfo;
+			for (uint32_t iFrame = 0; iFrame < pUniformBuffer->NumBuffers(); ++iFrame)
+				perFrameBufferInfo.push_back(pUniformBuffer->getDescriptorBufferInfo(iFrame));
+																	// layout(binding = 0)	<-- appears in Vertex Shader
+			described.emplace_back(perFrameBufferInfo, eachUBO.getShaderStageFlags());
 		}
-	}																			// If there's > 1 UBO above, adjust the layout
-																				//	number below, (binding = N + 1) accordingly!
+	}																// If there's > 1 UBO above, adjust the layout
+																	//	number below, (binding = N + 1) accordingly!
 	// Textures next (may be more than one)... order is important here too == binding index
 	for (TextureSpec& textureSpec : textureSpecs) {
 		if (textureSpec.fileName || textureSpec.pImageInfo) {
 			texspecs.push_back(textureSpec);
 			TextureImage* pTexture = new TextureImage(texspecs.back(), vulkan.command.vkPool(), vulkan.device, platform);
 			if (pTexture) {
-				pTextureImages.emplace_back(pTexture);
-				described.emplace_back( pTexture->getDescriptorImageInfo(),			// layout(binding = 1) ... 2) ... 3)...	 <-- in Fragment Shader
-										VK_SHADER_STAGE_FRAGMENT_BIT);
-										// ^^^^^^ TODO: ^^^^^^^^ We don't have a mechanism (YET!) allowing an image to
-			}							//		be specified for the VERTEX STAGE, which could be helpful for something
-		}								//		like offseting vertices based on a depth map.
-	}
+				pTextureImages.emplace_back(pTexture);				// layout(binding = 1) ... 2) ... 3)...	 <-- in Fragment Shader
+				described.emplace_back( pTexture->getDescriptorImageInfo(),	VK_SHADER_STAGE_FRAGMENT_BIT);
+			}						//										^^^^^^^^^^ TODO: ^^^^^^^^^^ We don't have a
+		}							//		mechanism (YET!) allowing an image to be specified for the VERTEX STAGE, which
+	}								//		could be helpful for something like offseting vertices based on a depth map.
 
 	// Runtime textures (e.g., shadow maps) - already created, just add descriptors:
 	for (VkDescriptorImageInfo& imageInfo : runtimeTextures) {
@@ -184,17 +195,23 @@ vector<DescribEd> AddOns::reDescribe()
 	vector<DescribEd> redescribedAddOns;
 	for (int index = 0; index < pUniformBuffers.size(); ++index)
 	{
-		if (ubos[index].isDynamic) {
-			// Dynamic UBO: query shared buffer info
-			VkDescriptorBufferInfo bufInfo = ubos[index].pDynamicUBO->getDescriptorBufferInfo(0);
-			redescribedAddOns.emplace_back(bufInfo, ubos[index].getShaderStageFlags(), DYNAMIC_BUFFER);
-		} else {
-			redescribedAddOns.emplace_back(pUniformBuffers[index]->getDescriptorBufferInfo(),
-										   ubos[index].getShaderStageFlags());
+		if (ubos[index].isDynamic) {	// Dynamic UBO: query shared buffer info, per frame as below.
+			DynamicUniformBuffer* pDynamicUBO = ubos[index].pDynamicUBO;
+			vector<VkDescriptorBufferInfo> perFrameDynamicInfo;
+			for (uint32_t iFrame = 0; iFrame < pDynamicUBO->getFramesInFlight(); ++iFrame)
+				perFrameDynamicInfo.push_back(pDynamicUBO->getDescriptorBufferInfo(iFrame));
+
+			redescribedAddOns.emplace_back(perFrameDynamicInfo, ubos[index].getShaderStageFlags(), DYNAMIC_BUFFER);
+		} else {						// Per-frame, exactly as in createDescribedItems(), otherwise resize quietly re-points
+			UniformBuffer* pUniformBuffer = pUniformBuffers[index];			//	every frame's descriptor set back at buffer 0.
+			vector<VkDescriptorBufferInfo> perFrameBufferInfo;
+			for (uint32_t iFrame = 0; iFrame < pUniformBuffer->NumBuffers(); ++iFrame)
+				perFrameBufferInfo.push_back(pUniformBuffer->getDescriptorBufferInfo(iFrame));
+
+			redescribedAddOns.emplace_back(perFrameBufferInfo, ubos[index].getShaderStageFlags());
 		}
 	}
 	for (auto& pTextureImage : pTextureImages)
-		redescribedAddOns.emplace_back(pTextureImage->getDescriptorImageInfo(),
-									   VK_SHADER_STAGE_FRAGMENT_BIT);
+		redescribedAddOns.emplace_back(pTextureImage->getDescriptorImageInfo(), VK_SHADER_STAGE_FRAGMENT_BIT);
 	return redescribedAddOns;
 }

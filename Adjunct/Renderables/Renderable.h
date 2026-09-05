@@ -41,8 +41,8 @@ public:
 
 	// Record Vulkan draw commands into the command buffer.
 	//	skipPipelineBind: Set to true when using batched rendering (pipeline already bound by batch manager).
-	void IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex) override;
-	void IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex, bool skipPipelineBind);
+	void IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int iFrame) override;
+	void IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int iFrame, bool skipPipelineBind);
 };
 
 #endif	// Renderable_h

@@ -49,7 +49,7 @@ public:
 
 	// Record Vulkan draw commands into secondary command buffer.
 	//	Note: This is called during initialization to pre-record commands.
-	void IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int bufferIndex) override;
+	void IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int iFrame) override;
 
 	// Allocate and record secondary command buffers (one per frame).
 	void AllocateSecondaryCommandBuffers(VulkanSetup& vulkan);
