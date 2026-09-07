@@ -52,15 +52,19 @@ void Renderable::IssueBindAndDrawCommands(VkCommandBuffer& commandBuffer, int iF
 									pipeline.getPipelineLayout(), 0, 1, &sets[iFrame], 0, nullptr);
 	}
 
+	// Bring this frame's geometry copies current, if updateVertexData()/updateIndexData() supplied
+	//	anything since it last drew.  Here, because this is the first point that knows the frame.
+	addOns.uploadStagedGeometry((uint32_t) iFrame);
+
 	if (addOns.pVertexBuffer) {		// Bind vertex buffer.
-		VkBuffer vertexBuffers[] = { addOns.pVertexBuffer->getVk() };
+		VkBuffer vertexBuffers[] = { addOns.pVertexBuffer->getVk((uint32_t) iFrame) };
 		VkDeviceSize offsets[]	 = { 0 };
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 	}
 
 	if (addOns.pIndexBuffer) {		// Draw indexed or non-indexed.
 				// Indexed draw: use index buffer.
-		vkCmdBindIndexBuffer(commandBuffer, addOns.pIndexBuffer->getVk(),
+		vkCmdBindIndexBuffer(commandBuffer, addOns.pIndexBuffer->getVk((uint32_t) iFrame),
 							 0, VkIndexTypes[vertexObject.indexType]);
 		vkCmdDrawIndexed(commandBuffer, vertexObject.indexCount, vertexObject.instanceCount,
 										vertexObject.firstIndex, vertexObject.vertexOffset,

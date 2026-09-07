@@ -60,6 +60,24 @@ protected:
 
 		// METHODS
 
+	// Dynamic geometry staging.  updateVertexData()/updateIndexData() can be called at any point in
+	//	the frame -- including before the swapchain image is acquired, when the frame is not yet
+	//	known -- so new data lands HERE and is copied into each frame's own buffer the first time
+	//	that frame draws.  Writing all the buffers up front would clobber frames still in flight;
+	//	see the DEV NOTE at the end of PrimitiveBuffer.cpp.
+	vector<uint8_t>	stagedVertexData;
+	vector<uint8_t>	stagedIndexData;
+	uint32_t		framesNeedingVertexUpload = 0;	// bitmask, one bit per swapchain image
+	uint32_t		framesNeedingIndexUpload  = 0;
+
+	void stageVertexData(void* pData, VkDeviceSize size);
+	void stageIndexData(void* pData, VkDeviceSize size);
+public:
+	// Bring frame iFrame's copies up to date, if this renderable's geometry changed since it last
+	//	drew.  Called from the draw path, which is the first point that knows the frame.
+	void uploadStagedGeometry(uint32_t iFrame);
+protected:
+
 	void createVertexAndOrIndexBuffers(MeshObject& meshObject, Customizer customize = NONE);
 	void createDescribedItems(vector<UBO>& UBO, vector<TextureSpec>& textureSpecs,
 							  vector<VkDescriptorImageInfo>& runtimeTextures,

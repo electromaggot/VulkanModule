@@ -42,31 +42,69 @@ void AddOns::createVertexAndOrIndexBuffers(MeshObject& meshObject, Customizer cu
 		// Check if this is dynamic geometry, e.g. continuously updated waveforms, particles, animated models...
 		bool isDynamic = (customize & DYNAMIC_GEOMETRY) != 0;
 
+		uint32_t numFrames = (uint32_t) vulkan.swapchain.getImageViews().size();
+
 		if (isDynamic) {	// Create host-visible vertex buffer: CPU-mappable, no command buffers for updates.
 			pVertexBuffer = new PrimitiveBuffer(commandPool, vulkan.device);
 			VkDeviceSize bufferSize = meshObject.vertexBufferSize();
-			pVertexBuffer->CreateVertexBuffer(meshObject.vertices, bufferSize, true);  // hostVisible = true
-		} else {	// Create standard device-local vertex buffer: best GPU performance, uses staging for updates.
+			pVertexBuffer->CreateVertexBuffer(meshObject.vertices, bufferSize, true, numFrames);  // ← true = hostVisible
+		} else				// Create standard device-local vertex buffer: best GPU performance, uses staging for updates.
 			pVertexBuffer = new PrimitiveBuffer(meshObject, commandPool, vulkan.device);
-		}
 
 		if (meshObject.indices) {
-			if (isDynamic) {	// Create host-visible index buffer for dynamic geometry
+			if (isDynamic) {	// Create host-visible index buffer for dynamic geometry.
 				pIndexBuffer = new PrimitiveBuffer(commandPool, vulkan.device);
 				VkDeviceSize indexBufferSize = meshObject.indexCount *
 					(meshObject.indexType == MeshDefaultIndexType ? sizeof(IndexBufferDefaultIndexType) : sizeof(uint32_t));
-				pIndexBuffer->CreateIndexBuffer(meshObject.indices, indexBufferSize, meshObject.indexType, true); // ← hostVisible = true
-			} else {	// Create standard device-local index buffer
-				if (meshObject.indexType == MeshDefaultIndexType) {
+				pIndexBuffer->CreateIndexBuffer(meshObject.indices, indexBufferSize, meshObject.indexType, true, numFrames);
+			} else {			// Create standard device-local index buffer.							// ↑ = hostVisible
+				if (meshObject.indexType == MeshDefaultIndexType)
 					pIndexBuffer = new PrimitiveBuffer((IndexBufferDefaultIndexType*) meshObject.indices,
-													   meshObject.indexCount,
-													   commandPool, vulkan.device);
-				} else {
-					pIndexBuffer = new PrimitiveBuffer(meshObject.indexType, meshObject.indices, meshObject.indexCount,
-													   commandPool, vulkan.device);
-				}
+													   meshObject.indexCount, commandPool, vulkan.device);
+				else
+					pIndexBuffer = new PrimitiveBuffer(meshObject.indexType, meshObject.indices,
+													   meshObject.indexCount, commandPool, vulkan.device);
 			}
 		}
+	}
+}
+
+// Hold new geometry until each frame can copy it into its own buffer.  Every frame is marked
+//	stale; uploadStagedGeometry() clears one bit at a time, as each frame comes around to draw.
+//
+void AddOns::stageVertexData(void* pData, VkDeviceSize size)
+{
+	stagedVertexData.assign((uint8_t*) pData, (uint8_t*) pData + size);
+
+	uint32_t numCopies = pVertexBuffer ? pVertexBuffer->NumCopies() : 1;
+	framesNeedingVertexUpload = (numCopies >= 32) ? ~0u : ((1u << numCopies) - 1u);
+}
+
+void AddOns::stageIndexData(void* pData, VkDeviceSize size)
+{
+	if (pData && size > 0)
+		stagedIndexData.assign((uint8_t*) pData, (uint8_t*) pData + size);
+	else
+		stagedIndexData.clear();			// Size 0 legitimately means "draw nothing" - see
+											//	iRenderable::updateIndexData().
+	uint32_t numCopies = pIndexBuffer ? pIndexBuffer->NumCopies() : 1;
+	framesNeedingIndexUpload = (numCopies >= 32) ? ~0u : ((1u << numCopies) - 1u);
+}
+
+void AddOns::uploadStagedGeometry(uint32_t iFrame)
+{
+	if (iFrame >= 32)		// (far beyond any real swapchain, but the bitmask has its limit)
+		return;
+
+	const uint32_t frameBit = 1u << iFrame;
+
+	if ((framesNeedingVertexUpload & frameBit) && pVertexBuffer && !stagedVertexData.empty()) {
+		pVertexBuffer->UpdateVertexBufferMapped(stagedVertexData.data(), stagedVertexData.size(), iFrame);
+		framesNeedingVertexUpload &= ~frameBit;
+	}
+	if ((framesNeedingIndexUpload & frameBit) && pIndexBuffer && !stagedIndexData.empty()) {
+		pIndexBuffer->UpdateIndexBufferMapped(stagedIndexData.data(), stagedIndexData.size(), iFrame);
+		framesNeedingIndexUpload &= ~frameBit;
 	}
 }
 
@@ -82,8 +120,8 @@ void AddOns::destroyVertexAndOrIndexBuffers()
 
 void AddOns::Recreate(MeshObject& meshObject)
 {
-	if (meshObject.vertices) {				// (if new vertices exist to overwrite the old ones)
-		destroyVertexAndOrIndexBuffers();			// <--(this also deletes index buffers regardless of
+	if (meshObject.vertices) {				// If new vertices exist to overwrite the old ones…
+		destroyVertexAndOrIndexBuffers();			// ◄─(this also deletes index buffers regardless of
 													//		if new indices exist to overwrite old ones)
 		createVertexAndOrIndexBuffers(meshObject);
 	}
@@ -100,12 +138,10 @@ void AddOns::createDescribedItems(vector<UBO>& UBOs, vector<TextureSpec>& textur
 								  vector<vector<VkDescriptorImageInfo>>& perFrameRuntimeTextures,
 								  iPlatform& platform)
 {
-	// Uniform Buffer Objects first (explicitly: the MVP UBO)
-	for (UBO& eachUBO : UBOs) {
+	for (UBO& eachUBO : UBOs) {				// Uniform Buffer Objects first (explicitly: the MVP UBO).
 		ubos.push_back(eachUBO);
 
-		if (eachUBO.isDynamic) {
-			// Dynamic UBO: No per-object UniformBuffer created, using shared DynamicUniformBuffer
+		if (eachUBO.isDynamic) {	// Dynamic UBO: No per-object UniformBuffer created, using shared DynamicUniformBuffer.
 			pUniformBuffers.push_back(nullptr);
 
 			// Per-frame, exactly as for a regular UBO below.  The dynamic OFFSET picks the object; the descriptor still has
@@ -116,8 +152,7 @@ void AddOns::createDescribedItems(vector<UBO>& UBOs, vector<TextureSpec>& textur
 				perFrameBufferInfo.push_back(eachUBO.pDynamicUBO->getDescriptorBufferInfo(iFrame));
 
 			described.emplace_back(perFrameBufferInfo, eachUBO.getShaderStageFlags(), DYNAMIC_BUFFER);
-		} else {
-			// Regular UBO: create UniformBuffer as before
+		} else {					// Regular UBO: create UniformBuffer as before.
 			UniformBuffer* pUniformBuffer = new UniformBuffer(eachUBO.byteSize, vulkan.swapchain, vulkan.device);
 			pUniformBuffers.push_back(pUniformBuffer);
 

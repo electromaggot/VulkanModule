@@ -18,8 +18,8 @@
 PrimitiveBuffer::PrimitiveBuffer(VkCommandPool& pool, GraphicsDevice& device)
 	:	BufferBase(device),
 		CommandBufferBase(pool, device),
-		buffer(0),		// These buffers are opaque, but
-		bufferMemory(0)	//	assume 0 indicates "uninitialized."
+		buffers(1, VK_NULL_HANDLE),			// One copy until a host-visible Create() asks for more.
+		buffersMemory(1, VK_NULL_HANDLE)	//	(These are opaque; null indicates "uninitialized.")
 { }
 
 PrimitiveBuffer::PrimitiveBuffer(MeshObject& meshObject, VkCommandPool& pool, GraphicsDevice& device)
@@ -27,7 +27,7 @@ PrimitiveBuffer::PrimitiveBuffer(MeshObject& meshObject, VkCommandPool& pool, Gr
 {
 	createDeviceLocalBuffer(meshObject.vertices, meshObject.vertexBufferSize(),
 							VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-							buffer, bufferMemory);
+							buffers[0], buffersMemory[0]);
 }
 
 PrimitiveBuffer::PrimitiveBuffer(IndexBufferDefaultIndexType* pIndices, uint32_t nIndices, VkCommandPool& pool, GraphicsDevice& device)
@@ -35,7 +35,7 @@ PrimitiveBuffer::PrimitiveBuffer(IndexBufferDefaultIndexType* pIndices, uint32_t
 {
 	createDeviceLocalBuffer(pIndices, nIndices * sizeof(pIndices[0]),
 							VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-							buffer, bufferMemory);
+							buffers[0], buffersMemory[0]);
 }
 
 PrimitiveBuffer::PrimitiveBuffer(MeshIndexType indexType, void* pIndices, uint32_t nIndices, VkCommandPool& pool, GraphicsDevice& device)
@@ -43,89 +43,101 @@ PrimitiveBuffer::PrimitiveBuffer(MeshIndexType indexType, void* pIndices, uint32
 {
 	createDeviceLocalBuffer(pIndices, nIndices * MeshIndexByteSizes[indexType],
 							VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-							buffer, bufferMemory);
+							buffers[0], buffersMemory[0]);
 }
 
 PrimitiveBuffer::~PrimitiveBuffer()
 {
-	if (buffer) {
-		vkDestroyBuffer(device, buffer,  nullALLOC);
-		buffer = 0;
+	for (size_t i = 0; i < buffers.size(); ++i) {
+		if (buffers[i]) {
+			vkDestroyBuffer(device, buffers[i], nullALLOC);
+			buffers[i] = VK_NULL_HANDLE;
+		}
+		if (buffersMemory[i]) {
+			vkFreeMemory(device, buffersMemory[i], nullALLOC);
+			buffersMemory[i] = VK_NULL_HANDLE;
+		}
 	}
-	if (bufferMemory) {
-		vkFreeMemory(device, bufferMemory, nullALLOC);
-		bufferMemory = 0;
-	}
-	Log(DEAD, "Destroyed: PrimitiveBuffer (buffer, memory)");
+	Log(DEAD, "Destroyed: PrimitiveBuffer (%zu buffer(s), memory)", buffers.size());
 }
 
+
+// Map one host-visible allocation, copy into it, unmap.  Shared by the create/update paths below.
+//
+void PrimitiveBuffer::mapAndCopy(VkDeviceMemory memory, void* pData, VkDeviceSize size, const char* whatFailed)
+{
+	void* pMapped;
+	call = vkMapMemory(device, memory, 0, size, 0, &pMapped);
+	if (call != VK_SUCCESS)
+		Fatal(string(whatFailed) + " Map Memory FAILURE" + ErrStr(call));
+
+	if (pData)
+		memcpy(pMapped, pData, (size_t) size);
+	else
+		memset(pMapped, 0, (size_t) size);
+
+	vkUnmapMemory(device, memory);		// HOST_COHERENT, so no manual flush needed.
+}
 
 void PrimitiveBuffer::CreateVertexBuffer(vector<VertexAbstract> vertices)
 {
 	VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
-	createDeviceLocalBuffer(vertices.data(), bufferSize,
-							VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-							buffer, bufferMemory);
+	createDeviceLocalBuffer(vertices.data(), bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, buffers[0], buffersMemory[0]);
 }
 
 // Create host-visible vertex buffer for dynamic geometry, e.g. particles, animated models, waveforms...
 //	hostVisible = true:  CPU-accessible, fast updates via mapping → no command buffers!
 //	hostVisible = false: GPU-only, requires staging buffer for updates → one-time initialization.
 //
-void PrimitiveBuffer::CreateVertexBuffer(void* pVertexData, VkDeviceSize bufferSize, bool hostVisible)
+void PrimitiveBuffer::CreateVertexBuffer(void* pVertexData, VkDeviceSize bufferSize, bool hostVisible, uint32_t numFrames)
 {
 	if (!hostVisible) {		// Use standard device-local staging buffer approach:
-		createDeviceLocalBuffer(pVertexData, bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, buffer, bufferMemory);
-		return;
+		createDeviceLocalBuffer(pVertexData, bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, buffers[0], buffersMemory[0]);
+		return;				//	(one copy: written once here, never again, so no frame can race it)
 	}
 
-	// Create host-visible buffer, CPU-accessible for direct updates.
-	createGeneralBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-						buffer, bufferMemory);
+	// Host-visible means REWRITTEN while earlier frames may still be reading - so allocate one copy per frame, each mapped
+	//	only by the frame that owns it.  A single shared copy gets overwritten out from under already-submitted frames; see
+	buffers.assign(numFrames > 0 ? numFrames : 1, VK_NULL_HANDLE);								//	DEV NOTE at end of file.
+	buffersMemory.assign(buffers.size(), VK_NULL_HANDLE);
 
-	void* pData;			// Map, copy initial data, unmap:
-	call = vkMapMemory(device, bufferMemory, 0, bufferSize, 0, &pData);
-	if (call != VK_SUCCESS)
-		Fatal("CreateVertexBuffer (host-visible) Map Memory FAILURE" + ErrStr(call));
-
-	if (pVertexData)
-		memcpy(pData, pVertexData, (size_t) bufferSize);
-	else
-		memset(pData, 0, (size_t) bufferSize);
-	vkUnmapMemory(device, bufferMemory);
+	for (size_t i = 0; i < buffers.size(); ++i) {
+		createGeneralBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+							VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+							buffers[i], buffersMemory[i]);
+		mapAndCopy(buffersMemory[i], pVertexData, bufferSize, "CreateVertexBuffer (host-visible)");
+	}
 }
 
 void PrimitiveBuffer::CreateIndexBuffer(vector<IndexBufferDefaultIndexType> indices)
 {
 	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
-	createDeviceLocalBuffer(indices.data(), bufferSize,
-							VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-							buffer, bufferMemory);
+	createDeviceLocalBuffer(indices.data(), bufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, buffers[0], buffersMemory[0]);
 }
 
 // Create host-visible index buffer for dynamic geometry (same pattern as CreateVertexBuffer).
 //	hostVisible = true:  CPU-accessible, fast updates via mapping → no command buffers!
 //	hostVisible = false: GPU-only, requires staging buffer for updates.
 //
-void PrimitiveBuffer::CreateIndexBuffer(void* pIndexData, VkDeviceSize bufferSize, MeshIndexType indexType, bool hostVisible)
+void PrimitiveBuffer::CreateIndexBuffer(void* pIndexData, VkDeviceSize bufferSize, MeshIndexType indexType,
+										bool hostVisible, uint32_t numFrames)
 {
 	if (!hostVisible) {		// Use standard device-local staging buffer approach:
-		createDeviceLocalBuffer(pIndexData, bufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, buffer, bufferMemory);
+		createDeviceLocalBuffer(pIndexData, bufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, buffers[0], buffersMemory[0]);
 		return;
 	}
 
-	// Create host-visible buffer, CPU-accessible for direct updates.
-	createGeneralBuffer(bufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-						buffer, bufferMemory);
+	buffers.assign(numFrames > 0 ? numFrames : 1, VK_NULL_HANDLE);	// One copy per frame, exactly
+	buffersMemory.assign(buffers.size(), VK_NULL_HANDLE);			//	as CreateVertexBuffer above.
 
-	void* pData;			// Map, copy initial data, unmap:
-	call = vkMapMemory(device, bufferMemory, 0, bufferSize, 0, &pData);
-	memcpy(pData, pIndexData, (size_t) bufferSize);
-	vkUnmapMemory(device, bufferMemory);
+	for (size_t i = 0; i < buffers.size(); ++i) {
+		createGeneralBuffer(bufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+							VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+							buffers[i], buffersMemory[i]);
+		mapAndCopy(buffersMemory[i], pIndexData, bufferSize, "CreateIndexBuffer (host-visible)");
+	}
 }
 
 // Update existing vertex buffer with new data, for dynamic geometry like animated models, particles, waveforms.
@@ -149,7 +161,7 @@ void PrimitiveBuffer::UpdateVertexBuffer(void* pNewVertexData, VkDeviceSize size
 	vkUnmapMemory(device, stagingMemory);
 
 	// Copy staging buffer to existing device-local vertex buffer via Vulkan command:
-	copyBufferViaVulkan(stagingBuffer, buffer, size);
+	copyBufferViaVulkan(stagingBuffer, buffers[0], size);	// (device-local, so a single copy)
 
 	vkDestroyBuffer(device, stagingBuffer, nullALLOC);		// Clean up staging buffer.
 	vkFreeMemory(device, stagingMemory, nullALLOC);			//
@@ -169,8 +181,8 @@ void PrimitiveBuffer::createDeviceLocalBuffer(void* pSourceData, VkDeviceSize si
 	if (call != VK_SUCCESS)												// seems unusual for this to fail since create()
 		Fatal("Primitive Buffer Map Memory FAILURE" + ErrStr(call));	//	succeeded; see (**) Dev Note in BufferBase.h
 
-	memcpy(pData, pSourceData, (size_t) size);						// fill the main RAM block
-	vkUnmapMemory(device, cpuSideBufferMemory);						//	that Vulkan provided
+	memcpy(pData, pSourceData, (size_t) size);				// Fill the main RAM block
+	vkUnmapMemory(device, cpuSideBufferMemory);				//	that Vulkan provided.
 
 	createGeneralBuffer(size, usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -182,40 +194,25 @@ void PrimitiveBuffer::createDeviceLocalBuffer(void* pSourceData, VkDeviceSize si
 	vkFreeMemory(device, cpuSideBufferMemory, nullALLOC);
 }
 
-// Fast update for host-visible vertex buffers, dynamic geometry like waveforms, particles, animated models.
-//	Direct CPU memory mapping → NO staging buffers, NO command buffers!
-//	Industry standard for 60fps dynamic geometry updates.
+// Fast update for host-visible vertex buffers, dynamic geometry like waveforms, particles, animated models.  Direct
+//	CPU memory mapping → NO staging buffers, NO command buffers!  Industry standard for 60fps dynamic geometry updates.
 //
-void PrimitiveBuffer::UpdateVertexBufferMapped(void* pNewVertexData, VkDeviceSize size)
+void PrimitiveBuffer::UpdateVertexBufferMapped(void* pNewVertexData, VkDeviceSize size, uint32_t iFrame)
 {
-	void* pData;					// Map GPU memory directly to CPU address space.
-	call = vkMapMemory(device, bufferMemory, 0, size, 0, &pData);
-	if (call != VK_SUCCESS)
-		Fatal("UpdateVertexBufferMapped Map Memory FAILURE" + ErrStr(call));
-
-	// Copy new vertex data directly → extremely fast, no GPU involvement.
-	memcpy(pData, pNewVertexData, (size_t)size);
-
-	// Unmap...  HOST_COHERENT flag means no manual flush needed → driver handles it.
-	vkUnmapMemory(device, bufferMemory);
+	// Only THIS frame's copy - the others may be mid-flight.  Map, copy, unmap: extremely fast,
+	//	no GPU involvement, and HOST_COHERENT means no manual flush.
+	mapAndCopy(buffersMemory[iFrame < buffersMemory.size() ? iFrame : 0], pNewVertexData, size,
+			   "UpdateVertexBufferMapped");
 }
 
 // Fast update for host-visible index buffers, dynamic terrain like visibility window scrolling.
 //	Direct CPU memory mapping → NO staging buffers, NO command buffers!
 //	Mirrors UpdateVertexBufferMapped() for index buffer updates.
 //
-void PrimitiveBuffer::UpdateIndexBufferMapped(void* pNewIndexData, VkDeviceSize size)
+void PrimitiveBuffer::UpdateIndexBufferMapped(void* pNewIndexData, VkDeviceSize size, uint32_t iFrame)
 {
-	void* pData;					// Map GPU memory directly to CPU address space.
-	call = vkMapMemory(device, bufferMemory, 0, size, 0, &pData);
-	if (call != VK_SUCCESS)
-		Fatal("UpdateIndexBufferMapped Map Memory FAILURE" + ErrStr(call));
-
-	// Copy new index data directly → extremely fast, no GPU involvement.
-	memcpy(pData, pNewIndexData, (size_t)size);
-
-	// Unmap...  HOST_COHERENT flag means no manual flush needed → driver handles it.
-	vkUnmapMemory(device, bufferMemory);
+	mapAndCopy(buffersMemory[iFrame < buffersMemory.size() ? iFrame : 0], pNewIndexData, size,
+			   "UpdateIndexBufferMapped");		// This frame's copy only (see the vertex version).
 }
 
 void PrimitiveBuffer::copyBufferViaVulkan(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
@@ -233,3 +230,27 @@ void PrimitiveBuffer::copyBufferViaVulkan(VkBuffer srcBuffer, VkBuffer dstBuffer
 
 	endAndSubmitCommands(commands);
 }
+
+
+/* DEV NOTE - why host-visible buffers are per-frame, and device-local ones are not
+   DEVICE-LOCAL buffer is filled once, at creation, through a staging copy, and never written
+	again.  Nothing can race it, so one copy serves every frame.
+   HOST-VISIBLE buffer exists precisely to be rewritten - dynamic geometry: waveforms, laser
+	and tracer shots, scrolling terrain, text that changes.  Until mid-2026 there was still only
+	ONE of those, and UpdateVertexBufferMapped() memcpy'd straight into it whenever the application
+	asked.  With frames in flight that memcpy lands in memory, the GPU may still be reading for a
+	frame already submitted, so that frame draws a mixture of old and new geometry.
+   Symptom: a tear in SHAPE rather than position, and it is intermittent - depending on where the
+	GPU happens to be - so it reads as "occasionally glitchy" rather than broken.  It was known:
+	LevelEdit's terrain path guards its uploads with vkDeviceWaitIdle() and says why.  That works,
+	but stalls the entire device, which is only tolerable because terrain scrolls rarely.  Geometry
+	updated every frame or two cannot pay that price, so the waveform simply did not, and glitched.
+   Now each host-visible buffer has one copy per swapchain image and a frame maps only its own.
+	The awkward part is that applications may hand over new data at any point in their frame -
+	often before the swapchain image is acquired, when the frame is not yet known - so AddOns
+	STAGES the data and marks every frame stale; each frame copies into its own buffer the first
+	time it draws (AddOns::uploadStagedGeometry, called from the draw path).  Hence one CPU-side
+	copy per update, in exchange for no stalls and no tearing.
+   A consequence worth collecting later: the vkDeviceWaitIdle() calls guarding terrain uploads in
+	LevelEdit are now redundant, and removing them should measurably shorten terrain-scroll frames.
+*/

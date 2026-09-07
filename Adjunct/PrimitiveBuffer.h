@@ -34,26 +34,38 @@ public:
 
 		// MEMBERS
 private:
-	VkBuffer		  buffer;
-	VkDeviceMemory	  bufferMemory;
+	// A DEVICE-LOCAL buffer is written once at creation, so one copy serves every frame.  A HOST-VISIBLE one (dynamic
+	//	geometry) is rewritten while earlier frames may still be reading it, so it gets one copy per swapchain image
+	//	and each frame maps only its own.  Both cases live in these vectors; `buffers.size()` is 1 or N accordingly.
+	vector<VkBuffer>		buffers;
+	vector<VkDeviceMemory>	buffersMemory;
 
 		// METHODS
 public:
 	void	 CreateVertexBuffer(vector<VertexAbstract> vertices);
 	void	 CreateIndexBuffer(vector<IndexBufferDefaultIndexType> indices);
-	void	 CreateVertexBuffer(void* pVertexData, VkDeviceSize bufferSize, bool hostVisible); // hostVisible = true for dynamic geometry.
-	void	 CreateIndexBuffer(void* pIndexData, VkDeviceSize bufferSize, MeshIndexType indexType, bool hostVisible);	// "		"
+	// numFrames applies only when hostVisible: how many per-frame copies to allocate.
+	void	 CreateVertexBuffer(void* pVertexData, VkDeviceSize bufferSize, bool hostVisible, uint32_t numFrames = 1);
+	void	 CreateIndexBuffer(void* pIndexData, VkDeviceSize bufferSize, MeshIndexType indexType,
+							   bool hostVisible, uint32_t numFrames = 1);
 	void	 UpdateVertexBuffer(void* pNewVertexData, VkDeviceSize size);		// Update existing vertex buffer, only for host-visible buffers.
-	void	 UpdateVertexBufferMapped(void* pNewVertexData, VkDeviceSize size);	// Fast update for host-visible buffers, no command buffers.
-	void	 UpdateIndexBufferMapped(void* pNewIndexData, VkDeviceSize size);	// Fast update for host-visible index buffers, no command buffers.
+	// Fast update for host-visible buffers, no command buffers.  Writes ONLY iFrame's copy, so it
+	//	must be called for the frame being drawn - never for one still in flight.
+	void	 UpdateVertexBufferMapped(void* pNewVertexData, VkDeviceSize size, uint32_t iFrame = 0);
+	void	 UpdateIndexBufferMapped(void* pNewIndexData, VkDeviceSize size, uint32_t iFrame = 0);
 private:
 	void	 createDeviceLocalBuffer(void* pSourceData, VkDeviceSize size, VkBufferUsageFlags usage,
 									 VkBuffer& deviceBuffer, VkDeviceMemory& deviceMemory);
 	void	 copyBufferViaVulkan(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+	void	 mapAndCopy(VkDeviceMemory memory, void* pData, VkDeviceSize size, const char* whatFailed);
 
-		// getter
+		// getters
 public:
-	VkBuffer&	getVk()	{ return buffer; }
+	// The buffer for a given frame.  A single-copy (device-local) buffer answers the same one for
+	//	every frame, so callers need not know which kind they hold.
+	VkBuffer&	getVk(uint32_t iFrame = 0)	{ return buffers[iFrame < buffers.size() ? iFrame : 0]; }
+
+	uint32_t	NumCopies() const			{ return (uint32_t) buffers.size(); }
 };
 
 #endif // PrimitiveBuffer_h

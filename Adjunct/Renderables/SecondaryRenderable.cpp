@@ -114,14 +114,18 @@ void SecondaryRenderable::IssueBindAndDrawCommands(VkCommandBuffer& commandBuffe
 									pipeline.getPipelineLayout(), 0, 1, &sets[iFrame], 0, nullptr);
 	}
 
+	// This buffer is recorded once for frame iFrame and replayed, so it must name that frame's own
+	//	geometry copies.  (Static geometry has a single copy, which getVk() answers for any frame.)
+	addOns.uploadStagedGeometry((uint32_t) iFrame);
+
 	if (addOns.pVertexBuffer) {		// Bind vertex buffer:
-		VkBuffer vertexBuffers[] = { addOns.pVertexBuffer->getVk() };
+		VkBuffer vertexBuffers[] = { addOns.pVertexBuffer->getVk((uint32_t) iFrame) };
 		VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 	}
 
 	if (addOns.pIndexBuffer) {		// Draw indexed or non-indexed:
-		vkCmdBindIndexBuffer(commandBuffer, addOns.pIndexBuffer->getVk(),	// Indexed draw: use index buffer.
+		vkCmdBindIndexBuffer(commandBuffer, addOns.pIndexBuffer->getVk((uint32_t) iFrame),	// Indexed draw: use index buffer.
 							 0, VkIndexTypes[vertexObject.indexType]);
 		vkCmdDrawIndexed(commandBuffer, vertexObject.indexCount, vertexObject.instanceCount,
 										vertexObject.firstIndex, vertexObject.vertexOffset, vertexObject.firstInstance);

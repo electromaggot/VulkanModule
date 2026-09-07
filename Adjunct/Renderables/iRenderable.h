@@ -129,10 +129,10 @@ struct iRenderable : iRenderableBase
 	void updateVertexData(void* pNewVertexData, VkDeviceSize size, size_t vertexSize)
 	{
 		if (addOns.pVertexBuffer) {
-			addOns.pVertexBuffer->UpdateVertexBufferMapped(pNewVertexData, size);
-
+			addOns.stageVertexData(pNewVertexData, size);	// Copied into each frame's own buffer
+															//	when that frame next draws.
 			// Update vertex count for drawing: size in bytes / bytes per vertex
-			vertexObject.vertexCount = (uint32_t)(size / vertexSize);
+			vertexObject.vertexCount = (uint32_t) (size / vertexSize);
 		}
 	}
 
@@ -144,8 +144,7 @@ struct iRenderable : iRenderableBase
 	void updateIndexData(void* pNewIndexData, VkDeviceSize size)
 	{
 		if (addOns.pIndexBuffer) {
-			if (size > 0)
-				addOns.pIndexBuffer->UpdateIndexBufferMapped(pNewIndexData, size);
+			addOns.stageIndexData(pNewIndexData, size);		// Per-frame, as for vertices above.
 
 			// Update index count for drawing: size in bytes / bytes per index
 			//	When size is 0, sets indexCount to 0 → renderable draws nothing.
