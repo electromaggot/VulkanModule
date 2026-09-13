@@ -46,7 +46,8 @@ void AddOns::createVertexAndOrIndexBuffers(MeshObject& meshObject, Customizer cu
 
 		if (isDynamic) {	// Create host-visible vertex buffer: CPU-mappable, no command buffers for updates.
 			pVertexBuffer = new PrimitiveBuffer(commandPool, vulkan.device);
-			VkDeviceSize bufferSize = meshObject.vertexBufferSize();
+			VkDeviceSize bufferSize = meshObject.vertexAllocationSize(); // ← CAPACITY, which for dynamic geometry may
+																		 //  exceed what mesh holds now (see MeshObject).
 			pVertexBuffer->CreateVertexBuffer(meshObject.vertices, bufferSize, true, numFrames);  // ← true = hostVisible
 		} else				// Create standard device-local vertex buffer: best GPU performance, uses staging for updates.
 			pVertexBuffer = new PrimitiveBuffer(meshObject, commandPool, vulkan.device);
@@ -54,8 +55,7 @@ void AddOns::createVertexAndOrIndexBuffers(MeshObject& meshObject, Customizer cu
 		if (meshObject.indices) {
 			if (isDynamic) {	// Create host-visible index buffer for dynamic geometry.
 				pIndexBuffer = new PrimitiveBuffer(commandPool, vulkan.device);
-				VkDeviceSize indexBufferSize = meshObject.indexCount *
-					(meshObject.indexType == MeshDefaultIndexType ? sizeof(IndexBufferDefaultIndexType) : sizeof(uint32_t));
+				VkDeviceSize indexBufferSize = meshObject.indexAllocationSize();	// ← CAPACITY, as vertices above.
 				pIndexBuffer->CreateIndexBuffer(meshObject.indices, indexBufferSize, meshObject.indexType, true, numFrames);
 			} else {			// Create standard device-local index buffer.							// ↑ = hostVisible
 				if (meshObject.indexType == MeshDefaultIndexType)
@@ -85,8 +85,7 @@ void AddOns::stageIndexData(void* pData, VkDeviceSize size)
 	if (pData && size > 0)
 		stagedIndexData.assign((uint8_t*) pData, (uint8_t*) pData + size);
 	else
-		stagedIndexData.clear();			// Size 0 legitimately means "draw nothing" - see
-											//	iRenderable::updateIndexData().
+		stagedIndexData.clear();	// Size 0 legitimately means "draw nothing" - see iRenderable::updateIndexData().
 	uint32_t numCopies = pIndexBuffer ? pIndexBuffer->NumCopies() : 1;
 	framesNeedingIndexUpload = (numCopies >= 32) ? ~0u : ((1u << numCopies) - 1u);
 }

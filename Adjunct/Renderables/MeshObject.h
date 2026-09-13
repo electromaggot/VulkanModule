@@ -20,6 +20,7 @@
 #include "VulkanPlatform.h"
 
 #include "VertexAbstract.h"
+#include <algorithm>	// for std::max, comparing capacity against contents below
 
 class PrimitiveBuffer;
 
@@ -47,6 +48,17 @@ struct MeshObject
 	uint32_t		instanceCount = 1;		// (while these are shared between
 	uint32_t		firstInstance = 0;		//	Vertex Buffer and Index Buffer)
 
+	// How much to ALLOCATE, when that must exceed what this mesh currently HOLDS.  Zero (the default)
+	//	means "exactly the counts above" - the right answer for static geometry, which never grows.
+	// DYNAMIC geometry is the reason these exist.  Its buffers are written in place for the life of the renderable,
+	//	so they must be allocated for the largest mesh that will ever be uploaded - which is NOT knowable from the mesh
+	//	that happens to exist at creation time.  Leaving it to be inferred from that mesh makes capacity an accident of
+	//	whatever data was loaded first: LevelEdit sized terrain buffers from a 101-row window because a short heightmap
+	//	was current, then overran them when a longer song was swapped in (Sep 2026).  An owner that knows its own worst
+	//	case - rows × columns, maximum glyph count - states it here instead, and PrimitiveBuffer enforces it.
+	uint32_t		vertexCapacity = 0;		// In VERTICES, not bytes (as vertexCount).
+	uint32_t		indexCapacity  = 0;		// In INDICES, not bytes (as indexCount).
+
 
 	VkDeviceSize vertexBufferSize() {
 		return vertexCount * vertexType.byteSize();
@@ -54,6 +66,16 @@ struct MeshObject
 
 	VkDeviceSize indexBufferSize() {
 		return indexCount * MeshIndexByteSizes[indexType];
+	}
+
+	// What to allocate: the stated capacity, or the current contents when none was stated.  Never less
+	//	than the contents, so a capacity mistakenly set too small cannot truncate the initial upload.
+	VkDeviceSize vertexAllocationSize() {
+		return std::max(vertexCapacity, vertexCount) * vertexType.byteSize();
+	}
+
+	VkDeviceSize indexAllocationSize() {
+		return std::max(indexCapacity, indexCount) * MeshIndexByteSizes[indexType];
 	}
 
 	bool isUndefined() {
