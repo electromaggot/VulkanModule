@@ -12,7 +12,7 @@
 //
 //  Put simply, we're only interested in queues supporting both Graphics and Present; those
 //	return a score of 2.  Others return 0.  Obviously it's up to caller to appropriately
-//	scale these values to fit into a scoring scheme amongst other criteria.
+//	scale these values to fit into a scoring scheme among other criteria.
 //
 // Note also for simplicity, only one queue is represented here.  If, for the given family,
 //	multiple queues are needed (at arbitrary priorities), that can be added in the future

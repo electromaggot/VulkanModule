@@ -198,7 +198,7 @@ int GraphicsDevice::pickSpecifiedDevice(DeviceAssessment& assess, int nDevices)
 		if (strcmp(assess[iDevice].properties.deviceName, DEVICE_NAME_IF_SPECIFIED) == 0)
 			return iDevice;
 	Log(ERROR, "DEVICE_NAME_IF_SPECIFIED \"" + string(DEVICE_NAME_IF_SPECIFIED)
-			   + "\" unmatched amongst " + to_string(nDevices) + " available devices.");
+			   + "\" unmatched among " + to_string(nDevices) + " available devices.");
 	return -1;
 }
 

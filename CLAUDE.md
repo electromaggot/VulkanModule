@@ -509,7 +509,7 @@ s_token = [[NSProcessInfo processInfo] beginActivityWithOptions: opts reason: wh
 s_token = nil;                          // Under ARC, this assignment is what releases it.
 ```
 
-Runtime behaviour is identical in both modes, so there is no divergence to reason about — only the
+Runtime behavior is identical in both modes, so there is no divergence to reason about — only the
 spelling differs. ARC governs Objective-C object pointers only; **C++ code is entirely unaffected**, so
 enabling it costs a mixed C++/Obj-C codebase nothing.
 

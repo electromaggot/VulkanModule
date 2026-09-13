@@ -2,7 +2,7 @@
 // BufferBase.h
 //	Vulkan Add-ons
 //
-// Base class for general buffer operations amongst specific buffer implementations.
+// Base class for general buffer operations among specific buffer implementations.
 //	Specifically: creating a general buffer and finding suitable memory for it.
 //
 // Created 6/14/19 by Tadd Jensen
@@ -94,19 +94,18 @@ protected:
 
 
 /* DEV NOTES
- (*) - Note that according to this:
- https://vulkan-tutorial.com/Vertex_buffers/Staging_buffer#page_Conclusion
- calls to vkAllocateMemory should be limited.  Instead of making singular
- allocations, they should be combined/stacked and the .offset parameter used.
- Also refers to: https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
+	(*) - Making calls to vkAllocateMemory should be limited, according to reference
+	here → https://vulkan-tutorial.com/Vertex_buffers/Staging_buffer#page_Conclusion
+	Instead of singular allocations, combine/stack them & use the .offset parameter.
+	Also refer to: https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
 
- (**) - "OUT OF MEMORY" failures could instead "fail but not fatally" which is to
- say, log and return serious/internal error, but continue on the full expectation
- that calling code will handle gracefully, WITHOUT CRASHING which is exactly what
- a Fatal Throw does.  Some OOMs are game-enders, like a render buffer or a player
- 3D model, but others are not, for example, sprites of a Particle Engine that has
- temporarily gone haywire.  In that case, if the OOM condition truly is temporary
- then failing gracefully will truly save the game from catostrophically crashing.
- So in the future, the handling of these Fatal failures could be reconsidered but
- will require careful thought and thorough testing.
+	(**) - "OUT OF MEMORY" failures could instead "fail but not fatally" which is to
+	say, log and return serious/internal error, but continue on the full expectation
+	that calling code will handle gracefully, WITHOUT CRASHING which is exactly what
+	a Fatal Throw does.  Some OOMs are game-enders, like a render buffer or a player
+	3D model, but others are not, for example, sprites of a Particle Engine that has
+	temporarily gone haywire.  In that case, if the OOM condition truly is temporary
+	then failing gracefully will truly save the game from catostrophically crashing.
+	So in the future, the handling of these Fatal failures could be reconsidered but
+	will require careful thought and thorough testing.
 */

@@ -21,9 +21,9 @@ json jsonSettings;
 */
 
 // Guards against handing VulkanModule a settings object that does not exist yet.  AppConstants
-//	is a global, so anything logging from another translation unit's static initialization can
-//	ask for these settings before AppConstants has been constructed -- and a virtual call
-//	through an object whose vtable pointer isn't set yet is undefined behaviour.  This flag is
+//	is a global, so anything logging from another translation unit's static initialization
+//	can ask for these settings before AppConstants has been constructed - and a virtual call
+//	through an object whose vtable pointer isn't set yet is undefined behavior.  This flag is
 //	ZERO-initialized during static initialization, ahead of all dynamic initialization, so
 //	reading it is always safe; it only becomes true once the object below is genuinely usable.
 //
