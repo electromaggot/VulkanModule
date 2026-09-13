@@ -62,6 +62,18 @@ PrimitiveBuffer::~PrimitiveBuffer()
 }
 
 
+// Refuse a copy larger than what was allocated.  Fatal on purpose: the alternative is vkMapMemory returning a shorter
+//	region than asked for (or nothing at all) and the following memcpy running off the end - a SIGSEGV whose backtrace
+//	points at memmove, far from whoever supplied the oversized data.  Named sizes here let that caller be identified
+//																	immediately instead of inferred from a crash dump.
+void PrimitiveBuffer::verifyFitsAllocation(VkDeviceSize size, const char* whatFailed)
+{
+	if (size > allocatedSize)
+		Fatal(string(whatFailed) + " OVERRUN: asked to write " + std::to_string(size) + " bytes into a "
+			  + std::to_string(allocatedSize) + "-byte allocation.  Dynamic geometry must not outgrow"
+			  + " its initial allocation - reallocate (AddOns::Recreate) rather than updating in place.");
+}
+
 // Map one host-visible allocation, copy into it, unmap.  Shared by the create/update paths below.
 //
 void PrimitiveBuffer::mapAndCopy(VkDeviceMemory memory, void* pData, VkDeviceSize size, const char* whatFailed)
@@ -101,6 +113,7 @@ void PrimitiveBuffer::CreateVertexBuffer(void* pVertexData, VkDeviceSize bufferS
 	//	only by the frame that owns it.  A single shared copy gets overwritten out from under already-submitted frames; see
 	buffers.assign(numFrames > 0 ? numFrames : 1, VK_NULL_HANDLE);								//	DEV NOTE at end of file.
 	buffersMemory.assign(buffers.size(), VK_NULL_HANDLE);
+	allocatedSize = bufferSize;				// Each copy is this size (see verifyFitsAllocation).
 
 	for (size_t i = 0; i < buffers.size(); ++i) {
 		createGeneralBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
@@ -131,6 +144,7 @@ void PrimitiveBuffer::CreateIndexBuffer(void* pIndexData, VkDeviceSize bufferSiz
 
 	buffers.assign(numFrames > 0 ? numFrames : 1, VK_NULL_HANDLE);	// One copy per frame, exactly
 	buffersMemory.assign(buffers.size(), VK_NULL_HANDLE);			//	as CreateVertexBuffer above.
+	allocatedSize = bufferSize;				// Each copy is this size (see verifyFitsAllocation).
 
 	for (size_t i = 0; i < buffers.size(); ++i) {
 		createGeneralBuffer(bufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
@@ -146,6 +160,8 @@ void PrimitiveBuffer::CreateIndexBuffer(void* pIndexData, VkDeviceSize bufferSiz
 //
 void PrimitiveBuffer::UpdateVertexBuffer(void* pNewVertexData, VkDeviceSize size)
 {
+	verifyFitsAllocation(size, "UpdateVertexBuffer");	// (the device-local copy below is the one sized)
+
 	VkBuffer stagingBuffer;		// Create temporary staging buffer. (CPU-accessible)
 	VkDeviceMemory stagingMemory;
 	createGeneralBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -171,6 +187,8 @@ void PrimitiveBuffer::UpdateVertexBuffer(void* pNewVertexData, VkDeviceSize size
 void PrimitiveBuffer::createDeviceLocalBuffer(void* pSourceData, VkDeviceSize size, VkBufferUsageFlags usage,
 											  VkBuffer& deviceBuffer, VkDeviceMemory& specificMemory)
 {
+	allocatedSize = size;		// Remember what we own (see verifyFitsAllocation).
+
 	VkBuffer cpuSideBuffer;
 	VkDeviceMemory cpuSideBufferMemory = 0;
 	createGeneralBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -199,6 +217,8 @@ void PrimitiveBuffer::createDeviceLocalBuffer(void* pSourceData, VkDeviceSize si
 //
 void PrimitiveBuffer::UpdateVertexBufferMapped(void* pNewVertexData, VkDeviceSize size, uint32_t iFrame)
 {
+	verifyFitsAllocation(size, "UpdateVertexBufferMapped");
+
 	// Only THIS frame's copy - the others may be mid-flight.  Map, copy, unmap: extremely fast,
 	//	no GPU involvement, and HOST_COHERENT means no manual flush.
 	mapAndCopy(buffersMemory[iFrame < buffersMemory.size() ? iFrame : 0], pNewVertexData, size,
@@ -211,6 +231,8 @@ void PrimitiveBuffer::UpdateVertexBufferMapped(void* pNewVertexData, VkDeviceSiz
 //
 void PrimitiveBuffer::UpdateIndexBufferMapped(void* pNewIndexData, VkDeviceSize size, uint32_t iFrame)
 {
+	verifyFitsAllocation(size, "UpdateIndexBufferMapped");
+
 	mapAndCopy(buffersMemory[iFrame < buffersMemory.size() ? iFrame : 0], pNewIndexData, size,
 			   "UpdateIndexBufferMapped");		// This frame's copy only (see the vertex version).
 }
@@ -233,24 +255,22 @@ void PrimitiveBuffer::copyBufferViaVulkan(VkBuffer srcBuffer, VkBuffer dstBuffer
 
 
 /* DEV NOTE - why host-visible buffers are per-frame, and device-local ones are not
+
    DEVICE-LOCAL buffer is filled once, at creation, through a staging copy, and never written
 	again.  Nothing can race it, so one copy serves every frame.
-   HOST-VISIBLE buffer exists precisely to be rewritten - dynamic geometry: waveforms, laser
-	and tracer shots, scrolling terrain, text that changes.  Until mid-2026 there was still only
-	ONE of those, and UpdateVertexBufferMapped() memcpy'd straight into it whenever the application
-	asked.  With frames in flight that memcpy lands in memory, the GPU may still be reading for a
-	frame already submitted, so that frame draws a mixture of old and new geometry.
-   Symptom: a tear in SHAPE rather than position, and it is intermittent - depending on where the
-	GPU happens to be - so it reads as "occasionally glitchy" rather than broken.  It was known:
-	LevelEdit's terrain path guards its uploads with vkDeviceWaitIdle() and says why.  That works,
-	but stalls the entire device, which is only tolerable because terrain scrolls rarely.  Geometry
-	updated every frame or two cannot pay that price, so the waveform simply did not, and glitched.
-   Now each host-visible buffer has one copy per swapchain image and a frame maps only its own.
-	The awkward part is that applications may hand over new data at any point in their frame -
-	often before the swapchain image is acquired, when the frame is not yet known - so AddOns
-	STAGES the data and marks every frame stale; each frame copies into its own buffer the first
-	time it draws (AddOns::uploadStagedGeometry, called from the draw path).  Hence one CPU-side
-	copy per update, in exchange for no stalls and no tearing.
+   HOST-VISIBLE buffer exists precisely to be rewritten - dynamic geometry: waveforms, laser and tracer shots, scrolling
+	terrain, text that changes.  Until mid-2026 there was still only ONE of those, and UpdateVertexBufferMapped()
+	memcpy'd straight into it whenever the application asked.  With frames in flight that memcpy lands in memory, the
+	GPU may still be reading for a frame already submitted, so that frame draws a mixture of old and new geometry.
+   Symptom: a tear in SHAPE rather than position, it is intermittent - depending on where the GPU happens to be - so it
+	reads as "occasionally glitchy" rather than broken.  It was known: LevelEdit's terrain path guards its uploads with
+	vkDeviceWaitIdle() & says why.  That works, but stalls the entire device, & only tolerable because terrain scrolls
+	rarely.  Geometry updated every frame or two cannot pay that price, so the waveform simply did not, and glitched.
+   Now each host-visible buffer has one copy per swapchain image and a frame maps only its own.  The awkward part
+	is that applications may hand over new data at any point in their frame - often before the swapchain image is
+	acquired, when the frame is not yet known - so AddOns STAGES the data and marks every frame stale; each frame
+	copies into its own buffer the first time it draws (AddOns::uploadStagedGeometry, called from the draw path).
+	Hence one CPU-side copy per update, in exchange for no stalls and no tearing.
    A consequence worth collecting later: the vkDeviceWaitIdle() calls guarding terrain uploads in
 	LevelEdit are now redundant, and removing them should measurably shorten terrain-scroll frames.
 */

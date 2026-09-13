@@ -40,6 +40,12 @@ private:
 	vector<VkBuffer>		buffers;
 	vector<VkDeviceMemory>	buffersMemory;
 
+	// Bytes allocated for EACH copy above (all copies are created the same size).  Retained so an update can refuse to
+	//	write more than it owns: vkMapMemory past the end of an allocation is undefined behavior, and the memcpy that
+	//	follows walks off into whatever is/isn't mapped after it.  Without this the "same size as original" contract
+	//	stated on iRenderable::update[Vertex|Index]Data() is unenforceable & violating it faults far from code causing it.
+	VkDeviceSize			allocatedSize = 0;
+
 		// METHODS
 public:
 	void	 CreateVertexBuffer(vector<VertexAbstract> vertices);
@@ -58,6 +64,7 @@ private:
 									 VkBuffer& deviceBuffer, VkDeviceMemory& deviceMemory);
 	void	 copyBufferViaVulkan(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 	void	 mapAndCopy(VkDeviceMemory memory, void* pData, VkDeviceSize size, const char* whatFailed);
+	void	 verifyFitsAllocation(VkDeviceSize size, const char* whatFailed);
 
 		// getters
 public:
