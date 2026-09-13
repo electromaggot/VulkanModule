@@ -182,8 +182,8 @@ struct iRenderable : iRenderableBase
 
 		if (reloadMesh)		// otherwise keep the same AddOns (e.g. VertexBuffer) we already have loaded
 		{
-			addOns.Recreate(vertexObject);
-			addOns.RecreateDescribables();
+			addOns.Recreate(vertexObject, customizer);	// (pass customizer, else dynamic geometry would
+			addOns.RecreateDescribables();				//	 come back device-local and fail every map)
 			descriptors.Recreate(addOns.reDescribe(), vulkan.swapchain);
 		}
 

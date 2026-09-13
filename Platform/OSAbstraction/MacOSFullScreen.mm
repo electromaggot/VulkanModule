@@ -90,7 +90,7 @@ extern "C" void macOS_InstallSleepWakeHandlers(SleepWakeFn onWillSleep, SleepWak
 //
 // Idempotent: repeated calls with the same state do nothing.
 //
-// ⚠️ THIS FILE IS BUILT BOTH WITH AND WITHOUT ARC — the Xcode target enables it
+// BEWARE! → THIS FILE IS BUILT BOTH WITH AND WITHOUT ARC — the Xcode target enables it
 //	(CLANG_ENABLE_OBJC_ARC), the CMake build does not — so memory management here must compile
 //	under either.  beginActivityWithOptions:reason: returns an AUTORELEASED token that has to
 //	outlive the frame, which ARC handles for us (the static is implicitly __strong) but manual

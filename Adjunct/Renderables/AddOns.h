@@ -60,11 +60,10 @@ protected:
 
 		// METHODS
 
-	// Dynamic geometry staging.  updateVertexData()/updateIndexData() can be called at any point in
-	//	the frame -- including before the swapchain image is acquired, when the frame is not yet
-	//	known -- so new data lands HERE and is copied into each frame's own buffer the first time
-	//	that frame draws.  Writing all the buffers up front would clobber frames still in flight;
-	//	see the DEV NOTE at the end of PrimitiveBuffer.cpp.
+	// Dynamic geometry staging.  updateVertexData()/updateIndexData() can be called at any point in the frame -
+	//	including before the swapchain image is acquired, when the frame is not yet known - so new data lands HERE
+	//	and is copied into each frame's own buffer the first time that frame draws.  Writing all the buffers up
+	//	front would clobber frames still in flight; see the DEV NOTE at the end of 'PrimitiveBuffer.cpp'.
 	vector<uint8_t>	stagedVertexData;
 	vector<uint8_t>	stagedIndexData;
 	uint32_t		framesNeedingVertexUpload = 0;	// bitmask, one bit per swapchain image
@@ -89,7 +88,10 @@ protected:
 							  vector<VkDescriptorImageInfo>& runtimeTextures, iPlatform& platform);
 	void destroyDescribedItems();
 
-	void Recreate(MeshObject& meshObject);
+	// Customizer must be the SAME value the buffers were first created with.  It selects host-visible
+	//	versus device-local (so omitting it silently rebuilds DYNAMIC geometry as device-local, after
+	//	which every mapped update fails).  iRenderable::Recreate passes its own `customize`.
+	void Recreate(MeshObject& meshObject, Customizer customize);
 	void RecreateDescribables();
 private:
 	vector<DescribEd> reDescribe();

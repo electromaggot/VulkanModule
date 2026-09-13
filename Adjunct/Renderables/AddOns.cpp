@@ -117,14 +117,14 @@ void AddOns::destroyVertexAndOrIndexBuffers()
 }
 
 
-void AddOns::Recreate(MeshObject& meshObject)
+void AddOns::Recreate(MeshObject& meshObject, Customizer customize)
 {
 	if (meshObject.vertices) {				// If new vertices exist to overwrite the old ones…
 		destroyVertexAndOrIndexBuffers();			// ◄─(this also deletes index buffers regardless of
 													//		if new indices exist to overwrite old ones)
-		createVertexAndOrIndexBuffers(meshObject);
-	}
-}
+		createVertexAndOrIndexBuffers(meshObject, customize);
+	}										  // ^customize^ FORWARDED: it used to be omitted, defaulting
+}											  //	to NONE, which rebuilt dynamic buffers device-local.
 
 
 #pragma mark - UBO / TEXTURE DESCRIPTORS
