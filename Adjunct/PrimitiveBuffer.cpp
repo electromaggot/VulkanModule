@@ -102,10 +102,15 @@ void PrimitiveBuffer::CreateVertexBuffer(vector<VertexAbstract> vertices)
 //	hostVisible = true:  CPU-accessible, fast updates via mapping → no command buffers!
 //	hostVisible = false: GPU-only, requires staging buffer for updates → one-time initialization.
 //
-void PrimitiveBuffer::CreateVertexBuffer(void* pVertexData, VkDeviceSize bufferSize, bool hostVisible, uint32_t numFrames)
+void PrimitiveBuffer::CreateVertexBuffer(void* pVertexData, VkDeviceSize bufferSize, bool hostVisible,
+										 uint32_t numFrames, VkDeviceSize dataSize)
 {
+	if (dataSize == 0 || dataSize > bufferSize)		// Copy only what the SOURCE holds; see the header.
+		dataSize = bufferSize;
+
 	if (!hostVisible) {		// Use standard device-local staging buffer approach:
-		createDeviceLocalBuffer(pVertexData, bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, buffers[0], buffersMemory[0]);
+		createDeviceLocalBuffer(pVertexData, bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, buffers[0],
+								buffersMemory[0], dataSize);
 		return;				//	(one copy: written once here, never again, so no frame can race it)
 	}
 
@@ -119,7 +124,7 @@ void PrimitiveBuffer::CreateVertexBuffer(void* pVertexData, VkDeviceSize bufferS
 		createGeneralBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 							VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 							buffers[i], buffersMemory[i]);
-		mapAndCopy(buffersMemory[i], pVertexData, bufferSize, "CreateVertexBuffer (host-visible)");
+		mapAndCopy(buffersMemory[i], pVertexData, dataSize, "CreateVertexBuffer (host-visible)");
 	}
 }
 
@@ -135,10 +140,14 @@ void PrimitiveBuffer::CreateIndexBuffer(vector<IndexBufferDefaultIndexType> indi
 //	hostVisible = false: GPU-only, requires staging buffer for updates.
 //
 void PrimitiveBuffer::CreateIndexBuffer(void* pIndexData, VkDeviceSize bufferSize, MeshIndexType indexType,
-										bool hostVisible, uint32_t numFrames)
+										bool hostVisible, uint32_t numFrames, VkDeviceSize dataSize)
 {
+	if (dataSize == 0 || dataSize > bufferSize)		// Copy only what the SOURCE holds; see the header.
+		dataSize = bufferSize;
+
 	if (!hostVisible) {		// Use standard device-local staging buffer approach:
-		createDeviceLocalBuffer(pIndexData, bufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, buffers[0], buffersMemory[0]);
+		createDeviceLocalBuffer(pIndexData, bufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, buffers[0],
+								buffersMemory[0], dataSize);
 		return;
 	}
 
@@ -150,7 +159,7 @@ void PrimitiveBuffer::CreateIndexBuffer(void* pIndexData, VkDeviceSize bufferSiz
 		createGeneralBuffer(bufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 							VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 							buffers[i], buffersMemory[i]);
-		mapAndCopy(buffersMemory[i], pIndexData, bufferSize, "CreateIndexBuffer (host-visible)");
+		mapAndCopy(buffersMemory[i], pIndexData, dataSize, "CreateIndexBuffer (host-visible)");
 	}
 }
 
@@ -185,9 +194,13 @@ void PrimitiveBuffer::UpdateVertexBuffer(void* pNewVertexData, VkDeviceSize size
 
 
 void PrimitiveBuffer::createDeviceLocalBuffer(void* pSourceData, VkDeviceSize size, VkBufferUsageFlags usage,
-											  VkBuffer& deviceBuffer, VkDeviceMemory& specificMemory)
+											  VkBuffer& deviceBuffer, VkDeviceMemory& specificMemory,
+											  VkDeviceSize dataSize)
 {
 	allocatedSize = size;		// Remember what we own (see verifyFitsAllocation).
+
+	if (dataSize == 0 || dataSize > size)		// Read only what the source holds, write all we allocated.
+		dataSize = size;
 
 	VkBuffer cpuSideBuffer;
 	VkDeviceMemory cpuSideBufferMemory = 0;
@@ -199,11 +212,10 @@ void PrimitiveBuffer::createDeviceLocalBuffer(void* pSourceData, VkDeviceSize si
 	if (call != VK_SUCCESS)												// seems unusual for this to fail since create()
 		Fatal("Primitive Buffer Map Memory FAILURE" + ErrStr(call));	//	succeeded; see (**) Dev Note in BufferBase.h
 
-	memcpy(pData, pSourceData, (size_t) size);				// Fill the main RAM block
-	vkUnmapMemory(device, cpuSideBufferMemory);				//	that Vulkan provided.
+	memcpy(pData, pSourceData, (size_t) dataSize);			// Fill the main RAM block that Vulkan provided —
+	vkUnmapMemory(device, cpuSideBufferMemory);				//	only as far as the SOURCE actually goes.
 
-	createGeneralBuffer(size, usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+	createGeneralBuffer(size, usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 						deviceBuffer, specificMemory);
 
 	copyBufferViaVulkan(cpuSideBuffer, deviceBuffer, size);

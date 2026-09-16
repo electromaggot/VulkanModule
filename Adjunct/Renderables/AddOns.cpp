@@ -48,7 +48,8 @@ void AddOns::createVertexAndOrIndexBuffers(MeshObject& meshObject, Customizer cu
 			pVertexBuffer = new PrimitiveBuffer(commandPool, vulkan.device);
 			VkDeviceSize bufferSize = meshObject.vertexAllocationSize(); // ← CAPACITY, which for dynamic geometry may
 																		 //  exceed what mesh holds now (see MeshObject).
-			pVertexBuffer->CreateVertexBuffer(meshObject.vertices, bufferSize, true, numFrames);  // ← true = hostVisible
+			pVertexBuffer->CreateVertexBuffer(meshObject.vertices, bufferSize, true// ≡ hostVisible
+									 , numFrames, meshObject.vertexBufferSize()); // ← and only THIS much exists to copy.
 		} else				// Create standard device-local vertex buffer: best GPU performance, uses staging for updates.
 			pVertexBuffer = new PrimitiveBuffer(meshObject, commandPool, vulkan.device);
 
@@ -56,8 +57,9 @@ void AddOns::createVertexAndOrIndexBuffers(MeshObject& meshObject, Customizer cu
 			if (isDynamic) {	// Create host-visible index buffer for dynamic geometry.
 				pIndexBuffer = new PrimitiveBuffer(commandPool, vulkan.device);
 				VkDeviceSize indexBufferSize = meshObject.indexAllocationSize();	// ← CAPACITY, as vertices above.
-				pIndexBuffer->CreateIndexBuffer(meshObject.indices, indexBufferSize, meshObject.indexType, true, numFrames);
-			} else {			// Create standard device-local index buffer.							// ↑ = hostVisible
+				pIndexBuffer->CreateIndexBuffer(meshObject.indices, indexBufferSize, meshObject.indexType, true,
+												numFrames, meshObject.indexBufferSize()); // ← data to copy, ↑ hostVisible
+			} else {			// Create standard device-local index buffer.
 				if (meshObject.indexType == MeshDefaultIndexType)
 					pIndexBuffer = new PrimitiveBuffer((IndexBufferDefaultIndexType*) meshObject.indices,
 													   meshObject.indexCount, commandPool, vulkan.device);
