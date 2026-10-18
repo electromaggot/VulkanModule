@@ -272,13 +272,13 @@ shaderCache->addRef(pSharedShaders);
 // 3. Create renderable (will use shared shaders)
 Renderable renderable(*drawable, vulkan, platform);
 
-// 4. ShaderCache handles cleanup automatically via reference counting
-// When last renderable using a shader set is destroyed, shaders are freed
+// 4. Cached shader sets live until release() drops one to a count of zero, clear(), or the cache's destructor.
+//	A renderable never releases on its own: whoever called addRef() releases, if anyone does.
 ```
 
 **Benefits:**
 - Shaders loaded once and shared across all renderables using the same shader set
-- Automatic reference counting prevents premature deletion
+- Reference counting (`addRef()` / `release()`) for consumers that free shader sets as they go
 - Reduced I/O and memory usage
 - Faster scene initialization
 
@@ -286,7 +286,15 @@ Renderable renderable(*drawable, vulkan, platform);
 - Shaders are cached by a key generated from shader file names and types
 - `iRenderable` checks `pSharedShaderModules` and uses it if provided, otherwise creates its own
 - `ownsShaderModules` flag prevents double-deletion
-- Reference counting ensures shaders persist until last user is destroyed
+- A shared set is only freed by `release()` reaching zero, `clear()`, or `~ShaderCache()`; nothing in the
+  module calls `release()`, so in practice sets persist for the cache's lifetime
+
+**⚠️ A cached shader set must not outlive its device.** Its `VkShaderModule`s are children of the logical
+device. An app that destroys and recreates the device in-process (e.g. macOS sleep/wake recovery via
+`VulkanSetup::TeardownForSleep()` / `RebuildAfterSleep()`) must call `shaderCache->clear()` while the old
+device is still valid. Otherwise the rebuild creates pipelines from modules whose MoltenVK objects are freed:
+an intermittent `EXC_BAD_ACCESS` in `vkCreateGraphicsPipelines` (LevelEdit, 2026-10). After `clear()`, every
+pointer obtained from `getOrCreate()` is dangling: a drawable that outlives the teardown must ask again.
 
 ### Secondary Command Buffers
 

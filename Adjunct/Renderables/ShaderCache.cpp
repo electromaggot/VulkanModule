@@ -16,7 +16,11 @@ ShaderCache::ShaderCache(GraphicsDevice& device)
 
 ShaderCache::~ShaderCache()
 {
-	// Clean up any remaining cached shaders
+	clear();		// Clean up any remaining cached shaders.
+}
+
+void ShaderCache::clear()
+{
 	for (auto& pair : shaderCache) {
 		Log(DEAD, "ShaderCache: Deleting unreleased shader set: %s", pair.first.c_str());
 		delete pair.second;

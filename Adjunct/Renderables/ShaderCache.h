@@ -34,6 +34,11 @@ public:
 	// Deletes the ShaderModules if refcount reaches zero
 	void release(ShaderModules* pShaderModules);
 
+	// Destroy every cached shader set, as before its device is destroyed (e.g. at system sleep): a module that
+	//	outlives its device is freed memory to the next one.  Later requests compile anew, so whatever kept a
+	//	pointer from getOrCreate() must ask again.
+	void clear();
+
 private:
 	GraphicsDevice& graphicsDevice;
 
