@@ -177,6 +177,7 @@ VulkanModule is a reusable foundation for Vulkan graphics projects, providing ob
   - `iRenderable::UpdateUniformBuffers()` - Public method for uploading UBO data to GPU
 - `VertexTypes/` - Various vertex format definitions
 - `TextureImage`, `UniformBuffer` - Resource management
+- `TextureCache` - Shared textures between renderables, reference counted (see "Texture Caching")
 - `DynamicUniformBuffer` - Efficient per-object uniform data using dynamic offsets for rendering thousands of objects
 - `Shadowing/` - Complete shadow mapping infrastructure
   - `ShadowMap` - Shadow map image, render pass, framebuffer, and sampler
@@ -194,7 +195,7 @@ VulkanModule is a reusable foundation for Vulkan graphics projects, providing ob
 2. **Recreate Pattern**: Objects support `Recreate()` for handling window resize/minimize events
 3. **Dependency Order**: VulkanSetup instantiates objects in strict dependency order
 4. **Platform Abstraction**: iPlatform interface allows different windowing systems (SDL2, GLFW, XCB)
-5. **Resource Sharing**: ShaderCache enables sharing ShaderModules across renderables to eliminate redundant loads
+5. **Resource Sharing**: ShaderCache shares ShaderModules, and TextureCache TextureImages, across renderables to eliminate redundant loads
 6. **Dynamic Uniform Buffers**: Support for VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC with per-object offsets for efficient multi-object rendering
 7. **Pipeline Batching**: RenderBatchManager groups renderables by pass and pipeline, reducing state changes from O(N) to O(M)
 8. **Pass-Based Rendering**: Explicit render order (opaque → transparent → lines → self-managed) ensures correct depth sorting
@@ -295,6 +296,23 @@ device. An app that destroys and recreates the device in-process (e.g. macOS sle
 device is still valid. Otherwise the rebuild creates pipelines from modules whose MoltenVK objects are freed:
 an intermittent `EXC_BAD_ACCESS` in `vkCreateGraphicsPipelines` (LevelEdit, 2026-10). After `clear()`, every
 pointer obtained from `getOrCreate()` is dangling: a drawable that outlives the teardown must ask again.
+
+### Texture Caching
+
+`TextureCache` (`Adjunct/TextureCache.h`) shares `TextureImage`s between renderables that name the same texture, so it's
+decoded and uploaded once however many renderables show it. `VulkanSetup` holds one (`vulkan.textures`), and `AddOns`
+uses it for every texture a drawable names: nothing to set up, and nothing to call.
+
+- **Reference counted, released by the renderable**: unlike `ShaderCache`, the last renderable to let a texture go
+  destroys it. So a teardown that destroys every renderable (a scene change, system sleep) leaves no texture on the
+  device. `VulkanSetup::TeardownForSleep()` logs an ERROR if any shared texture is still held after the app's teardown:
+  that's a renderable which outlived it.
+- **What's shared**: a file's texture (keyed by file name and sampling: filter, wrap, flip, LOD bias); an in-memory one
+  (`pImageInfo`) **only if its spec sets `shareable`**, promising its pixels won't change in place (keyed by the pixels'
+  address and shape, not the `ImageInfo`, which each drawable may have its own of); **never** a `wantMutable` one,
+  since a write would show on every renderable sharing it. Anything else is made for its renderable alone.
+- Measured (LevelEdit, 2026-10-29): 84 textures for a scene's renderables became 5, 186 → 20 ms, and the GPU memory of
+  dozens of identical copies (57 of one font atlas).
 
 ### Secondary Command Buffers
 
