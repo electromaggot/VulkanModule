@@ -82,6 +82,10 @@ void VulkanSetup::TeardownForSleep(const std::function<void()>& destroyAppResour
 	if (destroyAppResources)				// App destroys ITS device children (renderables, UBOs,
 		destroyAppResources();				//	shadow, ImGui backend, font atlas, particles, textures).
 
+	if (textures.nShared() > 0)				// Released by the renderables using them, so any left are held by one
+		Log(ERROR, "Sleep: %zu shared texture(s) still held: a renderable outlived the teardown, "	//	still alive
+				   "and its textures won't survive the device.", textures.nShared());				//	post-teardown.
+
 	command.Destroy();						// CPU buffer-set array (VkCommandBuffers freed with the pool)
 	command.getCommandPool().destroy();
 	syncObjects.destroy();

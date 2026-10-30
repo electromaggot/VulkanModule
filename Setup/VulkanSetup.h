@@ -23,6 +23,7 @@
 #include "RenderPass.h"
 #include "Framebuffers.h"
 #include "SyncObjects.h"
+#include "TextureCache.h"
 #include <functional>
 
 class CommandControl;
@@ -62,23 +63,23 @@ public:
 	Framebuffers		framebuffers;
 	SyncObjects			syncObjects;
 	CommandControl&		command;
-
+	TextureCache		textures;	// Renderables' textures, shared where they may be.  Destroyed before `device`,
+									//	after ~VulkanSetup() deletes `command` and with it the renderables using them.
 
 	void RecreateRenderingResources();
 
 	// Reusable render-loop recovery policy.  Feed the latest acquire/present VkResult each frame:
-	//	OUT_OF_DATE/SUBOPTIMAL → recreate the swapchain chain now (window resize / monitor move),
-	//	recreating syncObjects too, and return Recreated (caller resets its own per-image tracking).
-	//	DEVICE_LOST → return DeviceLost WITHOUT touching the swapchain: when the logical device is
-	//	truly gone (e.g. a GPU reset after sleep) vkCreateSwapchainKHR fails on the dead device, so
-	//	rebuilding here would abort.  Recovery from device loss is the app's policy (e.g. relaunch).
+	//	OUT_OF_DATE/SUBOPTIMAL → recreate the swapchain chain now (window resize / monitor move), recreating
+	//		syncObjects too, and return Recreated (caller resets its own per-image tracking).
+	//	DEVICE_LOST → return DeviceLost WITHOUT touching the swapchain: when logical device is truly gone (e.g.
+	//		GPU reset after sleep) vkCreateSwapchainKHR fails on the dead device, so rebuilding here would abort.
+	//		Recovery from device loss is the app's policy (e.g. relaunch).
 	FrameRecovery RecoverFromPresentResult(VkResult result);
 
-	// In-process recovery from a lost logical device.  Tears down all device-level objects (after
-	//	`destroyAppResources` lets the app release ITS GPU resources on the old device), recreates the
-	//	logical device in place, recreates the device-level objects, then calls `rebuildAppResources`
-	//	so the app rebuilds its GPU resources on the new device, and re-records command buffers.
-	//	Instance, surface, validation, and the window all survive.
+	// In-process recovery from lost logical device.  Tears down all device-level objects (after `destroyAppResources`
+	//	lets the app release ITS GPU resources on the old device), recreates the logical device in place, recreates
+	//	the device-level objects, then calls `rebuildAppResources` so the app rebuilds its GPU resources on the new
+	//	device, and re-records command buffers.  Instance, surface, validation, and the window all survive.
 	void RecoverFromDeviceLoss(const std::function<void()>& destroyAppResources,
 							   const std::function<void()>& rebuildAppResources);
 

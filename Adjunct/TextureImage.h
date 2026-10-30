@@ -47,7 +47,8 @@ struct TextureSpec	// Texture Specifier / Specification
 	bool		wantMutable	 = false;	// User will modify texture later (so retain staging buffer and re-copyBufferToImage "dirtied" subregions).
 	float		lodBias		 = 0.0f;	// LOD bias: negative = sharper (prefers higher-res mipmaps), positive = blurrier (prefers lower-res mipmaps)
 	ImageInfo*	pImageInfo	 = nullptr;
-};
+	bool		shareable	 = false;	// In-memory pixels (pImageInfo) that won't change in place, so renderables showing them
+};										//	may share one texture (TextureCache).  A file's texture always may; a mutable one never.
 
 const bool NO_MIPMAP = false;
 
@@ -73,8 +74,7 @@ protected:
 	void createBlank(ImageInfo& parameters, GraphicsDevice& graphicsDevice, iPlatform& platform, bool mipmap = true);
 	void destroy();
 	void createSampler(TextureSpec& texSpec);
-	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout,
-							   VkImageLayout newLayout);
+	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 public:
 	void ReGenerateMipmaps();

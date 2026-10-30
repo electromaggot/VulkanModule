@@ -171,7 +171,7 @@ void AddOns::createDescribedItems(vector<UBO>& UBOs, vector<TextureSpec>& textur
 	for (TextureSpec& textureSpec : textureSpecs) {
 		if (textureSpec.fileName || textureSpec.pImageInfo) {
 			texspecs.push_back(textureSpec);
-			TextureImage* pTexture = new TextureImage(texspecs.back(), vulkan.command.vkPool(), vulkan.device, platform);
+			TextureImage* pTexture = vulkan.textures.acquire(texspecs.back(), vulkan.command.vkPool(), vulkan.device, platform);
 			if (pTexture) {
 				pTextureImages.emplace_back(pTexture);				// layout(binding = 1) ... 2) ... 3)...	 <-- in Fragment Shader
 				described.emplace_back( pTexture->getDescriptorImageInfo(),	VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -199,7 +199,7 @@ void AddOns::destroyDescribedItems()
 	}
 	pUniformBuffers.clear();
 	for (auto& pTextureImage : pTextureImages)
-		delete pTextureImage;
+		vulkan.textures.release(pTextureImage);		// (Destroyed when no other renderable shares it. *)
 	pTextureImages.clear();
 }
 
@@ -211,14 +211,15 @@ void AddOns::RecreateDescribables()
 			pUniformBuffer->Recreate(-1, vulkan.swapchain);
 	}
 
-	// Recreation (reload or regeneration) of TextureImages wasn't given much consideration, so if it is
+	// Re-creation (reload or regeneration) of TextureImages wasn't given much consideration, so if it is
 	//	really necessary, simply destroy and reinstantiate them... especially since the specs are saved.
+	//	A texture other renderables still share is handed back as it is.
 
 	for (auto& pTextureImage : pTextureImages)
-		delete pTextureImage;
+		vulkan.textures.release(pTextureImage);		// (* as above)
 	pTextureImages.clear();
 	for (auto& texspec : texspecs) {
-		TextureImage* pTexture = new TextureImage(texspec, vulkan.command.vkPool(), vulkan.device, platform);
+		TextureImage* pTexture = vulkan.textures.acquire(texspec, vulkan.command.vkPool(), vulkan.device, platform);
 		pTextureImages.emplace_back(pTexture);
 	}
 }
