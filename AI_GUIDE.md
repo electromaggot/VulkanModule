@@ -467,6 +467,11 @@ iRenderable* pActual = list[list.size() - 1];
 pActual->updateVertexData(vertices, totalBytes, strideBytes);
 ```
 
+Geometry that will grow (a scrolling terrain, text being edited) states its worst case up front, so later updates
+never outgrow the buffers: `mesh.vertexCapacity` / `mesh.indexCapacity` (in vertices and indices, not bytes).
+The buffers are allocated at capacity; only what the mesh holds now is copied in, and the rest is zeroed, so the
+first contents may be small or even empty (e.g. no indices yet).
+
 ### Procedural texture (no file on disk)
 
 ```cpp
@@ -485,6 +490,10 @@ TextureSpec texSpec = {
 };
 // IMPORTANT: pixelData and imageInfo must remain alive for the texture's lifetime.
 ```
+
+Renderables showing the same texture share one copy of it (`TextureCache`, see CLAUDE.md): always for a file's
+texture; for in-memory pixels like these only if the spec sets `.shareable = true`, promising they won't change in
+place (a font atlas, say). Never for a `wantMutable` texture.
 
 ---
 
