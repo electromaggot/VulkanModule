@@ -52,13 +52,15 @@ public:
 	void	 CreateIndexBuffer(vector<IndexBufferDefaultIndexType> indices);
 	// bufferSize is how much to ALLOCATE; dataSize is how much to COPY IN, and they differ whenever a mesh declares
 	//	capacity beyond its current contents (see MeshObject).  Copying bufferSize from a source holding only dataSize
-	//	reads off end of SOURCE (which crashed on startup once capacity arrived), in the terrain-segment path where the
-	//	initial mesh is far smaller than capacity.  dataSize = 0 means "same as bufferSize", the pre-capacity behavior.
+	//	reads off end of SOURCE (which can crash on startup once capacity arrives) such as in a dynamic mesh where its
+	//	initial mesh is smaller than capacity.  What the source doesn't fill is zeroed.  dataSize = SAME_AS_BUFFER
+	//	(the default) copies bufferSize; 0 copies nothing, specific to a mesh with no initial contents, no triangles.
+	static constexpr VkDeviceSize SAME_AS_BUFFER = VK_WHOLE_SIZE;
 	void	 CreateVertexBuffer(void* pVertexData, VkDeviceSize bufferSize, bool hostVisible,
-								uint32_t numFrames = 1, VkDeviceSize dataSize = 0);
+								uint32_t numFrames = 1, VkDeviceSize dataSize = SAME_AS_BUFFER);
 								// numFrames applies only when hostVisible: how many per-frame copies to allocate.
 	void	 CreateIndexBuffer(void* pIndexData, VkDeviceSize bufferSize, MeshIndexType indexType,
-							   bool hostVisible, uint32_t numFrames = 1, VkDeviceSize dataSize = 0);
+							   bool hostVisible, uint32_t numFrames = 1, VkDeviceSize dataSize = SAME_AS_BUFFER);
 	void	 UpdateVertexBuffer(void* pNewVertexData, VkDeviceSize size);		// Update existing vertex buffer,
 																				//	only for host-visible buffers.
 	// Fast update for host-visible buffers, no command buffers.  Writes ONLY iFrame's copy, so it
@@ -68,9 +70,10 @@ public:
 private:
 	void	 createDeviceLocalBuffer(void* pSourceData, VkDeviceSize size, VkBufferUsageFlags usage,
 									 VkBuffer& deviceBuffer, VkDeviceMemory& deviceMemory,
-									 VkDeviceSize dataSize = 0/* ≡ same as size; see Create*Buffer. */);
+									 VkDeviceSize dataSize = SAME_AS_BUFFER);	// ← see Create*Buffer above.
 	void	 copyBufferViaVulkan(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-	void	 mapAndCopy(VkDeviceMemory memory, void* pData, VkDeviceSize size, const char* whatFailed);
+	void	 mapAndCopy(VkDeviceMemory memory, void* pData, VkDeviceSize dataSize,
+															VkDeviceSize size, const char* whatFailed);
 	void	 verifyFitsAllocation(VkDeviceSize size, const char* whatFailed);
 
 		// getters

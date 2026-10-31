@@ -74,19 +74,23 @@ void PrimitiveBuffer::verifyFitsAllocation(VkDeviceSize size, const char* whatFa
 			  + " its initial allocation - reallocate (AddOns::Recreate) rather than updating in place.");
 }
 
-// Map one host-visible allocation, copy into it, unmap.  Shared by the create/update paths below.
+// Map one host-visible allocation of `size`, copy `dataSize` into it, zeroing the rest, unmap.  Shared by
+//	the create/update paths below.
 //
-void PrimitiveBuffer::mapAndCopy(VkDeviceMemory memory, void* pData, VkDeviceSize size, const char* whatFailed)
+void PrimitiveBuffer::mapAndCopy(VkDeviceMemory memory, void* pData, VkDeviceSize dataSize,
+																	 VkDeviceSize size, const char* whatFailed)
 {
 	void* pMapped;
 	call = vkMapMemory(device, memory, 0, size, 0, &pMapped);
 	if (call != VK_SUCCESS)
 		Fatal(string(whatFailed) + " Map Memory FAILURE" + ErrStr(call));
 
-	if (pData)
-		memcpy(pMapped, pData, (size_t) size);
-	else
-		memset(pMapped, 0, (size_t) size);
+	if (!pData)
+		dataSize = 0;
+	if (dataSize > 0)
+		memcpy(pMapped, pData, (size_t) dataSize);
+	if (dataSize < size)
+		memset((char*) pMapped + dataSize, 0, (size_t) (size - dataSize));
 
 	vkUnmapMemory(device, memory);		// HOST_COHERENT, so no manual flush needed.
 }
@@ -102,10 +106,10 @@ void PrimitiveBuffer::CreateVertexBuffer(vector<VertexAbstract> vertices)
 //	hostVisible = true:  CPU-accessible, fast updates via mapping → no command buffers!
 //	hostVisible = false: GPU-only, requires staging buffer for updates → one-time initialization.
 //
-void PrimitiveBuffer::CreateVertexBuffer(void* pVertexData, VkDeviceSize bufferSize, bool hostVisible,
+void PrimitiveBuffer::CreateVertexBuffer(void* pVertexData,  VkDeviceSize bufferSize, bool hostVisible,
 										 uint32_t numFrames, VkDeviceSize dataSize)
 {
-	if (dataSize == 0 || dataSize > bufferSize)		// Copy only what the SOURCE holds; see the header.
+	if (dataSize == SAME_AS_BUFFER || dataSize > bufferSize)	// Copy only what the SOURCE holds; see the header.
 		dataSize = bufferSize;
 
 	if (!hostVisible) {		// Use standard device-local staging buffer approach:
@@ -124,7 +128,7 @@ void PrimitiveBuffer::CreateVertexBuffer(void* pVertexData, VkDeviceSize bufferS
 		createGeneralBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 							VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 							buffers[i], buffersMemory[i]);
-		mapAndCopy(buffersMemory[i], pVertexData, dataSize, "CreateVertexBuffer (host-visible)");
+		mapAndCopy(buffersMemory[i], pVertexData, dataSize, bufferSize, "CreateVertexBuffer (host-visible)");
 	}
 }
 
@@ -142,7 +146,7 @@ void PrimitiveBuffer::CreateIndexBuffer(vector<IndexBufferDefaultIndexType> indi
 void PrimitiveBuffer::CreateIndexBuffer(void* pIndexData, VkDeviceSize bufferSize, MeshIndexType indexType,
 										bool hostVisible, uint32_t numFrames, VkDeviceSize dataSize)
 {
-	if (dataSize == 0 || dataSize > bufferSize)		// Copy only what the SOURCE holds; see the header.
+	if (dataSize == SAME_AS_BUFFER || dataSize > bufferSize)	// Copy only what the SOURCE holds; see the header.
 		dataSize = bufferSize;
 
 	if (!hostVisible) {		// Use standard device-local staging buffer approach:
@@ -159,7 +163,7 @@ void PrimitiveBuffer::CreateIndexBuffer(void* pIndexData, VkDeviceSize bufferSiz
 		createGeneralBuffer(bufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 							VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 							buffers[i], buffersMemory[i]);
-		mapAndCopy(buffersMemory[i], pIndexData, dataSize, "CreateIndexBuffer (host-visible)");
+		mapAndCopy(buffersMemory[i], pIndexData, dataSize, bufferSize, "CreateIndexBuffer (host-visible)");
 	}
 }
 
@@ -199,7 +203,7 @@ void PrimitiveBuffer::createDeviceLocalBuffer(void* pSourceData, VkDeviceSize si
 {
 	allocatedSize = size;		// Remember what we own (see verifyFitsAllocation).
 
-	if (dataSize == 0 || dataSize > size)		// Read only what the source holds, write all we allocated.
+	if (dataSize == SAME_AS_BUFFER || dataSize > size)		// Read only what the source holds, write all we allocated.
 		dataSize = size;
 
 	VkBuffer cpuSideBuffer;
@@ -212,8 +216,13 @@ void PrimitiveBuffer::createDeviceLocalBuffer(void* pSourceData, VkDeviceSize si
 	if (call != VK_SUCCESS)												// seems unusual for this to fail since create()
 		Fatal("Primitive Buffer Map Memory FAILURE" + ErrStr(call));	//	succeeded; see (**) Dev Note in BufferBase.h
 
-	memcpy(pData, pSourceData, (size_t) dataSize);			// Fill the main RAM block that Vulkan provided —
-	vkUnmapMemory(device, cpuSideBufferMemory);				//	only as far as the SOURCE actually goes.
+	if (pSourceData && dataSize > 0)						// Fill the main RAM block that Vulkan provided —
+		memcpy(pData, pSourceData, (size_t) dataSize);		//			only as far as the SOURCE actually goes…
+	else
+		dataSize = 0;
+	if (dataSize < size)
+		memset((char*) pData + dataSize, 0, (size_t) (size - dataSize));	//	…the rest zeroed.
+	vkUnmapMemory(device, cpuSideBufferMemory);
 
 	createGeneralBuffer(size, usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 						deviceBuffer, specificMemory);
@@ -233,7 +242,7 @@ void PrimitiveBuffer::UpdateVertexBufferMapped(void* pNewVertexData, VkDeviceSiz
 
 	// Only THIS frame's copy - the others may be mid-flight.  Map, copy, unmap: extremely fast,
 	//	no GPU involvement, and HOST_COHERENT means no manual flush.
-	mapAndCopy(buffersMemory[iFrame < buffersMemory.size() ? iFrame : 0], pNewVertexData, size,
+	mapAndCopy(buffersMemory[iFrame < buffersMemory.size() ? iFrame : 0], pNewVertexData, size, size,
 			   "UpdateVertexBufferMapped");
 }
 
@@ -245,7 +254,7 @@ void PrimitiveBuffer::UpdateIndexBufferMapped(void* pNewIndexData, VkDeviceSize 
 {
 	verifyFitsAllocation(size, "UpdateIndexBufferMapped");
 
-	mapAndCopy(buffersMemory[iFrame < buffersMemory.size() ? iFrame : 0], pNewIndexData, size,
+	mapAndCopy(buffersMemory[iFrame < buffersMemory.size() ? iFrame : 0], pNewIndexData, size, size,
 			   "UpdateIndexBufferMapped");		// This frame's copy only (see the vertex version).
 }
 
