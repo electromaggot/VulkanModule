@@ -31,6 +31,7 @@ void Swapchain::destroy()
 		vkDestroyImageView(logicalDevice, imageView, nullALLOC);
 	}
 	imageViews.clear();
+	images.clear();
 	if (swapchain != VK_NULL_HANDLE) {		// Idempotent: a following Recreate()'s destroy() then no-ops.
 		vkDestroySwapchainKHR(logicalDevice, swapchain, nullALLOC);	// (Guard the call, not just the handle:
 		swapchain = VK_NULL_HANDLE;			//	vkDestroy(NULL) is a no-op but the resource tracker still counts it.)
@@ -54,6 +55,10 @@ void Swapchain::create(VkSurfaceKHR& surface)
 
 	DeviceQueues::IndexArrayRef queueFamilyIndices = device.Queues.getIndices();
 
+	// Drawn to, and where the surface allows, copied from: a frame kept as presented (FrameCapture).
+	copyable = (capabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) != 0;
+	VkImageUsageFlags usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (copyable ? VK_IMAGE_USAGE_TRANSFER_SRC_BIT : 0);
+
 	VkSwapchainCreateInfoKHR createInfo = {
 		.sType	= VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
 		.pNext	= nullptr,
@@ -65,7 +70,7 @@ void Swapchain::create(VkSurfaceKHR& surface)
 		.imageColorSpace = surfaceFormat.colorSpace,
 		.imageExtent	 = extent,
 		.imageArrayLayers = AppVulkanConfig().supportStereo3D ? (uint32_t) 2 : 1,
-		.imageUsage		 = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		.imageUsage		 = usage,
 
 		.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,			// (best performance, same family)
 		.queueFamilyIndexCount	= N_ELEMENTS_IN_ARRAY(queueFamilyIndices),
@@ -97,8 +102,8 @@ void Swapchain::createImageViews()
 	if (call != VK_SUCCESS || nImages == 0)
 		Fatal("Get Swapchain nImages " + to_string(nImages) + ErrStr(call));
 
-	VkImage images[nImages];
-	call = vkGetSwapchainImagesKHR(logicalDevice, swapchain, &nImages, images);
+	images.resize(nImages);
+	call = vkGetSwapchainImagesKHR(logicalDevice, swapchain, &nImages, images.data());
 	if (call != VK_SUCCESS)
 		Fatal("Get Swapchain Images FAILURE" + ErrStr(call));
 
@@ -177,4 +182,3 @@ void Swapchain::Recreate()
 	create(windowSurface.getVkSurface());
 	createImageViews();
 }
-

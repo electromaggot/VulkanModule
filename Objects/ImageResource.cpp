@@ -46,7 +46,8 @@ void ImageResource::destroy()
 // (some code here is identical to Swapchain::createImageViews, but not much, plus it's
 //	specialized and isolated in that class... so actually more minimal to repeat/separate)
 //
-void ImageResource::createImageView(VkImageAspectFlags aspectFlags/* = VK_IMAGE_ASPECT_COLOR_BIT*/)
+void ImageResource::createImageView(VkImageAspectFlags aspectFlags/* = VK_IMAGE_ASPECT_COLOR_BIT*/,
+									VkComponentMapping components/* = { }, i.e. all IDENTITY*/)
 {
 	VkImageViewCreateInfo viewInfo = {
 		.sType	= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -55,8 +56,7 @@ void ImageResource::createImageView(VkImageAspectFlags aspectFlags/* = VK_IMAGE_
 		.image		= image,
 		.viewType	= VK_IMAGE_VIEW_TYPE_2D,
 		.format		= imageInfo.format,
-		.components = { .r = VK_COMPONENT_SWIZZLE_IDENTITY, .g = VK_COMPONENT_SWIZZLE_IDENTITY,
-						.b = VK_COMPONENT_SWIZZLE_IDENTITY, .a = VK_COMPONENT_SWIZZLE_IDENTITY },
+		.components = components,
 		.subresourceRange = {
 			.aspectMask		= aspectFlags,
 			.baseMipLevel	= 0,

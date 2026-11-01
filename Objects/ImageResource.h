@@ -40,7 +40,8 @@ protected:
 		// METHODS
 protected:
 	void destroy();
-	void createImageView(VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT);
+	void createImageView(VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT,
+						 VkComponentMapping components = { });	// (Default: each component as stored.)
 	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling,
 					 VkImageUsageFlags usage, VkMemoryPropertyFlags properties);
 		// getters

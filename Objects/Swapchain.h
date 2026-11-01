@@ -29,7 +29,9 @@ private:
 
 	VkExtent2D			extent;
 
+	vector<VkImage>		images;				// (Owned by the swapchain itself.)
 	vector<VkImageView>	imageViews;
+	bool				copyable = false;	// Its images may be copied from (FrameCapture).
 
 	GraphicsDevice&		device;
 	WindowSurface&		windowSurface;
@@ -49,6 +51,9 @@ public:
 	vector<VkImageView>& getImageViews()	{ return imageViews; }
 	int					 getNumImages()		{ return (int) imageViews.size(); }
 	VkExtent2D&			 getExtent()		{ return extent; }
+	VkImage				 getImage(uint32_t iImage)	{ return images[iImage]; }
+	VkFormat			 getFormat()		{ return device.getProfile().selectedSurfaceFormat.format; }
+	bool				 canCapture() const	{ return copyable; }
 
 	VkSwapchainKHR&		 getVkSwapchain()	{ return swapchain; }
 };
