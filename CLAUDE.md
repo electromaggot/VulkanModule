@@ -132,7 +132,7 @@ VulkanModule is a reusable foundation for Vulkan graphics projects, providing ob
 - Consequently an app that sets `INVERT_Z_SETTING=true` must also supply left-handed
   projection/view matrices itself — the setting only keeps culling consistent with them.
 - **Consumers read `INVERT_Z` too.** Applications commonly branch on this same symbol as their
-  coordinate-system contract — LevelEdit/TuneTrip keys projection (`glm::perspectiveLH_ZO`),
+  coordinate-system contract — test app keys projection (`glm::perspectiveLH_ZO`),
   OBJ winding order, Z-negation at model load, and camera math off it. So while its effect
   *within this module* is the single `VkFrontFace` flip, changing the effective value is
   engine-wide for such an app. Treat it as a coordinate-system contract, not a local toggle.
@@ -178,6 +178,7 @@ VulkanModule is a reusable foundation for Vulkan graphics projects, providing ob
 - `VertexTypes/` - Various vertex format definitions
 - `TextureImage`, `UniformBuffer` - Resource management
 - `TextureCache` - Shared textures between renderables, reference counted (see "Texture Caching")
+- `FrameCapture` - A frame kept as presented, an image that may be sampled (see "Frame Capture")
 - `DynamicUniformBuffer` - Efficient per-object uniform data using dynamic offsets for rendering thousands of objects
 - `Shadowing/` - Complete shadow mapping infrastructure
   - `ShadowMap` - Shadow map image, render pass, framebuffer, and sampler
@@ -294,7 +295,7 @@ Renderable renderable(*drawable, vulkan, platform);
 device. An app that destroys and recreates the device in-process (e.g. macOS sleep/wake recovery via
 `VulkanSetup::TeardownForSleep()` / `RebuildAfterSleep()`) must call `shaderCache->clear()` while the old
 device is still valid. Otherwise the rebuild creates pipelines from modules whose MoltenVK objects are freed:
-an intermittent `EXC_BAD_ACCESS` in `vkCreateGraphicsPipelines` (LevelEdit, 2026-10). After `clear()`, every
+an intermittent `EXC_BAD_ACCESS` in `vkCreateGraphicsPipelines`. After `clear()`, every
 pointer obtained from `getOrCreate()` is dangling: a drawable that outlives the teardown must ask again.
 
 ### Texture Caching
@@ -311,8 +312,23 @@ uses it for every texture a drawable names: nothing to set up, and nothing to ca
   (`pImageInfo`) **only if its spec sets `shareable`**, promising its pixels won't change in place (keyed by the pixels'
   address and shape, not the `ImageInfo`, which each drawable may have its own of); **never** a `wantMutable` one,
   since a write would show on every renderable sharing it. Anything else is made for its renderable alone.
-- Measured (LevelEdit, 2026-10-29): 84 textures for a scene's renderables became 5, 186 → 20 ms, and the GPU memory of
+- Measured in test app: 84 textures for a scene's renderables became 5, 186 → 20 ms, and the GPU memory of
   dozens of identical copies (57 of one font atlas).
+
+### Frame Capture
+
+`FrameCapture` (`Adjunct/FrameCapture.h`) copies the swapchain image just rendered into an image of the **same format**
+and size that may be sampled: a still backdrop for a loading screen, later a screenshot or a
+thumbnail. The same format keeps the round trip exact: an sRGB swapchain's pixels are decoded when sampled and encoded
+again when drawn. Its view reads alpha as 1, as a frame presented is opaque.
+
+- **Between rendering and presenting**: `Capture(swapchain, iImage, rendered)` waits on the semaphore the frame's
+  rendering signals, copies, and waits for the queue, so **the frame's present then waits on no semaphore** (the copy
+  consumed it). It returns false, consuming nothing, if it can't be done; the present waits as usual then.
+- **The swapchain must allow it**: `Swapchain` asks for `TRANSFER_SRC` usage where the surface supports it
+  (`canCapture()`), and keeps its `VkImage`s (`getImage()`).
+- **A device child**: the app owns it and destroys it before the device goes (at sleep, say), after the GPU is done with
+  frames that show it.
 
 ### Secondary Command Buffers
 
